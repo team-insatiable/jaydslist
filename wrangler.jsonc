@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "jaydslist",
+  "compatibility_date": "2026-05-07",
+  "compatibility_flags": ["nodejs_als"],
+  "main": ".svelte-kit/cloudflare/_worker.js",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".svelte-kit/cloudflare"
+  },
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jaydslist-d1",
+      "database_id": "7d069c9b-aa0d-4012-baa3-e53797b62f3b"
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "development",
+    "DBBL_API_URL": "https://dbbl-api.thedbblprotocol.workers.dev"
+  }
+}
