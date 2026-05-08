@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { resolveRoute } from '$app/paths';
+	import { base } from '$app/paths';
 
 	export type Listing = {
 		id: string;
@@ -79,7 +79,7 @@
 		return labels.join(' / ');
 	}
 
-	const href = $derived(resolveRoute('/listings/[id]', { id: listing.id }));
+	const href = $derived(`${base}/listings/${listing.id}`);
 </script>
 
 {#if compact}
