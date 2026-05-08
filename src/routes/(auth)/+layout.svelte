@@ -1,0 +1,17 @@
+<script lang="ts">
+	let { children } = $props();
+</script>
+
+<main>
+	{@render children()}
+</main>
+
+<style>
+	main {
+		min-height: 100vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem 1rem;
+	}
+</style>

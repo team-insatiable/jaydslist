@@ -15,11 +15,11 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ phone })
 			});
-			const data = await res.json();
+			const data = await res.json() as { error?: string; phone?: string };
 			if (!res.ok) {
 				error = data.error ?? 'Something went wrong';
 			} else {
-				submittedPhone = data.phone;
+				submittedPhone = data.phone ?? phone;
 				step = 'otp';
 			}
 		} catch {
@@ -38,7 +38,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ code })
 			});
-			const data = await res.json();
+			const data = await res.json() as { error?: string };
 			if (!res.ok) {
 				error = data.error ?? 'Something went wrong';
 			} else {
