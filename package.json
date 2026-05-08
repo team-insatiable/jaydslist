@@ -44,6 +44,6 @@
 		"wrangler": "^4.81.0"
 	},
 	"dependencies": {
-		"papercss": "^1.9.2"
+		"@picocss/pico": "^2.1.1"
 	}
 }

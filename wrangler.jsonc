@@ -14,7 +14,14 @@
     {
       "binding": "DB",
       "database_name": "jaydslist-d1",
-      "database_id": "7d069c9b-aa0d-4012-baa3-e53797b62f3b"
+      "database_id": "7d069c9b-aa0d-4012-baa3-e53797b62f3b",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "PHONE_VERIFICATION_KV",
+      "id": "6ef4963300594e1c950e8a9c681c7698"
     }
   ],
   "vars": {
