@@ -38,6 +38,12 @@
 	let bodyType = $state(data.profile?.bodyType ?? '');
 	let dateOfBirth = $state(data.profile?.dateOfBirthValue ?? '');
 
+	$effect(() => {
+		identity = data.profile?.identity ?? '';
+		bodyType = data.profile?.bodyType ?? '';
+		dateOfBirth = data.profile?.dateOfBirthValue ?? '';
+	});
+
 	function derivedAge(dob: string): number | null {
 		if (!dob) return null;
 		const d = new Date(dob + 'T00:00:00Z');
@@ -57,6 +63,11 @@
 	// Location
 	let locationSet = $state(data.profile?.locationSet ?? false);
 	let browseRadius = $state(data.profile?.browseRadius ?? 25);
+
+	$effect(() => {
+		locationSet = data.profile?.locationSet ?? false;
+		browseRadius = data.profile?.browseRadius ?? 25;
+	});
 	let locationSaving = $state(false);
 	let locationError = $state('');
 	let locationStatus = $state('');
@@ -102,6 +113,12 @@
 	let seekingIdentity = $state(new Set(data.profile?.seekingIdentity ?? []));
 	let seekingBodyType = $state(new Set(data.profile?.seekingBodyType ?? []));
 	let seekingNature = $state(new Set(data.profile?.seekingNatureOfConnection ?? []));
+
+	$effect(() => {
+		seekingIdentity = new Set(data.profile?.seekingIdentity ?? []);
+		seekingBodyType = new Set(data.profile?.seekingBodyType ?? []);
+		seekingNature = new Set(data.profile?.seekingNatureOfConnection ?? []);
+	});
 	let prefSaving = $state(false);
 	let prefSaved = $state(false);
 	let prefError = $state('');
