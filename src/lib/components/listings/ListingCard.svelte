@@ -4,7 +4,7 @@
 	export type Listing = {
 		id: string;
 		subject: string;
-		identity: 'man' | 'woman' | 'non_binary' | 'transgender_man' | 'transgender_woman' | 'other';
+		identity: string;
 		age: number;
 		lookingFor: string[];
 		nature: string[];
@@ -24,6 +24,7 @@
 		non_binary: 'Non-binary',
 		transgender_man: 'Trans man',
 		transgender_woman: 'Trans woman',
+		couple: 'Couple',
 		other: 'Other'
 	};
 
@@ -33,6 +34,7 @@
 		non_binary: 'Non-binary',
 		transgender_man: 'Trans men',
 		transgender_woman: 'Trans women',
+		couple: 'Couples',
 		other: 'Other'
 	};
 

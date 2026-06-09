@@ -16,7 +16,8 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 	const env = platform?.env;
 	if (!env) throw new Error('Server configuration error');
 
-	const profile = await getDb(env.DB)
+	const db = getDb(env.DB);
+	const profile = await db
 		.select({
 			identity: userProfiles.identity,
 			bodyType: userProfiles.bodyType,
