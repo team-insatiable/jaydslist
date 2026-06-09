@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 
 const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other'];
 const VALID_PHYSICAL = ['male', 'female', 'other'];
+const VALID_BODY_TYPES = ['slim', 'athletic', 'average', 'curvy', 'stocky', 'muscular', 'plus_size'];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
 const VALID_RADII = [5, 10, 25, 50, 100];
 
@@ -19,6 +20,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		.select({
 			identity: userProfiles.identity,
 			physicalType: userProfiles.physicalType,
+			bodyType: userProfiles.bodyType,
 			age: userProfiles.age,
 			trustTier: userProfiles.trustTier,
 			responseRate: userProfiles.responseRate,
@@ -55,15 +57,17 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const identity = data.get('identity') as string;
 		const physicalType = data.get('physicalType') as string;
+		const bodyType = (data.get('bodyType') as string) || null;
 		const age = parseInt(data.get('age') as string);
 
 		if (!VALID_IDENTITIES.includes(identity)) return fail(400, { error: 'Invalid identity selection' });
-		if (!VALID_PHYSICAL.includes(physicalType)) return fail(400, { error: 'Invalid physical type selection' });
+		if (!VALID_PHYSICAL.includes(physicalType)) return fail(400, { error: 'Invalid sex selection' });
+		if (bodyType && !VALID_BODY_TYPES.includes(bodyType)) return fail(400, { error: 'Invalid body type selection' });
 		if (!age || age < 18 || age > 99) return fail(400, { error: 'Age must be between 18 and 99' });
 
 		await getDb(env.DB)
 			.update(userProfiles)
-			.set({ identity, physicalType, age })
+			.set({ identity, physicalType, bodyType, age })
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };
