@@ -16,6 +16,7 @@ declare global {
 			user?: User;
 			session?: Session;
 			auth: ReturnType<typeof createAuth>;
+			phoneVerified: boolean;
 		}
 
 		// interface Error {}

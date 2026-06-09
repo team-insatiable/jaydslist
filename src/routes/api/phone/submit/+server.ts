@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
-	if (locals.user.phoneVerified) return json({ error: 'Phone already verified' }, { status: 409 });
+	if (locals.phoneVerified) return json({ error: 'Phone already verified' }, { status: 409 });
 
 	const body = await request.json<{ phone?: string }>();
 	const phone = body.phone?.trim();
