@@ -19,6 +19,7 @@
 		{ value: 'curvy', label: 'Curvy' },
 		{ value: 'stocky', label: 'Stocky' },
 		{ value: 'muscular', label: 'Muscular' },
+		{ value: 'extra_padding', label: 'A little extra padding' },
 		{ value: 'plus_size', label: 'Plus size' }
 	];
 

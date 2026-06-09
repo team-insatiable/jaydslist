@@ -5,7 +5,7 @@ import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other'];
-const VALID_BODY_TYPES = ['slim', 'athletic', 'average', 'curvy', 'stocky', 'muscular', 'plus_size'];
+const VALID_BODY_TYPES = ['slim', 'athletic', 'average', 'curvy', 'stocky', 'muscular', 'plus_size', 'extra_padding'];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
 const VALID_RADII = [5, 10, 25, 50, 100];
 

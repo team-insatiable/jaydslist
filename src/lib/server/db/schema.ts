@@ -10,7 +10,7 @@ import {
 
 export type UserIdentity = 'man' | 'woman' | 'non_binary' | 'transgender_man' | 'transgender_woman' | 'other';
 export type PhysicalType = 'male' | 'female' | 'other';
-export type BodyType = 'slim' | 'athletic' | 'average' | 'curvy' | 'stocky' | 'muscular' | 'plus_size';
+export type BodyType = 'slim' | 'athletic' | 'average' | 'curvy' | 'stocky' | 'muscular' | 'plus_size' | 'extra_padding';
 export type TrustTier = 'new' | 'established' | 'trusted';
 export type AccountStatus = 'active' | 'suspended' | 'banned';
 export type ListingStatus = 'active' | 'expired' | 'renewed' | 'removed' | 'flagged';
