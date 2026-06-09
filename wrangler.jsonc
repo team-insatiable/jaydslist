@@ -25,7 +25,7 @@
     }
   ],
   "vars": {
-    "ENVIRONMENT": "development",
-    "DBBL_API_URL": "https://dbbl-api.thedbblprotocol.workers.dev"
+    "ENVIRONMENT": "production",
+    "DBBL_API_URL": "https://api.dbblprotocol.org"
   }
 }

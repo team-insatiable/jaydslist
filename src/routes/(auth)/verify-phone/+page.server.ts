@@ -3,5 +3,5 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(302, '/login');
-	if (locals.user.phoneVerified) throw redirect(302, '/');
+	if (locals.phoneVerified) throw redirect(302, '/');
 };

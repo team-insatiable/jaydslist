@@ -4,10 +4,16 @@ export interface TwilioEnv {
 	TWILIO_ACCOUNT_SID: string;
 	TWILIO_AUTH_TOKEN: string;
 	TWILIO_VERIFY_SERVICE_SID: string;
+	ENVIRONMENT?: string;
+	DEV_BYPASS_OTP?: string;
 }
 
 function basicAuth(env: TwilioEnv): string {
 	return btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+}
+
+function isBypassActive(env: TwilioEnv): boolean {
+	return env.ENVIRONMENT === 'development' && !!env.DEV_BYPASS_OTP;
 }
 
 export type LineType =
@@ -27,6 +33,10 @@ export interface LookupResult {
 }
 
 export async function lookupPhone(phoneNumber: string, env: TwilioEnv): Promise<LookupResult> {
+	if (isBypassActive(env)) {
+		return { valid: true, lineType: 'mobile', isVoip: false, nationalFormat: phoneNumber, e164: phoneNumber };
+	}
+
 	const encoded = encodeURIComponent(phoneNumber);
 	const url = `https://lookups.twilio.com/v2/PhoneNumbers/${encoded}?Fields=line_type_intelligence`;
 
@@ -64,6 +74,10 @@ export interface SendOtpResult {
 }
 
 export async function sendOtp(phoneNumber: string, env: TwilioEnv): Promise<SendOtpResult> {
+	if (isBypassActive(env)) {
+		return { success: true, status: 'pending' };
+	}
+
 	const url = `https://verify.twilio.com/v2/Services/${env.TWILIO_VERIFY_SERVICE_SID}/Verifications`;
 
 	const res = await fetch(url, {
@@ -90,6 +104,11 @@ export interface CheckOtpResult {
 }
 
 export async function checkOtp(phoneNumber: string, code: string, env: TwilioEnv): Promise<CheckOtpResult> {
+	if (isBypassActive(env)) {
+		const valid = code === env.DEV_BYPASS_OTP;
+		return { success: valid, status: valid ? 'approved' : 'rejected' };
+	}
+
 	const url = `https://verify.twilio.com/v2/Services/${env.TWILIO_VERIFY_SERVICE_SID}/VerificationCheck`;
 
 	const res = await fetch(url, {
