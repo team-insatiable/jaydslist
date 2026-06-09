@@ -24,11 +24,11 @@
 	];
 
 	const natureOptions = [
+		{ value: 'open', label: 'Open to anything' },
 		{ value: 'dating', label: 'Dating / Getting to know someone' },
 		{ value: 'fwb', label: 'Friends with Benefits' },
 		{ value: 'one_time', label: 'One time / No strings attached' },
-		{ value: 'platonic', label: 'Strictly Platonic' },
-		{ value: 'open', label: 'Open to anything' }
+		{ value: 'platonic', label: 'Strictly Platonic' }
 	];
 
 	const radiusOptions = [5, 10, 25, 50, 100];
