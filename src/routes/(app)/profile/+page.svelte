@@ -274,7 +274,7 @@
 			}}
 		>
 			<div class="field">
-				<label>Identity</label>
+				<span class="field-label">Identity</span>
 				<small>Select all that apply, or none for no preference</small>
 				<div class="chip-group">
 					{#each identityOptions as opt}
@@ -293,7 +293,7 @@
 			</div>
 
 			<div class="field">
-				<label>Body type preference</label>
+				<span class="field-label">Body type preference</span>
 				<small>Select all that apply, or none for no preference</small>
 				<div class="chip-group">
 					{#each bodyTypeOptions as opt}
@@ -312,7 +312,7 @@
 			</div>
 
 			<div class="field">
-				<label>Nature of connection</label>
+				<span class="field-label">Nature of connection</span>
 				<small>Select all that interest you</small>
 				<div class="chip-group">
 					{#each natureOptions as opt}
@@ -388,7 +388,8 @@
 		margin-bottom: 1rem;
 	}
 
-	.field label {
+	.field label,
+	.field .field-label {
 		display: block;
 		font-size: 0.875rem;
 		font-weight: 500;
