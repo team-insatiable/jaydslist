@@ -4,6 +4,7 @@ import { checkOtp } from '$lib/server/twilio';
 import { getDb } from '$lib/server/db';
 import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { encryptContact } from '$lib/server/crypto';
 
 const BLOCK_RATINGS = new Set(['restricted', 'blacklisted']);
 
@@ -69,10 +70,13 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 	const db = getDb(env.DB);
 
+	const encryptedPhone = await encryptContact(pendingPhone, env.CONTACT_ENCRYPTION_KEY);
+
 	await db
 		.update(userProfiles)
 		.set({
 			phoneHash,
+			encryptedPhone,
 			phoneVerified: true,
 			phoneCarrierValidated: true,
 			dbblRiskScore,

@@ -1,13 +1,11 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
-import { userProfiles, contactMethods } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { encryptContact, decryptContact } from '$lib/server/crypto';
+import { userProfiles } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 
 const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other'];
 const VALID_PHYSICAL = ['male', 'female', 'other'];
-const VALID_CONTACT_TYPES = ['phone', 'email', 'snapchat', 'instagram', 'telegram', 'signal', 'discord', 'whatsapp', 'other'];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
 const VALID_RADII = [5, 10, 25, 50, 100];
 
@@ -17,9 +15,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 	const env = platform?.env;
 	if (!env) throw new Error('Server configuration error');
 
-	const db = getDb(env.DB);
-
-	const profile = await db
+	const profile = await getDb(env.DB)
 		.select({
 			identity: userProfiles.identity,
 			physicalType: userProfiles.physicalType,
@@ -30,30 +26,11 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 			seekingIdentity: userProfiles.seekingIdentity,
 			seekingPhysicalType: userProfiles.seekingPhysicalType,
 			seekingNatureOfConnection: userProfiles.seekingNatureOfConnection,
-			browseRadius: userProfiles.browseRadius,
-			createdAt: userProfiles.createdAt
+			browseRadius: userProfiles.browseRadius
 		})
 		.from(userProfiles)
 		.where(eq(userProfiles.id, locals.user.id))
 		.get();
-
-	const contacts = await db
-		.select()
-		.from(contactMethods)
-		.where(and(eq(contactMethods.userId, locals.user.id), eq(contactMethods.active, true)))
-		.all();
-
-	const decryptedContacts = await Promise.all(
-		contacts.map(async (c) => ({
-			id: c.id,
-			type: c.type,
-			value: await decryptContact(c.encryptedValue, env.CONTACT_ENCRYPTION_KEY),
-			isDefault: c.isDefault,
-			displayOrder: c.displayOrder
-		}))
-	);
-
-	decryptedContacts.sort((a, b) => a.displayOrder - b.displayOrder);
 
 	return {
 		profile: profile
@@ -64,7 +41,6 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 					seekingNatureOfConnection: JSON.parse(profile.seekingNatureOfConnection ?? '[]') as string[]
 				}
 			: null,
-		contacts: decryptedContacts,
 		isComplete: !!(profile?.identity && profile?.physicalType && profile?.age)
 	};
 };
@@ -161,85 +137,6 @@ export const actions: Actions = {
 				seekingNatureOfConnection: JSON.stringify(seekingNatureOfConnection)
 			})
 			.where(eq(userProfiles.id, locals.user.id));
-
-		return { success: true };
-	},
-
-	addContact: async ({ request, locals, platform }) => {
-		if (!locals.user) throw redirect(302, '/login');
-
-		const env = platform?.env;
-		if (!env) return fail(500, { error: 'Server configuration error' });
-
-		const data = await request.formData();
-		const type = data.get('type') as string;
-		const value = (data.get('value') as string)?.trim();
-
-		if (!VALID_CONTACT_TYPES.includes(type)) return fail(400, { error: 'Invalid contact type' });
-		if (!value) return fail(400, { error: 'Contact value is required' });
-
-		const db = getDb(env.DB);
-
-		const existing = await db
-			.select({ displayOrder: contactMethods.displayOrder })
-			.from(contactMethods)
-			.where(eq(contactMethods.userId, locals.user.id))
-			.all();
-
-		const isFirst = existing.length === 0;
-		const maxOrder = isFirst ? 0 : Math.max(...existing.map((c) => c.displayOrder)) + 1;
-		const encryptedValue = await encryptContact(value, env.CONTACT_ENCRYPTION_KEY);
-
-		await db.insert(contactMethods).values({
-			id: crypto.randomUUID(),
-			userId: locals.user.id,
-			type,
-			encryptedValue,
-			displayOrder: maxOrder,
-			isDefault: isFirst
-		});
-
-		return { success: true };
-	},
-
-	removeContact: async ({ request, locals, platform }) => {
-		if (!locals.user) throw redirect(302, '/login');
-
-		const env = platform?.env;
-		if (!env) return fail(500, { error: 'Server configuration error' });
-
-		const data = await request.formData();
-		const id = data.get('id') as string;
-		if (!id) return fail(400, { error: 'Contact ID required' });
-
-		await getDb(env.DB)
-			.delete(contactMethods)
-			.where(and(eq(contactMethods.id, id), eq(contactMethods.userId, locals.user.id)));
-
-		return { success: true };
-	},
-
-	setDefault: async ({ request, locals, platform }) => {
-		if (!locals.user) throw redirect(302, '/login');
-
-		const env = platform?.env;
-		if (!env) return fail(500, { error: 'Server configuration error' });
-
-		const data = await request.formData();
-		const id = data.get('id') as string;
-		if (!id) return fail(400, { error: 'Contact ID required' });
-
-		const db = getDb(env.DB);
-
-		await db
-			.update(contactMethods)
-			.set({ isDefault: false })
-			.where(eq(contactMethods.userId, locals.user.id));
-
-		await db
-			.update(contactMethods)
-			.set({ isDefault: true })
-			.where(and(eq(contactMethods.id, id), eq(contactMethods.userId, locals.user.id)));
 
 		return { success: true };
 	}
