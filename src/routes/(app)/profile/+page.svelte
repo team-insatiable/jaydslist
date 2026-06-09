@@ -18,6 +18,16 @@
 		{ value: 'other', label: 'Other' }
 	];
 
+	const bodyTypeOptions = [
+		{ value: 'slim', label: 'Slim' },
+		{ value: 'athletic', label: 'Athletic' },
+		{ value: 'average', label: 'Average' },
+		{ value: 'curvy', label: 'Curvy' },
+		{ value: 'stocky', label: 'Stocky' },
+		{ value: 'muscular', label: 'Muscular' },
+		{ value: 'plus_size', label: 'Plus size' }
+	];
+
 	const natureOptions = [
 		{ value: 'dating', label: 'Dating / Getting to know someone' },
 		{ value: 'fwb', label: 'Friends with Benefits' },
@@ -31,6 +41,7 @@
 	// About you
 	let identity = $state(data.profile?.identity ?? '');
 	let physicalType = $state(data.profile?.physicalType ?? '');
+	let bodyType = $state(data.profile?.bodyType ?? '');
 	let age = $state(data.profile?.age?.toString() ?? '');
 	let profileSaving = $state(false);
 	let profileSaved = $state(false);
@@ -144,14 +155,24 @@
 			</div>
 
 			<div class="field">
-				<label for="physicalType">Physical type</label>
+				<label for="physicalType">Sex</label>
 				<select id="physicalType" name="physicalType" bind:value={physicalType} required>
 					<option value="" disabled>Select…</option>
 					{#each physicalOptions as opt}
 						<option value={opt.value}>{opt.label}</option>
 					{/each}
 				</select>
-				<small>Used when posters filter by physical type. Kept separate from identity by design.</small>
+				<small>Used when posters set sex-specific requirements. Kept separate from identity.</small>
+			</div>
+
+			<div class="field">
+				<label for="bodyType">Body type</label>
+				<select id="bodyType" name="bodyType" bind:value={bodyType}>
+					<option value="">Prefer not to say</option>
+					{#each bodyTypeOptions as opt}
+						<option value={opt.value}>{opt.label}</option>
+					{/each}
+				</select>
 			</div>
 
 			<div class="field">

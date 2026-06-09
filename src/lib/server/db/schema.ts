@@ -10,6 +10,7 @@ import {
 
 export type UserIdentity = 'man' | 'woman' | 'non_binary' | 'transgender_man' | 'transgender_woman' | 'other';
 export type PhysicalType = 'male' | 'female' | 'other';
+export type BodyType = 'slim' | 'athletic' | 'average' | 'curvy' | 'stocky' | 'muscular' | 'plus_size';
 export type TrustTier = 'new' | 'established' | 'trusted';
 export type AccountStatus = 'active' | 'suspended' | 'banned';
 export type ListingStatus = 'active' | 'expired' | 'renewed' | 'removed' | 'flagged';
@@ -35,6 +36,7 @@ export const userProfiles = sqliteTable(
 		id: text('id').primaryKey(),
 		identity: text('identity'),
 		physicalType: text('physical_type'),
+		bodyType: text('body_type'),
 		dateOfBirth: integer('date_of_birth', { mode: 'timestamp' }),
 		age: integer('age'),
 		phoneHash: text('phone_hash').unique(),
