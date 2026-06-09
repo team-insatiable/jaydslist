@@ -42,7 +42,20 @@
 	let identity = $state(data.profile?.identity ?? '');
 	let physicalType = $state(data.profile?.physicalType ?? '');
 	let bodyType = $state(data.profile?.bodyType ?? '');
-	let age = $state(data.profile?.age?.toString() ?? '');
+	let dateOfBirth = $state(data.profile?.dateOfBirthValue ?? '');
+
+	function derivedAge(dob: string): number | null {
+		if (!dob) return null;
+		const d = new Date(dob + 'T00:00:00Z');
+		const today = new Date();
+		let age = today.getUTCFullYear() - d.getUTCFullYear();
+		const m = today.getUTCMonth() - d.getUTCMonth();
+		if (m < 0 || (m === 0 && today.getUTCDate() < d.getUTCDate())) age--;
+		return age >= 0 ? age : null;
+	}
+
+	const maxDob = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+	const minDob = new Date(Date.now() - 120 * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 	let profileSaving = $state(false);
 	let profileSaved = $state(false);
 	let profileError = $state('');
@@ -176,11 +189,22 @@
 			</div>
 
 			<div class="field">
-				<label for="age">Age</label>
-				<input id="age" name="age" type="number" min="18" max="99" placeholder="Your age" bind:value={age} required />
+				<label for="dateOfBirth">Date of birth</label>
+				<input
+					id="dateOfBirth"
+					name="dateOfBirth"
+					type="date"
+					min={minDob}
+					max={maxDob}
+					bind:value={dateOfBirth}
+					required
+				/>
+				{#if derivedAge(dateOfBirth) !== null}
+					<small>Age: {derivedAge(dateOfBirth)}</small>
+				{/if}
 			</div>
 
-			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !physicalType || !age}>
+			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !physicalType || !dateOfBirth}>
 				{profileSaving ? '' : 'Save'}
 			</button>
 		</form>
