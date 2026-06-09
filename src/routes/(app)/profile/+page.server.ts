@@ -21,6 +21,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 			identity: userProfiles.identity,
 			physicalType: userProfiles.physicalType,
 			bodyType: userProfiles.bodyType,
+			dateOfBirth: userProfiles.dateOfBirth,
 			age: userProfiles.age,
 			trustTier: userProfiles.trustTier,
 			responseRate: userProfiles.responseRate,
@@ -40,10 +41,13 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 					...profile,
 					locationSet: !!profile.locationSet,
 					seekingIdentity: JSON.parse(profile.seekingIdentity ?? '[]') as string[],
-					seekingNatureOfConnection: JSON.parse(profile.seekingNatureOfConnection ?? '[]') as string[]
+					seekingNatureOfConnection: JSON.parse(profile.seekingNatureOfConnection ?? '[]') as string[],
+					dateOfBirthValue: profile.dateOfBirth
+						? profile.dateOfBirth.toISOString().slice(0, 10)
+						: null
 				}
 			: null,
-		isComplete: !!(profile?.identity && profile?.physicalType && profile?.age)
+		isComplete: !!(profile?.identity && profile?.physicalType && profile?.dateOfBirth)
 	};
 };
 
@@ -58,16 +62,27 @@ export const actions: Actions = {
 		const identity = data.get('identity') as string;
 		const physicalType = data.get('physicalType') as string;
 		const bodyType = (data.get('bodyType') as string) || null;
-		const age = parseInt(data.get('age') as string);
+		const dobRaw = data.get('dateOfBirth') as string;
 
 		if (!VALID_IDENTITIES.includes(identity)) return fail(400, { error: 'Invalid identity selection' });
 		if (!VALID_PHYSICAL.includes(physicalType)) return fail(400, { error: 'Invalid sex selection' });
 		if (bodyType && !VALID_BODY_TYPES.includes(bodyType)) return fail(400, { error: 'Invalid body type selection' });
-		if (!age || age < 18 || age > 99) return fail(400, { error: 'Age must be between 18 and 99' });
+		if (!dobRaw || !/^\d{4}-\d{2}-\d{2}$/.test(dobRaw)) return fail(400, { error: 'Date of birth is required' });
+
+		const dateOfBirth = new Date(dobRaw + 'T00:00:00Z');
+		if (isNaN(dateOfBirth.getTime())) return fail(400, { error: 'Invalid date of birth' });
+
+		const today = new Date();
+		let age = today.getUTCFullYear() - dateOfBirth.getUTCFullYear();
+		const monthDiff = today.getUTCMonth() - dateOfBirth.getUTCMonth();
+		if (monthDiff < 0 || (monthDiff === 0 && today.getUTCDate() < dateOfBirth.getUTCDate())) age--;
+
+		if (age < 18) return fail(400, { error: 'You must be at least 18 years old' });
+		if (age > 120) return fail(400, { error: 'Invalid date of birth' });
 
 		await getDb(env.DB)
 			.update(userProfiles)
-			.set({ identity, physicalType, bodyType, age })
+			.set({ identity, physicalType, bodyType, dateOfBirth, age })
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };
