@@ -4,7 +4,8 @@ import { getDb } from '$lib/server/db';
 import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
-const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other'];
+const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other', 'couple'];
+const VALID_COUPLE_COMPOSITIONS = ['mf', 'mm', 'ff', 'other'];
 const VALID_BODY_TYPES = ['slim', 'athletic', 'average', 'curvy', 'stocky', 'muscular', 'plus_size', 'extra_padding'];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
 const VALID_RADII = [5, 10, 25, 50, 100];
@@ -19,6 +20,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		.select({
 			identity: userProfiles.identity,
 			bodyType: userProfiles.bodyType,
+			coupleComposition: userProfiles.coupleComposition,
 			dateOfBirth: userProfiles.dateOfBirth,
 			age: userProfiles.age,
 			trustTier: userProfiles.trustTier,
@@ -43,7 +45,8 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 					seekingNatureOfConnection: JSON.parse(profile.seekingNatureOfConnection ?? '[]') as string[],
 					dateOfBirthValue: profile.dateOfBirth
 						? profile.dateOfBirth.toISOString().slice(0, 10)
-						: null
+						: null,
+					coupleComposition: profile.coupleComposition ?? null
 				}
 			: null,
 		isComplete: !!(profile?.identity && profile?.dateOfBirth)
@@ -59,10 +62,16 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const identity = data.get('identity') as string;
-		const bodyType = (data.get('bodyType') as string) || null;
+		const bodyType = identity === 'couple' ? null : (data.get('bodyType') as string) || null;
+		const coupleCompositionRaw = (data.get('coupleComposition') as string) || null;
 		const dobRaw = data.get('dateOfBirth') as string;
 
 		if (!VALID_IDENTITIES.includes(identity)) return fail(400, { error: 'Invalid identity selection' });
+		if (identity === 'couple') {
+			if (!coupleCompositionRaw || !VALID_COUPLE_COMPOSITIONS.includes(coupleCompositionRaw))
+				return fail(400, { error: 'Please select your couple composition' });
+		}
+		const coupleComposition = identity === 'couple' ? coupleCompositionRaw : null;
 		if (bodyType && !VALID_BODY_TYPES.includes(bodyType)) return fail(400, { error: 'Invalid body type selection' });
 		if (!dobRaw || !/^\d{4}-\d{2}-\d{2}$/.test(dobRaw)) return fail(400, { error: 'Date of birth is required' });
 
@@ -79,7 +88,7 @@ export const actions: Actions = {
 
 		await getDb(env.DB)
 			.update(userProfiles)
-			.set({ identity, bodyType, dateOfBirth, age })
+			.set({ identity, bodyType, coupleComposition, dateOfBirth, age })
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };

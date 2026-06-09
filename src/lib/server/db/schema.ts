@@ -8,7 +8,8 @@ import {
 	uniqueIndex
 } from 'drizzle-orm/sqlite-core';
 
-export type UserIdentity = 'man' | 'woman' | 'non_binary' | 'transgender_man' | 'transgender_woman' | 'other';
+export type UserIdentity = 'man' | 'woman' | 'non_binary' | 'transgender_man' | 'transgender_woman' | 'other' | 'couple';
+export type CoupleComposition = 'mf' | 'mm' | 'ff' | 'other';
 export type PhysicalType = 'male' | 'female' | 'other';
 export type BodyType = 'slim' | 'athletic' | 'average' | 'curvy' | 'stocky' | 'muscular' | 'plus_size' | 'extra_padding';
 export type TrustTier = 'new' | 'established' | 'trusted';
@@ -37,6 +38,7 @@ export const userProfiles = sqliteTable(
 		identity: text('identity'),
 		physicalType: text('physical_type'),
 		bodyType: text('body_type'),
+		coupleComposition: text('couple_composition'),
 		dateOfBirth: integer('date_of_birth', { mode: 'timestamp' }),
 		age: integer('age'),
 		phoneHash: text('phone_hash').unique(),

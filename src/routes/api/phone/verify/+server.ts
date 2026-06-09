@@ -38,30 +38,48 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	// Two separate hashes — local uses pepper for DB security, DBBL uses plain E.164 for cross-platform consistency
 	const phoneHash = await hashPhone(pendingPhone, env.PHONE_PEPPER ?? 'default-pepper');
 	const dbblPhoneHash = await hashPhonePlain(pendingPhone);
+	const dbblEmailHash = await hashEmail(locals.user.email);
 
-	// Query DBBL — fail open if unavailable, block if restricted/blacklisted
+	// Query DBBL by phone and email — fail open if unavailable, block if either is restricted/blacklisted
 	let dbblRiskScore: number | null = null;
 	let dbblRiskRating: string | null = null;
 
-	try {
-		const dbblRes = await fetch(
-			`${env.DBBL_API_URL}/v1/scores?phoneHash=${encodeURIComponent(dbblPhoneHash)}`,
+	const RATING_SEVERITY: Record<string, number> = {
+		clear: 0, flagged: 1, cautioned: 2, restricted: 3, blacklisted: 4
+	};
+
+	async function queryDbbl(param: string, value: string): Promise<{ score: number | null; rating: string | null }> {
+		const res = await fetch(
+			`${env.DBBL_API_URL}/v1/scores?${param}=${encodeURIComponent(value)}`,
 			{ headers: { Authorization: `Bearer ${env.DBBL_API_KEY}` } }
 		);
+		if (!res.ok) { console.error(`DBBL non-OK (${param}):`, res.status); return { score: null, rating: null }; }
+		const data = await res.json<{ score?: number | null; rating?: string | null }>();
+		return { score: data.score ?? null, rating: data.rating ?? null };
+	}
 
-		if (dbblRes.ok) {
-			const dbblData = await dbblRes.json<{ score?: number | null; rating?: string | null }>();
-			dbblRiskScore = dbblData.score ?? null;
-			dbblRiskRating = dbblData.rating ?? null;
+	try {
+		const [phoneResult, emailResult] = await Promise.all([
+			queryDbbl('phoneHash', dbblPhoneHash),
+			queryDbbl('emailHash', dbblEmailHash)
+		]);
 
-			if (dbblRiskRating && BLOCK_RATINGS.has(dbblRiskRating)) {
-				return json(
-					{ error: 'Account registration is not permitted at this time.' },
-					{ status: 403 }
-				);
-			}
+		// Use the worse of the two ratings
+		const phoneSev = RATING_SEVERITY[phoneResult.rating ?? ''] ?? -1;
+		const emailSev = RATING_SEVERITY[emailResult.rating ?? ''] ?? -1;
+		if (phoneSev >= emailSev) {
+			dbblRiskScore = phoneResult.score;
+			dbblRiskRating = phoneResult.rating;
 		} else {
-			console.error('DBBL non-OK response:', dbblRes.status);
+			dbblRiskScore = emailResult.score;
+			dbblRiskRating = emailResult.rating;
+		}
+
+		if (dbblRiskRating && BLOCK_RATINGS.has(dbblRiskRating)) {
+			return json(
+				{ error: 'Account registration is not permitted at this time.' },
+				{ status: 403 }
+			);
 		}
 	} catch (err) {
 		// DBBL down — fail open, log and continue
@@ -102,6 +120,14 @@ async function hashPhone(phone: string, pepper: string): Promise<string> {
 // Plain E.164 SHA256 — no pepper — for cross-platform DBBL consistency
 async function hashPhonePlain(phone: string): Promise<string> {
 	const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(phone));
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Lowercase + trim email before hashing — for cross-platform DBBL consistency
+async function hashEmail(email: string): Promise<string> {
+	const normalized = email.toLowerCase().trim();
+	const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized));
 	const hashArray = Array.from(new Uint8Array(hashBuffer));
 	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }

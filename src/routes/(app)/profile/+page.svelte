@@ -9,6 +9,14 @@
 		{ value: 'non_binary', label: 'Non-binary' },
 		{ value: 'transgender_man', label: 'Transgender man' },
 		{ value: 'transgender_woman', label: 'Transgender woman' },
+		{ value: 'couple', label: 'Couple' },
+		{ value: 'other', label: 'Other' }
+	];
+
+	const coupleCompositionOptions = [
+		{ value: 'mf', label: 'Man + Woman' },
+		{ value: 'mm', label: 'Man + Man' },
+		{ value: 'ff', label: 'Woman + Woman' },
 		{ value: 'other', label: 'Other' }
 	];
 
@@ -36,11 +44,13 @@
 	// About you
 	let identity = $state('');
 	let bodyType = $state('');
+	let coupleComposition = $state('');
 	let dateOfBirth = $state('');
 
 	$effect(() => {
 		identity = data.profile?.identity ?? '';
 		bodyType = data.profile?.bodyType ?? '';
+		coupleComposition = data.profile?.coupleComposition ?? '';
 		dateOfBirth = data.profile?.dateOfBirthValue ?? '';
 	});
 
@@ -192,6 +202,19 @@
 				</select>
 			</div>
 
+			{#if identity === 'couple'}
+			<div class="field">
+				<label for="coupleComposition">We are a</label>
+				<select id="coupleComposition" name="coupleComposition" bind:value={coupleComposition} required>
+					<option value="" disabled>Select…</option>
+					{#each coupleCompositionOptions as opt}
+						<option value={opt.value}>{opt.label}</option>
+					{/each}
+				</select>
+			</div>
+			{/if}
+
+			{#if identity !== 'couple'}
 			<div class="field">
 				<label for="bodyType">Body type</label>
 				<select id="bodyType" name="bodyType" bind:value={bodyType}>
@@ -201,6 +224,7 @@
 					{/each}
 				</select>
 			</div>
+			{/if}
 
 			<div class="field">
 				<label for="dateOfBirth">Date of birth</label>
@@ -220,7 +244,7 @@
 				{/if}
 			</div>
 
-			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !dateOfBirth}>
+			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !dateOfBirth || (identity === "couple" && !coupleComposition)}>
 				{profileSaving ? '' : 'Save'}
 			</button>
 		</form>
