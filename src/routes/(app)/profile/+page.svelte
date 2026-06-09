@@ -34,9 +34,9 @@
 	const radiusOptions = [5, 10, 25, 50, 100];
 
 	// About you
-	let identity = $state(data.profile?.identity ?? '');
-	let bodyType = $state(data.profile?.bodyType ?? '');
-	let dateOfBirth = $state(data.profile?.dateOfBirthValue ?? '');
+	let identity = $state('');
+	let bodyType = $state('');
+	let dateOfBirth = $state('');
 
 	$effect(() => {
 		identity = data.profile?.identity ?? '';
@@ -61,8 +61,8 @@
 	let profileError = $state('');
 
 	// Location
-	let locationSet = $state(data.profile?.locationSet ?? false);
-	let browseRadius = $state(data.profile?.browseRadius ?? 25);
+	let locationSet = $state(false);
+	let browseRadius = $state(25);
 
 	$effect(() => {
 		locationSet = data.profile?.locationSet ?? false;
@@ -110,9 +110,9 @@
 	}
 
 	// Seeking preferences
-	let seekingIdentity = $state(new Set(data.profile?.seekingIdentity ?? []));
-	let seekingBodyType = $state(new Set(data.profile?.seekingBodyType ?? []));
-	let seekingNature = $state(new Set(data.profile?.seekingNatureOfConnection ?? []));
+	let seekingIdentity: Set<string> = $state(new Set());
+	let seekingBodyType: Set<string> = $state(new Set());
+	let seekingNature: Set<string> = $state(new Set());
 
 	$effect(() => {
 		seekingIdentity = new Set(data.profile?.seekingIdentity ?? []);
