@@ -38,6 +38,7 @@ export const userProfiles = sqliteTable(
 		dateOfBirth: integer('date_of_birth', { mode: 'timestamp' }),
 		age: integer('age'),
 		phoneHash: text('phone_hash').unique(),
+		encryptedPhone: text('encrypted_phone'),
 		phoneVerified: integer('phone_verified', { mode: 'boolean' }).notNull().default(false),
 		phoneCarrierValidated: integer('phone_carrier_validated', { mode: 'boolean' }).notNull().default(false),
 		trustTier: text('trust_tier').notNull().default('new'),

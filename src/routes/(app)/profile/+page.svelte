@@ -28,18 +28,6 @@
 
 	const radiusOptions = [5, 10, 25, 50, 100];
 
-	const contactTypeOptions = [
-		{ value: 'phone', label: 'Phone' },
-		{ value: 'email', label: 'Email' },
-		{ value: 'signal', label: 'Signal' },
-		{ value: 'telegram', label: 'Telegram' },
-		{ value: 'whatsapp', label: 'WhatsApp' },
-		{ value: 'snapchat', label: 'Snapchat' },
-		{ value: 'instagram', label: 'Instagram' },
-		{ value: 'discord', label: 'Discord' },
-		{ value: 'other', label: 'Other' }
-	];
-
 	// About you
 	let identity = $state(data.profile?.identity ?? '');
 	let physicalType = $state(data.profile?.physicalType ?? '');
@@ -107,11 +95,7 @@
 		return next;
 	}
 
-	// Contact methods
-	let newContactType = $state('signal');
-	let newContactValue = $state('');
-	let contactSaving = $state(false);
-	let contactError = $state('');
+
 </script>
 
 <div class="profile-page">
@@ -296,72 +280,6 @@
 		</form>
 	</section>
 
-	<!-- Contact Methods -->
-	<section class="card">
-		<h2>Contact methods</h2>
-		<p class="muted">Stored encrypted. Only shared when you offer your key during a conversation.</p>
-
-		{#if data.contacts.length > 0}
-			<ul class="contact-list">
-				{#each data.contacts as contact}
-					<li class="contact-item">
-						<div class="contact-info">
-							<span class="contact-type">{contact.type}</span>
-							<span class="contact-value">{contact.value}</span>
-							{#if contact.isDefault}
-								<span class="default-badge">Default</span>
-							{/if}
-						</div>
-						<div class="contact-actions">
-							{#if !contact.isDefault}
-								<form method="POST" action="?/setDefault" use:enhance>
-									<input type="hidden" name="id" value={contact.id} />
-									<button type="submit" class="link-btn">Set default</button>
-								</form>
-							{/if}
-							<form method="POST" action="?/removeContact" use:enhance>
-								<input type="hidden" name="id" value={contact.id} />
-								<button type="submit" class="link-btn danger">Remove</button>
-							</form>
-						</div>
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<p class="muted empty">No contact methods added yet.</p>
-		{/if}
-
-		{#if contactError}
-			<p class="error">{contactError}</p>
-		{/if}
-
-		<form
-			method="POST"
-			action="?/addContact"
-			class="add-contact-form"
-			use:enhance={() => {
-				contactSaving = true;
-				contactError = '';
-				return async ({ result, update }) => {
-					contactSaving = false;
-					if (result.type === 'failure') contactError = (result.data?.error as string) ?? 'Something went wrong';
-					else newContactValue = '';
-					await update();
-				};
-			}}
-		>
-			<div class="contact-row">
-				<select name="type" bind:value={newContactType}>
-					{#each contactTypeOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-				<input name="value" type="text" placeholder="Handle, number, or address" bind:value={newContactValue} />
-				<button type="submit" aria-busy={contactSaving} disabled={contactSaving || !newContactValue.trim()}>Add</button>
-			</div>
-		</form>
-	</section>
-
 	<!-- Account Info -->
 	<section class="card account-info">
 		<h2>Account</h2>
@@ -509,104 +427,6 @@
 		border-color: var(--pico-primary);
 		color: var(--pico-primary);
 		font-weight: 500;
-	}
-
-	/* Contact list */
-	.contact-list {
-		list-style: none;
-		padding: 0;
-		margin: 0 0 1rem;
-		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 8px;
-		overflow: hidden;
-	}
-
-	.contact-item {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid var(--pico-muted-border-color);
-		gap: 0.75rem;
-	}
-
-	.contact-item:last-child {
-		border-bottom: none;
-	}
-
-	.contact-info {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		min-width: 0;
-	}
-
-	.contact-type {
-		font-size: 0.8rem;
-		font-weight: 600;
-		text-transform: capitalize;
-		color: var(--pico-muted-color);
-		flex-shrink: 0;
-	}
-
-	.contact-value {
-		font-size: 0.875rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.default-badge {
-		font-size: 0.7rem;
-		font-weight: 600;
-		color: var(--pico-primary);
-		background: color-mix(in srgb, var(--pico-primary) 10%, transparent);
-		border-radius: 4px;
-		padding: 0.1rem 0.4rem;
-		flex-shrink: 0;
-	}
-
-	.contact-actions {
-		display: flex;
-		gap: 0.75rem;
-		flex-shrink: 0;
-	}
-
-	.link-btn {
-		background: none;
-		border: none;
-		padding: 0;
-		font-size: 0.8rem;
-		color: var(--pico-primary);
-		cursor: pointer;
-		width: auto;
-		margin: 0;
-	}
-
-	.link-btn.danger {
-		color: var(--pico-del-color);
-	}
-
-	/* Add contact form */
-	.add-contact-form {
-		margin-top: 0.5rem;
-	}
-
-	.contact-row {
-		display: grid;
-		grid-template-columns: auto 1fr auto;
-		gap: 0.5rem;
-		align-items: start;
-	}
-
-	.contact-row select,
-	.contact-row input {
-		margin-bottom: 0;
-	}
-
-	.contact-row button {
-		margin: 0;
-		white-space: nowrap;
 	}
 
 	/* Account info */
