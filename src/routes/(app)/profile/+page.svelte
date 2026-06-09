@@ -180,6 +180,7 @@
 					max={maxDob}
 					bind:value={dateOfBirth}
 					required
+					onclick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
 				/>
 				{#if derivedAge(dateOfBirth) !== null}
 					<small>Age: {derivedAge(dateOfBirth)}</small>
@@ -386,6 +387,10 @@
 	.field select,
 	.field input {
 		margin-bottom: 0;
+	}
+
+	.field input[type='date'] {
+		cursor: pointer;
 	}
 
 	button[type='submit'],
