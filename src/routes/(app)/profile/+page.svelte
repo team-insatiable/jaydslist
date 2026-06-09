@@ -289,8 +289,12 @@
 		>
 			<div class="field">
 				<span class="field-label">Identity</span>
-				<small>Select all that apply, or none for no preference</small>
 				<div class="chip-group">
+					<button
+						type="button"
+						class="chip {seekingIdentity.size === 0 ? 'selected' : ''}"
+						onclick={() => (seekingIdentity = new Set())}
+					>All</button>
 					{#each identityOptions as opt}
 						<label class="chip {seekingIdentity.has(opt.value) ? 'selected' : ''}">
 							<input
@@ -308,8 +312,12 @@
 
 			<div class="field">
 				<span class="field-label">Body type preference</span>
-				<small>Select all that apply, or none for no preference</small>
 				<div class="chip-group">
+					<button
+						type="button"
+						class="chip {seekingBodyType.size === 0 ? 'selected' : ''}"
+						onclick={() => (seekingBodyType = new Set())}
+					>All</button>
 					{#each bodyTypeOptions as opt}
 						<label class="chip {seekingBodyType.has(opt.value) ? 'selected' : ''}">
 							<input
@@ -327,7 +335,6 @@
 
 			<div class="field">
 				<span class="field-label">Nature of connection</span>
-				<small>Select all that interest you</small>
 				<div class="chip-group">
 					{#each natureOptions as opt}
 						<label class="chip {seekingNature.has(opt.value) ? 'selected' : ''}">
@@ -512,6 +519,11 @@
 
 	.chip input {
 		display: none;
+	}
+
+	button.chip {
+		font-family: inherit;
+		line-height: inherit;
 	}
 
 	.chip.selected {
