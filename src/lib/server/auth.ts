@@ -4,6 +4,7 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db';
+import { userProfiles } from '$lib/server/db/schema';
 
 const authConfig = {
 	baseURL: env.ORIGIN,
@@ -17,7 +18,17 @@ const authConfig = {
 export const createAuth = (d1: D1Database) =>
 	betterAuth({
 		...authConfig,
-		database: drizzleAdapter(getDb(d1), { provider: 'sqlite' })
+		database: drizzleAdapter(getDb(d1), { provider: 'sqlite' }),
+		databaseHooks: {
+			user: {
+				create: {
+					after: async (user) => {
+						const db = getDb(d1);
+						await db.insert(userProfiles).values({ id: user.id }).onConflictDoNothing();
+					}
+				}
+			}
+		}
 	});
 
 /**
