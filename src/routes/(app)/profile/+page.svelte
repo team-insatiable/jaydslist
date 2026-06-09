@@ -130,6 +130,20 @@
 		return next;
 	}
 
+	function toggleNature(value: string): void {
+		if (value === 'open') {
+			// 'open to anything' is exclusive — clear everything else
+			seekingNature = seekingNature.has('open') ? new Set() : new Set(['open']);
+		} else {
+			// picking a specific option clears 'open'
+			const next = new Set(seekingNature);
+			next.delete('open');
+			if (next.has(value)) next.delete(value);
+			else next.add(value);
+			seekingNature = next;
+		}
+	}
+
 
 </script>
 
@@ -322,7 +336,7 @@
 								name="seekingNatureOfConnection"
 								value={opt.value}
 								checked={seekingNature.has(opt.value)}
-								onchange={() => (seekingNature = toggleSet(seekingNature, opt.value))}
+								onchange={() => toggleNature(opt.value)}
 							/>
 							{opt.label}
 						</label>
