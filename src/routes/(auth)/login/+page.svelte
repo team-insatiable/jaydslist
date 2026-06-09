@@ -4,6 +4,7 @@
 
 	let email = $state('');
 	let password = $state('');
+	let rememberMe = $state(false);
 	let error = $state('');
 	let loading = $state(false);
 
@@ -11,7 +12,7 @@
 		error = '';
 		loading = true;
 		try {
-			const res = await authClient.signIn.email({ email, password });
+			const res = await authClient.signIn.email({ email, password, rememberMe });
 			if (res.error) {
 				error = res.error.message ?? 'Invalid email or password';
 			} else {
@@ -40,6 +41,7 @@
 			<div class="auth-error">{error}</div>
 		{/if}
 
+		<form onsubmit={(e) => { e.preventDefault(); login(); }}>
 		<div class="field">
 			<label for="email">Email</label>
 			<div class="input-wrap">
@@ -61,9 +63,15 @@
 			<a href={resolve('/forgot-password')} class="forgot">Forgot password?</a>
 		</div>
 
-		<button class="submit-btn" onclick={login} disabled={loading || !email || !password} aria-busy={loading}>
+		<label class="remember-row">
+			<input type="checkbox" bind:checked={rememberMe} />
+			Remember me
+		</label>
+
+		<button type="submit" class="submit-btn" disabled={loading || !email || !password} aria-busy={loading}>
 			{loading ? '' : 'Sign in'}
 		</button>
+		</form>
 
 		<p class="switch-link">Don't have an account? <a href={resolve('/register')}>Sign up</a></p>
 	</div>
@@ -166,6 +174,21 @@
 		border-radius: 8px;
 		font-size: 0.875rem;
 		margin-bottom: 1.25rem;
+	}
+
+	.remember-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		color: var(--pico-muted-color);
+		margin-bottom: 1rem;
+		cursor: pointer;
+	}
+
+	.remember-row input {
+		margin: 0;
+		width: auto;
 	}
 
 	.submit-btn {

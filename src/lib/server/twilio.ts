@@ -34,7 +34,11 @@ export interface LookupResult {
 
 export async function lookupPhone(phoneNumber: string, env: TwilioEnv): Promise<LookupResult> {
 	if (isBypassActive(env)) {
-		return { valid: true, lineType: 'mobile', isVoip: false, nationalFormat: phoneNumber, e164: phoneNumber };
+		// Normalize to E.164 in dev — require at least 10 digits
+		const digits = phoneNumber.replace(/\D/g, '');
+		if (digits.length < 10) return { valid: false, lineType: null, isVoip: false, nationalFormat: null, e164: null };
+		const e164 = digits.length === 10 ? `+1${digits}` : digits.startsWith('1') && digits.length === 11 ? `+${digits}` : `+${digits}`;
+		return { valid: true, lineType: 'mobile', isVoip: false, nationalFormat: phoneNumber, e164 };
 	}
 
 	const encoded = encodeURIComponent(phoneNumber);

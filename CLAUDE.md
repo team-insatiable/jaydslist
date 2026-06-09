@@ -20,7 +20,7 @@ Target users are mobile browsers — all UI decisions prioritize mobile UX.
 Cross-platform identity reputation API — think Spamhaus for bad actors on social/dating platforms.
 Jaydslist is both a consumer and contributor. Separate Cloudflare account and GitHub org.
 
-- Base URL: stored in wrangler.jsonc as `DBBL_API_URL` (https://dbbl-api.thedbblprotocol.workers.dev)
+- Base URL: stored in wrangler.jsonc as `DBBL_API_URL` (https://api.dbblprotocol.org)
 - API key: stored in `.dev.vars` as `DBBL_API_KEY`
 - Auth header: `Authorization: Bearer <DBBL_API_KEY>`
 - GitHub: github.com/the-dbbl-protocol/dbbl-api
@@ -361,6 +361,38 @@ Key config values:
 - INSTANCE_NAME: Jaydslist
 - INSTANCE_TAGLINE: Real connections, real people
 - INSTANCE_URL: https://jaydslist.com
+
+### Monetization Model
+No ads. No paywalled core features. Fully functional free tier.
+
+**Free tier** — everything works:
+- All browsing, filtering, messaging, key exchange
+- 1 active listing at a time
+- 24-hour bump cooldown
+- 14-day listing duration
+- Trust tier system applies normally
+
+**Supporter tier** — pay what you want, minimum ~$4/mo or $30/yr (via Stripe):
+- Supporter badge on profile (opt-in)
+- Up to 3 simultaneous active listings
+- Bump cooldown reduced to 12 hours
+- Listing duration extended to 21 days
+- Listed on `/supporters` page (opt-in)
+- All core features identical to free — no functional degradation for free users
+
+**Gifted supporter** — same perks, sent to another user:
+- "Gift a month" button available on user profiles and after a key exchange
+- Recipient gets a quiet, non-intrusive notification (anonymous or named, their choice)
+- Gifter optionally shown a subtle "generous" indicator on their profile
+- Natural post-connection gesture — no forced prompting
+
+**Donation touchpoints (non-naggy):**
+- One-time quiet prompt after a successful key exchange: "Glad it worked out. Jaydslist runs on donations."
+- `/supporters` page listing contributors
+- No modals, no banners, no repeated asks
+
+Payment processor: Stripe (required for subscriptions + gifting mechanics).
+Config values to add: SUPPORTER_MIN_MONTHLY, SUPPORTER_MIN_ANNUAL, SUPPORTER_MAX_LISTINGS, SUPPORTER_BUMP_COOLDOWN_HOURS, SUPPORTER_LISTING_DURATION_DAYS.
 
 ### Open Source / Self-Hosting
 - AGPL licensed

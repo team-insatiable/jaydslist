@@ -52,6 +52,7 @@
 			<div class="auth-error">{error}</div>
 		{/if}
 
+		<form onsubmit={(e) => { e.preventDefault(); register(); }}>
 		<div class="field">
 			<label for="email">Email</label>
 			<div class="input-wrap">
@@ -82,9 +83,10 @@
 			</div>
 		</div>
 
-		<button class="submit-btn" onclick={register} disabled={loading || !email || !password || !confirm} aria-busy={loading}>
+		<button type="submit" class="submit-btn" disabled={loading || !email || !password || !confirm} aria-busy={loading}>
 			{loading ? '' : 'Create account'}
 		</button>
+		</form>
 
 		<p class="switch-link">Already have an account? <a href={resolve('/login')}>Sign in</a></p>
 	</div>
