@@ -18,6 +18,16 @@
 		{ value: 'other', label: 'Other' }
 	];
 
+	const natureOptions = [
+		{ value: 'dating', label: 'Dating / Getting to know someone' },
+		{ value: 'fwb', label: 'Friends with Benefits' },
+		{ value: 'one_time', label: 'One time / No strings attached' },
+		{ value: 'platonic', label: 'Strictly Platonic' },
+		{ value: 'open', label: 'Open to anything' }
+	];
+
+	const radiusOptions = [5, 10, 25, 50, 100];
+
 	const contactTypeOptions = [
 		{ value: 'phone', label: 'Phone' },
 		{ value: 'email', label: 'Email' },
@@ -30,6 +40,7 @@
 		{ value: 'other', label: 'Other' }
 	];
 
+	// About you
 	let identity = $state(data.profile?.identity ?? '');
 	let physicalType = $state(data.profile?.physicalType ?? '');
 	let age = $state(data.profile?.age?.toString() ?? '');
@@ -37,6 +48,66 @@
 	let profileSaved = $state(false);
 	let profileError = $state('');
 
+	// Location
+	let locationSet = $state(data.profile?.locationSet ?? false);
+	let browseRadius = $state(data.profile?.browseRadius ?? 25);
+	let locationSaving = $state(false);
+	let locationError = $state('');
+	let locationStatus = $state('');
+
+	async function setLocation() {
+		locationError = '';
+		locationStatus = 'Getting your location…';
+		locationSaving = true;
+
+		let coords: GeolocationCoordinates;
+		try {
+			const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+				navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+			);
+			coords = pos.coords;
+		} catch {
+			locationError = 'Unable to get your location. Please allow location access and try again.';
+			locationStatus = '';
+			locationSaving = false;
+			return;
+		}
+
+		const form = new FormData();
+		form.set('lat', coords.latitude.toString());
+		form.set('lng', coords.longitude.toString());
+		form.set('radius', browseRadius.toString());
+
+		const res = await fetch('?/saveLocation', { method: 'POST', body: form });
+		const result = await res.json();
+
+		locationSaving = false;
+
+		if (result.type === 'success') {
+			locationSet = true;
+			locationStatus = 'Location saved.';
+		} else {
+			locationError = result.data?.error ?? 'Failed to save location';
+			locationStatus = '';
+		}
+	}
+
+	// Seeking preferences
+	let seekingIdentity = $state(new Set(data.profile?.seekingIdentity ?? []));
+	let seekingPhysicalType = $state(data.profile?.seekingPhysicalType ?? '');
+	let seekingNature = $state(new Set(data.profile?.seekingNatureOfConnection ?? []));
+	let prefSaving = $state(false);
+	let prefSaved = $state(false);
+	let prefError = $state('');
+
+	function toggleSet(s: Set<string>, value: string): Set<string> {
+		const next = new Set(s);
+		if (next.has(value)) next.delete(value);
+		else next.add(value);
+		return next;
+	}
+
+	// Contact methods
 	let newContactType = $state('signal');
 	let newContactValue = $state('');
 	let contactSaving = $state(false);
@@ -72,11 +143,8 @@
 				profileError = '';
 				return async ({ result, update }) => {
 					profileSaving = false;
-					if (result.type === 'success') {
-						profileSaved = true;
-					} else if (result.type === 'failure') {
-						profileError = (result.data?.error as string) ?? 'Something went wrong';
-					}
+					if (result.type === 'success') profileSaved = true;
+					else if (result.type === 'failure') profileError = (result.data?.error as string) ?? 'Something went wrong';
 					await update();
 				};
 			}}
@@ -104,20 +172,126 @@
 
 			<div class="field">
 				<label for="age">Age</label>
-				<input
-					id="age"
-					name="age"
-					type="number"
-					min="18"
-					max="99"
-					placeholder="Your age"
-					bind:value={age}
-					required
-				/>
+				<input id="age" name="age" type="number" min="18" max="99" placeholder="Your age" bind:value={age} required />
 			</div>
 
 			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !physicalType || !age}>
 				{profileSaving ? '' : 'Save'}
+			</button>
+		</form>
+	</section>
+
+	<!-- Location -->
+	<section class="card">
+		<h2>Your location</h2>
+		<p class="muted">Coordinates are stored privately and never shared. Only your general area is shown publicly.</p>
+
+		<div class="location-status">
+			{#if locationSet}
+				<span class="location-set">Location set</span>
+			{:else}
+				<span class="location-unset">Not set — required to browse by distance</span>
+			{/if}
+		</div>
+
+		<div class="field">
+			<label for="browseRadius">Browse radius</label>
+			<select id="browseRadius" bind:value={browseRadius}>
+				{#each radiusOptions as r}
+					<option value={r}>{r} miles</option>
+				{/each}
+			</select>
+		</div>
+
+		{#if locationError}
+			<p class="error">{locationError}</p>
+		{/if}
+		{#if locationStatus}
+			<p class="success">{locationStatus}</p>
+		{/if}
+
+		<button onclick={setLocation} aria-busy={locationSaving} disabled={locationSaving}>
+			{locationSaving ? '' : locationSet ? 'Update location' : 'Set my location'}
+		</button>
+	</section>
+
+	<!-- Looking For -->
+	<section class="card">
+		<h2>Looking for</h2>
+		<p class="muted">Your preferences for browsing. You can still view any listing, but these help filter your feed.</p>
+
+		{#if prefError}
+			<p class="error">{prefError}</p>
+		{/if}
+		{#if prefSaved}
+			<p class="success">Preferences saved.</p>
+		{/if}
+
+		<form
+			method="POST"
+			action="?/savePreferences"
+			use:enhance={() => {
+				prefSaving = true;
+				prefSaved = false;
+				prefError = '';
+				return async ({ result, update }) => {
+					prefSaving = false;
+					if (result.type === 'success') prefSaved = true;
+					else if (result.type === 'failure') prefError = (result.data?.error as string) ?? 'Something went wrong';
+					await update();
+				};
+			}}
+		>
+			<div class="field">
+				<label>Identity</label>
+				<small>Select all that apply, or none for no preference</small>
+				<div class="chip-group">
+					{#each identityOptions as opt}
+						<label class="chip {seekingIdentity.has(opt.value) ? 'selected' : ''}">
+							<input
+								type="checkbox"
+								name="seekingIdentity"
+								value={opt.value}
+								checked={seekingIdentity.has(opt.value)}
+								onchange={() => (seekingIdentity = toggleSet(seekingIdentity, opt.value))}
+							/>
+							{opt.label}
+						</label>
+					{/each}
+				</div>
+			</div>
+
+			<div class="field">
+				<label for="seekingPhysicalType">Physical type preference</label>
+				<select id="seekingPhysicalType" name="seekingPhysicalType" bind:value={seekingPhysicalType}>
+					<option value="">No preference</option>
+					{#each physicalOptions as opt}
+						<option value={opt.value}>{opt.label}</option>
+					{/each}
+				</select>
+			</div>
+
+			<div class="field">
+				<label>Nature of connection</label>
+				<small>Select all that interest you</small>
+				<div class="chip-group">
+					{#each natureOptions as opt}
+						<label class="chip {seekingNature.has(opt.value) ? 'selected' : ''}">
+							<input
+								type="checkbox"
+								name="seekingNatureOfConnection"
+								value={opt.value}
+								checked={seekingNature.has(opt.value)}
+								onchange={() => (seekingNature = toggleSet(seekingNature, opt.value))}
+							/>
+							{opt.label}
+						</label>
+					{/each}
+				</div>
+			</div>
+
+			<button type="submit" aria-busy={prefSaving} disabled={prefSaving}>
+				{prefSaving ? '' : 'Save preferences'}
 			</button>
 		</form>
 	</section>
@@ -170,11 +344,8 @@
 				contactError = '';
 				return async ({ result, update }) => {
 					contactSaving = false;
-					if (result.type === 'failure') {
-						contactError = (result.data?.error as string) ?? 'Something went wrong';
-					} else {
-						newContactValue = '';
-					}
+					if (result.type === 'failure') contactError = (result.data?.error as string) ?? 'Something went wrong';
+					else newContactValue = '';
 					await update();
 				};
 			}}
@@ -185,15 +356,8 @@
 						<option value={opt.value}>{opt.label}</option>
 					{/each}
 				</select>
-				<input
-					name="value"
-					type="text"
-					placeholder="Handle, number, or address"
-					bind:value={newContactValue}
-				/>
-				<button type="submit" aria-busy={contactSaving} disabled={contactSaving || !newContactValue.trim()}>
-					Add
-				</button>
+				<input name="value" type="text" placeholder="Handle, number, or address" bind:value={newContactValue} />
+				<button type="submit" aria-busy={contactSaving} disabled={contactSaving || !newContactValue.trim()}>Add</button>
 			</div>
 		</form>
 	</section>
@@ -205,7 +369,7 @@
 			<dt>Trust tier</dt>
 			<dd class="tier tier-{data.profile?.trustTier ?? 'new'}">{data.profile?.trustTier ?? 'new'}</dd>
 			<dt>Response rate</dt>
-			<dd>{data.profile?.responseRate != null ? Math.round((data.profile.responseRate) * 100) + '%' : '—'}</dd>
+			<dd>{data.profile?.responseRate != null ? Math.round(data.profile.responseRate * 100) + '%' : '—'}</dd>
 		</dl>
 	</section>
 </div>
@@ -261,7 +425,8 @@
 		display: block;
 		font-size: 0.775rem;
 		color: var(--pico-muted-color);
-		margin-top: 0.3rem;
+		margin-top: 0.2rem;
+		margin-bottom: 0.5rem;
 	}
 
 	.field select,
@@ -269,7 +434,8 @@
 		margin-bottom: 0;
 	}
 
-	button[type='submit'] {
+	button[type='submit'],
+	button:not([type]) {
 		margin-top: 0.5rem;
 	}
 
@@ -293,6 +459,56 @@
 
 	.empty {
 		margin-bottom: 1rem;
+	}
+
+	/* Location */
+	.location-status {
+		margin-bottom: 1rem;
+		font-size: 0.875rem;
+	}
+
+	.location-set {
+		color: var(--pico-ins-color);
+		font-weight: 500;
+	}
+
+	.location-unset {
+		color: var(--pico-muted-color);
+	}
+
+	/* Chip group for multiselect */
+	.chip-group {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 0.25rem;
+	}
+
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.35rem 0.75rem;
+		border-radius: 999px;
+		border: 1px solid var(--pico-muted-border-color);
+		font-size: 0.8rem;
+		cursor: pointer;
+		background: transparent;
+		color: var(--pico-color);
+		transition: background 0.1s, border-color 0.1s;
+		margin: 0;
+		font-weight: normal;
+	}
+
+	.chip input {
+		display: none;
+	}
+
+	.chip.selected {
+		background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+		border-color: var(--pico-primary);
+		color: var(--pico-primary);
+		font-weight: 500;
 	}
 
 	/* Contact list */
