@@ -52,6 +52,15 @@ export const userProfiles = sqliteTable(
 		dbblLastCheckedAt: integer('dbbl_last_checked_at', { mode: 'timestamp' }),
 		status: text('status').notNull().default('active'),
 		lastActiveAt: integer('last_active_at', { mode: 'timestamp' }),
+		// Location — stored server-side only, never exposed to client
+		lat: real('lat'),
+		lng: real('lng'),
+		locationUpdatedAt: integer('location_updated_at', { mode: 'timestamp' }),
+		// Browse preferences — what this user is looking for
+		seekingIdentity: text('seeking_identity').notNull().default('[]'),
+		seekingPhysicalType: text('seeking_physical_type'),
+		seekingNatureOfConnection: text('seeking_nature_of_connection').notNull().default('[]'),
+		browseRadius: integer('browse_radius').notNull().default(25),
 		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
 	},
 	(table) => ({
