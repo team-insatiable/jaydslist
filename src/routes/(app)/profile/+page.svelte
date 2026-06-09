@@ -172,6 +172,7 @@
 
 			<div class="field">
 				<label for="dateOfBirth">Date of birth</label>
+				<div class="date-input-wrap">
 				<input
 					id="dateOfBirth"
 					name="dateOfBirth"
@@ -180,8 +181,8 @@
 					max={maxDob}
 					bind:value={dateOfBirth}
 					required
-					onclick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
 				/>
+			</div>
 				{#if derivedAge(dateOfBirth) !== null}
 					<small>Age: {derivedAge(dateOfBirth)}</small>
 				{/if}
@@ -389,7 +390,24 @@
 		margin-bottom: 0;
 	}
 
-	.field input[type='date'] {
+	.date-input-wrap {
+		position: relative;
+	}
+
+	.date-input-wrap input[type='date'] {
+		cursor: pointer;
+		width: 100%;
+	}
+
+	.date-input-wrap input[type='date']::-webkit-calendar-picker-indicator {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		width: auto;
+		height: auto;
+		opacity: 0;
 		cursor: pointer;
 	}
 
