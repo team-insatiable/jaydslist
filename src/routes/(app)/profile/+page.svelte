@@ -12,12 +12,6 @@
 		{ value: 'other', label: 'Other' }
 	];
 
-	const physicalOptions = [
-		{ value: 'male', label: 'Male' },
-		{ value: 'female', label: 'Female' },
-		{ value: 'other', label: 'Other' }
-	];
-
 	const bodyTypeOptions = [
 		{ value: 'slim', label: 'Slim' },
 		{ value: 'athletic', label: 'Athletic' },
@@ -40,7 +34,6 @@
 
 	// About you
 	let identity = $state(data.profile?.identity ?? '');
-	let physicalType = $state(data.profile?.physicalType ?? '');
 	let bodyType = $state(data.profile?.bodyType ?? '');
 	let dateOfBirth = $state(data.profile?.dateOfBirthValue ?? '');
 
@@ -106,7 +99,7 @@
 
 	// Seeking preferences
 	let seekingIdentity = $state(new Set(data.profile?.seekingIdentity ?? []));
-	let seekingPhysicalType = $state(data.profile?.seekingPhysicalType ?? '');
+	let seekingBodyType = $state(new Set(data.profile?.seekingBodyType ?? []));
 	let seekingNature = $state(new Set(data.profile?.seekingNatureOfConnection ?? []));
 	let prefSaving = $state(false);
 	let prefSaved = $state(false);
@@ -168,17 +161,6 @@
 			</div>
 
 			<div class="field">
-				<label for="physicalType">Sex</label>
-				<select id="physicalType" name="physicalType" bind:value={physicalType} required>
-					<option value="" disabled>Select…</option>
-					{#each physicalOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-				<small>Used when posters set sex-specific requirements. Kept separate from identity.</small>
-			</div>
-
-			<div class="field">
 				<label for="bodyType">Body type</label>
 				<select id="bodyType" name="bodyType" bind:value={bodyType}>
 					<option value="">Prefer not to say</option>
@@ -204,7 +186,7 @@
 				{/if}
 			</div>
 
-			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !physicalType || !dateOfBirth}>
+			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !dateOfBirth}>
 				{profileSaving ? '' : 'Save'}
 			</button>
 		</form>
@@ -291,13 +273,22 @@
 			</div>
 
 			<div class="field">
-				<label for="seekingPhysicalType">Physical type preference</label>
-				<select id="seekingPhysicalType" name="seekingPhysicalType" bind:value={seekingPhysicalType}>
-					<option value="">No preference</option>
-					{#each physicalOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
+				<label>Body type preference</label>
+				<small>Select all that apply, or none for no preference</small>
+				<div class="chip-group">
+					{#each bodyTypeOptions as opt}
+						<label class="chip {seekingBodyType.has(opt.value) ? 'selected' : ''}">
+							<input
+								type="checkbox"
+								name="seekingBodyType"
+								value={opt.value}
+								checked={seekingBodyType.has(opt.value)}
+								onchange={() => (seekingBodyType = toggleSet(seekingBodyType, opt.value))}
+							/>
+							{opt.label}
+						</label>
 					{/each}
-				</select>
+				</div>
 			</div>
 
 			<div class="field">

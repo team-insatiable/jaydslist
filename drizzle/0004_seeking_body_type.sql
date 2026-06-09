@@ -1,0 +1,1 @@
+ALTER TABLE `user_profiles` ADD `seeking_body_type` text NOT NULL DEFAULT '[]';

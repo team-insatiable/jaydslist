@@ -62,6 +62,7 @@ export const userProfiles = sqliteTable(
 		// Browse preferences — what this user is looking for
 		seekingIdentity: text('seeking_identity').notNull().default('[]'),
 		seekingPhysicalType: text('seeking_physical_type'),
+		seekingBodyType: text('seeking_body_type').notNull().default('[]'),
 		seekingNatureOfConnection: text('seeking_nature_of_connection').notNull().default('[]'),
 		browseRadius: integer('browse_radius').notNull().default(25),
 		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)

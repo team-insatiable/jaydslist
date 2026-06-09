@@ -5,7 +5,6 @@ import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other'];
-const VALID_PHYSICAL = ['male', 'female', 'other'];
 const VALID_BODY_TYPES = ['slim', 'athletic', 'average', 'curvy', 'stocky', 'muscular', 'plus_size'];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
 const VALID_RADII = [5, 10, 25, 50, 100];
@@ -19,7 +18,6 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 	const profile = await getDb(env.DB)
 		.select({
 			identity: userProfiles.identity,
-			physicalType: userProfiles.physicalType,
 			bodyType: userProfiles.bodyType,
 			dateOfBirth: userProfiles.dateOfBirth,
 			age: userProfiles.age,
@@ -27,7 +25,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 			responseRate: userProfiles.responseRate,
 			locationSet: userProfiles.locationUpdatedAt,
 			seekingIdentity: userProfiles.seekingIdentity,
-			seekingPhysicalType: userProfiles.seekingPhysicalType,
+			seekingBodyType: userProfiles.seekingBodyType,
 			seekingNatureOfConnection: userProfiles.seekingNatureOfConnection,
 			browseRadius: userProfiles.browseRadius
 		})
@@ -41,13 +39,14 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 					...profile,
 					locationSet: !!profile.locationSet,
 					seekingIdentity: JSON.parse(profile.seekingIdentity ?? '[]') as string[],
+					seekingBodyType: JSON.parse(profile.seekingBodyType ?? '[]') as string[],
 					seekingNatureOfConnection: JSON.parse(profile.seekingNatureOfConnection ?? '[]') as string[],
 					dateOfBirthValue: profile.dateOfBirth
 						? profile.dateOfBirth.toISOString().slice(0, 10)
 						: null
 				}
 			: null,
-		isComplete: !!(profile?.identity && profile?.physicalType && profile?.dateOfBirth)
+		isComplete: !!(profile?.identity && profile?.dateOfBirth)
 	};
 };
 
@@ -60,12 +59,10 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const identity = data.get('identity') as string;
-		const physicalType = data.get('physicalType') as string;
 		const bodyType = (data.get('bodyType') as string) || null;
 		const dobRaw = data.get('dateOfBirth') as string;
 
 		if (!VALID_IDENTITIES.includes(identity)) return fail(400, { error: 'Invalid identity selection' });
-		if (!VALID_PHYSICAL.includes(physicalType)) return fail(400, { error: 'Invalid sex selection' });
 		if (bodyType && !VALID_BODY_TYPES.includes(bodyType)) return fail(400, { error: 'Invalid body type selection' });
 		if (!dobRaw || !/^\d{4}-\d{2}-\d{2}$/.test(dobRaw)) return fail(400, { error: 'Date of birth is required' });
 
@@ -82,7 +79,7 @@ export const actions: Actions = {
 
 		await getDb(env.DB)
 			.update(userProfiles)
-			.set({ identity, physicalType, bodyType, dateOfBirth, age })
+			.set({ identity, bodyType, dateOfBirth, age })
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };
@@ -138,21 +135,18 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const seekingIdentityRaw = data.getAll('seekingIdentity') as string[];
-		const seekingPhysicalType = (data.get('seekingPhysicalType') as string) || null;
+		const seekingBodyTypeRaw = data.getAll('seekingBodyType') as string[];
 		const seekingNatureRaw = data.getAll('seekingNatureOfConnection') as string[];
 
 		const seekingIdentity = seekingIdentityRaw.filter((v) => VALID_IDENTITIES.includes(v));
+		const seekingBodyType = seekingBodyTypeRaw.filter((v) => VALID_BODY_TYPES.includes(v));
 		const seekingNatureOfConnection = seekingNatureRaw.filter((v) => VALID_NATURE.includes(v));
-
-		if (seekingPhysicalType && !VALID_PHYSICAL.includes(seekingPhysicalType)) {
-			return fail(400, { error: 'Invalid physical type preference' });
-		}
 
 		await getDb(env.DB)
 			.update(userProfiles)
 			.set({
 				seekingIdentity: JSON.stringify(seekingIdentity),
-				seekingPhysicalType,
+				seekingBodyType: JSON.stringify(seekingBodyType),
 				seekingNatureOfConnection: JSON.stringify(seekingNatureOfConnection)
 			})
 			.where(eq(userProfiles.id, locals.user.id));
