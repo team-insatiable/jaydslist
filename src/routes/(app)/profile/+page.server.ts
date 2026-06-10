@@ -24,6 +24,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 			coupleComposition: userProfiles.coupleComposition,
 			dateOfBirth: userProfiles.dateOfBirth,
 			age: userProfiles.age,
+			alias: userProfiles.alias,
 			trustTier: userProfiles.trustTier,
 			responseRate: userProfiles.responseRate,
 			locationSet: userProfiles.locationUpdatedAt,
@@ -47,7 +48,8 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 					dateOfBirthValue: profile.dateOfBirth
 						? profile.dateOfBirth.toISOString().slice(0, 10)
 						: null,
-					coupleComposition: profile.coupleComposition ?? null
+					coupleComposition: profile.coupleComposition ?? null,
+					alias: profile.alias ?? ''
 				}
 			: null,
 		isComplete: !!(profile?.identity && profile?.dateOfBirth)
@@ -132,6 +134,26 @@ export const actions: Actions = {
 		await getDb(env.DB)
 			.update(userProfiles)
 			.set({ browseRadius: radius })
+			.where(eq(userProfiles.id, locals.user.id));
+
+		return { success: true };
+	},
+
+	saveAlias: async ({ request, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const data = await request.formData();
+		const alias = (data.get('alias') as string)?.trim() ?? '';
+
+		if (alias.length > 30) return fail(400, { error: 'Alias must be 30 characters or less' });
+		if (alias && !/^[\w\s\-_.]+$/.test(alias)) return fail(400, { error: 'Alias can only contain letters, numbers, spaces, hyphens, underscores, and dots' });
+
+		await getDb(env.DB)
+			.update(userProfiles)
+			.set({ alias: alias || null })
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };

@@ -70,6 +70,13 @@
 	let profileSaved = $state(false);
 	let profileError = $state('');
 
+	// Alias
+	let alias = $state('');
+	$effect(() => { alias = data.profile?.alias ?? ''; });
+	let aliasSaving = $state(false);
+	let aliasSaved = $state(false);
+	let aliasError = $state('');
+
 	// Location
 	let locationSet = $state(false);
 	let browseRadius = $state(25);
@@ -246,6 +253,51 @@
 
 			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !dateOfBirth || (identity === "couple" && !coupleComposition)}>
 				{profileSaving ? '' : 'Save'}
+			</button>
+		</form>
+	</section>
+
+	<!-- Alias -->
+	<section class="card">
+		<h2>Your alias</h2>
+		<p class="muted">This is how you appear to others in conversations. Optional — defaults to "Anonymous" if not set.</p>
+
+		{#if aliasError}
+			<p class="error">{aliasError}</p>
+		{/if}
+		{#if aliasSaved}
+			<p class="success">Alias saved.</p>
+		{/if}
+
+		<form
+			method="POST"
+			action="?/saveAlias"
+			use:enhance={() => {
+				aliasSaving = true;
+				aliasSaved = false;
+				aliasError = '';
+				return async ({ result, update }) => {
+					aliasSaving = false;
+					if (result.type === 'success') aliasSaved = true;
+					else if (result.type === 'failure') aliasError = (result.data?.error as string) ?? 'Something went wrong';
+					await update();
+				};
+			}}
+		>
+			<div class="field">
+				<label for="alias">Alias</label>
+				<input
+					id="alias"
+					name="alias"
+					type="text"
+					maxlength="30"
+					placeholder="e.g. Jay, NightOwl, Wanderer…"
+					bind:value={alias}
+				/>
+				<small>{alias.length}/30</small>
+			</div>
+			<button type="submit" aria-busy={aliasSaving} disabled={aliasSaving}>
+				{aliasSaving ? '' : 'Save alias'}
 			</button>
 		</form>
 	</section>

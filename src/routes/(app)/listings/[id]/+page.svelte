@@ -282,10 +282,11 @@
 					{/if}
 				</div>
 			{:else if isLoggedIn}
-				<button class="respond-btn" disabled>
-					Respond
-					<span class="coming-soon">Coming soon</span>
-				</button>
+				{#if data.existingThreadId}
+					<a href="/inbox/{data.existingThreadId}" class="respond-btn">View conversation</a>
+				{:else}
+					<a href="/inbox/new?listing={listing.id}" class="respond-btn">Reply to this listing</a>
+				{/if}
 			{:else}
 				<a href={resolve('/register')} class="respond-btn">Sign up to respond</a>
 				<p class="login-hint">Already have an account? <a href={resolve('/login')}>Sign in</a></p>
