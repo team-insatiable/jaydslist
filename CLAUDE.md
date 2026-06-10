@@ -11,7 +11,7 @@ Target users are mobile browsers — all UI decisions prioritize mobile UX.
 - D1 + Drizzle ORM (schema fully written and pushed)
 - Better Auth (email/password scaffolded, phone verification to be built)
 - Pico CSS for styling (Paper CSS was tried and abandoned — do not add it back)
-- R2 for media storage (not yet configured)
+- Cloudflare Images for photo storage (paid-tier feature — not yet configured; requires CF_IMAGES_ACCOUNT_ID and CF_IMAGES_API_TOKEN in .dev.vars)
 - Cloudflare Turnstile for spam prevention (not yet configured)
 
 ## Related Projects
@@ -301,16 +301,38 @@ Timing: soon, later, regular, occasional, often
 - Consistent non-response affects trust tier over time
 
 ### Key Exchange (Contact Unlock)
-Ashley Madison-style mutual contact info unlock system.
-- Users store contact methods in their profile — encrypted at rest, never visible by default
-- Contact method types: phone, email, snapchat, instagram, telegram, signal, discord, whatsapp, other
-- Each contact method has: type, encrypted value, verified flag, display order, active flag, isDefault flag
-- During a thread, either party can offer their key — selects which contact methods to include
-- Other party must explicitly accept before either sees anything
-- Both can offer simultaneously — mutual exchange is independent
-- Exchange is logged (key_exchanges table) but the revealed values are not stored post-exchange
-- Users can set a default key offer (which contact methods are included by default)
-- Access is revocable
+Mutual consent system for sharing verified contact info off-platform.
+
+**What's shared:** verified phone + email from the user's account only. No social handles or custom contact methods.
+
+**Eligibility to offer:**
+- Poster: after receiving the first message in the thread
+- Responder: after sending their first message AND receiving at least one reply from the poster
+
+**Flow:**
+- Either eligible party taps "Share contact info" in the thread
+- Other party sees a prompt to accept or decline
+- On acceptance: both parties' verified phone + email are revealed simultaneously
+- On decline: offer dismissed, thread continues normally, either party can re-initiate later
+- Offerer can revoke at any time (before or after acceptance)
+- Revocation hides info for both parties — requires full offer/accept flow again to re-reveal
+
+**Exchange logging:** `key_exchanges` table records all offers/accepts/declines/revocations per thread. Revealed values are not stored post-exchange.
+
+### Photo Vault
+Photos are a **paid-tier feature only**. Free users post text-only listings.
+
+**Vault:** paid users upload photos to a personal vault (max `VAULT_MAX_PHOTOS_PAID`, default 10). Photos are stored via Cloudflare Images, which handles resizing and CDN delivery. The vault is account-level — not per-listing.
+
+**Per listing:** up to `LISTING_MAX_PHOTOS` (default 3) photos chosen from the vault. The same vault photo can appear on multiple active listings simultaneously.
+
+**Soft delete:** when a user removes a photo from their vault, it's soft-deleted (`deletedAt` set). It remains in Cloudflare Images and stays visible on any active listing that references it. It's only hard-purged (deleted from CF Images) when no active listing references it — tracked via `listingPhotos.purgedAt`.
+
+**Unpaused listing with purged photo:** if a listing is unpaused and one of its photos was purged while it was inactive, show a warning to the lister that the photo is gone.
+
+**pHash blocklist:** photos are checked against a D1 blocklist (`photo_blocklist`) at upload using dHash (difference hash). Hamming distance threshold is `PHASH_HAMMING_THRESHOLD` (default 10 bits). On a confirmed ban, the banned user's photo hashes are added to the blocklist automatically (fire-and-forget). The blocklist starts empty and grows from bans and manual additions.
+
+**Schema tables:** `photo_vault`, `listing_photos` (junction), `photo_blocklist`
 
 ### Trust and Reputation
 **Trust tiers:** new → established → trusted

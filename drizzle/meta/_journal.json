@@ -43,6 +43,20 @@
       "when": 1749744000000,
       "tag": "0005_couple_composition",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1781074741828,
+      "tag": "0006_known_exodus",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1781075818121,
+      "tag": "0007_next_beyonder",
+      "breakpoints": true
     }
   ]
 }

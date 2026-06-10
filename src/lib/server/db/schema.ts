@@ -25,7 +25,6 @@ export type MediaScanStatus = 'pending' | 'cleared' | 'flagged';
 export type ThreadStatus = 'open' | 'closed' | 'archived';
 export type MessageScanStatus = 'pending' | 'cleared' | 'flagged' | 'blocked';
 export type KeyExchangeStatus = 'offered' | 'accepted' | 'declined' | 'revoked';
-export type ContactMethodType = 'phone' | 'email' | 'snapchat' | 'instagram' | 'telegram' | 'signal' | 'discord' | 'whatsapp' | 'other';
 export type ReportTargetType = 'listing' | 'message' | 'user';
 export type ReportStatus = 'pending' | 'reviewed' | 'confirmed' | 'dismissed';
 export type ModerationActionType = 'warn' | 'restrict' | 'suspend' | 'ban' | 'remove_listing' | 'remove_message';
@@ -55,6 +54,8 @@ export const userProfiles = sqliteTable(
 		dbblRiskScore: real('dbbl_risk_score'),
 		dbblRiskRating: text('dbbl_risk_rating'),
 		dbblLastCheckedAt: integer('dbbl_last_checked_at', { mode: 'timestamp' }),
+		alias: text('alias'),
+		isSupporter: integer('is_supporter', { mode: 'boolean' }).notNull().default(false),
 		status: text('status').notNull().default('active'),
 		lastActiveAt: integer('last_active_at', { mode: 'timestamp' }),
 		// Location — stored server-side only, never exposed to client
@@ -72,28 +73,11 @@ export const userProfiles = sqliteTable(
 	(table) => ({
 		phoneHashIdx: index('profiles_phone_hash_idx').on(table.phoneHash),
 		trustTierIdx: index('profiles_trust_tier_idx').on(table.trustTier),
-		statusIdx: index('profiles_status_idx').on(table.status)
+		statusIdx: index('profiles_status_idx').on(table.status),
+		aliasIdx: index('profiles_alias_idx').on(table.alias)
 	})
 );
 
-export const contactMethods = sqliteTable(
-	'contact_methods',
-	{
-		id: text('id').primaryKey(),
-		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
-		type: text('type').notNull(),
-		encryptedValue: text('encrypted_value').notNull(),
-		verified: integer('verified', { mode: 'boolean' }).notNull().default(false),
-		displayOrder: integer('display_order').notNull().default(0),
-		active: integer('active', { mode: 'boolean' }).notNull().default(true),
-		isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
-	},
-	(table) => ({
-		userIdx: index('contact_methods_user_idx').on(table.userId),
-		activeIdx: index('contact_methods_active_idx').on(table.userId, table.active)
-	})
-);
 
 export const listings = sqliteTable(
 	'listings',
@@ -145,18 +129,49 @@ export const listingRequirements = sqliteTable(
 	})
 );
 
-export const listingMedia = sqliteTable(
-	'listing_media',
+export const photoVault = sqliteTable(
+	'photo_vault',
 	{
 		id: text('id').primaryKey(),
-		listingId: text('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
-		r2Key: text('r2_key').notNull(),
-		displayOrder: integer('display_order').notNull().default(0),
+		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
+		cfImageId: text('cf_image_id').notNull(),
+		pHash: text('p_hash'),
 		scanStatus: text('scan_status').notNull().default('pending'),
+		deletedAt: integer('deleted_at', { mode: 'timestamp' }),
 		uploadedAt: integer('uploaded_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
 	},
 	(table) => ({
-		listingIdx: index('media_listing_idx').on(table.listingId)
+		userIdx: index('vault_user_idx').on(table.userId),
+		scanIdx: index('vault_scan_idx').on(table.scanStatus)
+	})
+);
+
+export const listingPhotos = sqliteTable(
+	'listing_photos',
+	{
+		id: text('id').primaryKey(),
+		listingId: text('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
+		vaultPhotoId: text('vault_photo_id').notNull().references(() => photoVault.id),
+		displayOrder: integer('display_order').notNull().default(0),
+		purgedAt: integer('purged_at', { mode: 'timestamp' })
+	},
+	(table) => ({
+		listingIdx: index('listing_photos_listing_idx').on(table.listingId),
+		vaultIdx: index('listing_photos_vault_idx').on(table.vaultPhotoId)
+	})
+);
+
+export const photoBlocklist = sqliteTable(
+	'photo_blocklist',
+	{
+		id: text('id').primaryKey(),
+		pHash: text('p_hash').notNull().unique(),
+		reason: text('reason').notNull(),
+		sourceUserId: text('source_user_id').references(() => userProfiles.id),
+		addedAt: integer('added_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+	},
+	(table) => ({
+		pHashIdx: index('blocklist_phash_idx').on(table.pHash)
 	})
 );
 
@@ -262,7 +277,6 @@ export const keyExchanges = sqliteTable(
 		offeringUserId: text('offering_user_id').notNull().references(() => userProfiles.id),
 		receivingUserId: text('receiving_user_id').notNull().references(() => userProfiles.id),
 		status: text('status').notNull().default('offered'),
-		contactMethodIds: text('contact_method_ids').notNull().default('[]'),
 		offeredAt: integer('offered_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 		resolvedAt: integer('resolved_at', { mode: 'timestamp' })
 	},
@@ -339,7 +353,10 @@ export const DEFAULT_CONFIG = {
 	THREAD_VELOCITY_TRUSTED_PER_DAY: '25',
 	INSTANCE_NAME: 'Jaydslist',
 	INSTANCE_TAGLINE: 'Real connections, real people',
-	INSTANCE_URL: 'https://jaydslist.com'
+	INSTANCE_URL: 'https://jaydslist.com',
+	VAULT_MAX_PHOTOS_PAID: '10',
+	LISTING_MAX_PHOTOS: '3',
+	PHASH_HAMMING_THRESHOLD: '10'
 } as const;
 
 export * from './auth.schema';

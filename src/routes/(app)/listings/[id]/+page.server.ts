@@ -5,7 +5,8 @@ import {
 	listings,
 	listingRequirements,
 	relativeTermDefinitions,
-	userProfiles
+	userProfiles,
+	conversationThreads
 } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -35,7 +36,8 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			posterIdentity: userProfiles.identity,
 			posterCoupleComposition: userProfiles.coupleComposition,
 			posterAge: userProfiles.age,
-			posterTrustTier: userProfiles.trustTier
+			posterTrustTier: userProfiles.trustTier,
+			posterAlias: userProfiles.alias
 		})
 		.from(listings)
 		.innerJoin(userProfiles, eq(listings.userId, userProfiles.id))
@@ -57,6 +59,22 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			isLoggedIn: !!locals.user,
 			unavailable: true
 		};
+	}
+
+	// Check for existing thread (for logged-in non-owners)
+	let existingThreadId: string | null = null;
+	if (locals.user && !isOwner) {
+		const existing = await db
+			.select({ id: conversationThreads.id })
+			.from(conversationThreads)
+			.where(
+				and(
+					eq(conversationThreads.listingId, params.id),
+					eq(conversationThreads.initiatorId, locals.user.id)
+				)
+			)
+			.get();
+		existingThreadId = existing?.id ?? null;
 	}
 
 	const reqs = await db
@@ -97,8 +115,10 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			posterIdentity: listing.posterIdentity,
 			posterCoupleComposition: listing.posterCoupleComposition,
 			posterAge: listing.posterAge,
-			posterTrustTier: listing.posterTrustTier
+			posterTrustTier: listing.posterTrustTier,
+			posterAlias: listing.posterAlias ?? 'Anonymous'
 		},
+		existingThreadId,
 		requirements: {
 			ageMin: ageMin ? parseInt(ageMin) : null,
 			ageMax: ageMax ? parseInt(ageMax) : null,

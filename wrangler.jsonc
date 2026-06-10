@@ -26,6 +26,8 @@
   ],
   "vars": {
     "ENVIRONMENT": "production",
-    "DBBL_API_URL": "https://api.dbblprotocol.org"
+    "DBBL_API_URL": "https://api.dbblprotocol.org",
+    "CF_IMAGES_ACCOUNT_ID": ""
+    // CF_IMAGES_API_TOKEN goes in .dev.vars (secret)
   }
 }
