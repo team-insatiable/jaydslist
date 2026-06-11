@@ -53,6 +53,7 @@ export const userProfiles = sqliteTable(
 		warningIssuedAt: integer('warning_issued_at', { mode: 'timestamp' }),
 		dbblRiskScore: real('dbbl_risk_score'),
 		dbblRiskRating: text('dbbl_risk_rating'),
+		dbblConfidence: text('dbbl_confidence'),
 		dbblLastCheckedAt: integer('dbbl_last_checked_at', { mode: 'timestamp' }),
 		alias: text('alias'),
 		isSupporter: integer('is_supporter', { mode: 'boolean' }).notNull().default(false),

@@ -40,39 +40,35 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const dbblPhoneHash = await hashPhonePlain(pendingPhone);
 	const dbblEmailHash = await hashEmail(locals.user.email);
 
-	// Query DBBL by phone and email — fail open if unavailable, block if either is restricted/blacklisted
+	// Query DBBL with both signals in one request — entity model resolves them server-side
 	let dbblRiskScore: number | null = null;
 	let dbblRiskRating: string | null = null;
-
-	const RATING_SEVERITY: Record<string, number> = {
-		clear: 0, flagged: 1, cautioned: 2, restricted: 3, blacklisted: 4
-	};
-
-	async function queryDbbl(param: string, value: string): Promise<{ score: number | null; rating: string | null }> {
-		const res = await fetch(
-			`${env.DBBL_API_URL}/v1/scores?${param}=${encodeURIComponent(value)}`,
-			{ headers: { Authorization: `Bearer ${env.DBBL_API_KEY}` } }
-		);
-		if (!res.ok) { console.error(`DBBL non-OK (${param}):`, res.status); return { score: null, rating: null }; }
-		const data = await res.json<{ score?: number | null; rating?: string | null }>();
-		return { score: data.score ?? null, rating: data.rating ?? null };
-	}
+	let dbblConfidence: string | null = null;
 
 	try {
-		const [phoneResult, emailResult] = await Promise.all([
-			queryDbbl('phoneHash', dbblPhoneHash),
-			queryDbbl('emailHash', dbblEmailHash)
-		]);
+		const params = new URLSearchParams({
+			phoneHash: dbblPhoneHash,
+			emailHash: dbblEmailHash
+		});
+		const res = await fetch(`${env.DBBL_API_URL}/v1/scores?${params}`, {
+			headers: { Authorization: `Bearer ${env.DBBL_API_KEY}` }
+		});
 
-		// Use the worse of the two ratings
-		const phoneSev = RATING_SEVERITY[phoneResult.rating ?? ''] ?? -1;
-		const emailSev = RATING_SEVERITY[emailResult.rating ?? ''] ?? -1;
-		if (phoneSev >= emailSev) {
-			dbblRiskScore = phoneResult.score;
-			dbblRiskRating = phoneResult.rating;
+		if (!res.ok) {
+			console.error('DBBL non-OK:', res.status);
 		} else {
-			dbblRiskScore = emailResult.score;
-			dbblRiskRating = emailResult.rating;
+			const data = await res.json<{
+				status: 'found' | 'no_data';
+				score: number | null;
+				rating: string | null;
+				confidence: string | null;
+			}>();
+
+			if (data.status === 'found') {
+				dbblRiskScore = data.score ?? null;
+				dbblRiskRating = data.rating ?? null;
+				dbblConfidence = data.confidence ?? null;
+			}
 		}
 
 		if (dbblRiskRating && BLOCK_RATINGS.has(dbblRiskRating)) {
@@ -99,6 +95,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			phoneCarrierValidated: true,
 			dbblRiskScore,
 			dbblRiskRating,
+			dbblConfidence,
 			dbblLastCheckedAt: new Date()
 		})
 		.where(eq(userProfiles.id, locals.user.id));

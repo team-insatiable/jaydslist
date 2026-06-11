@@ -57,6 +57,13 @@
       "when": 1781075818121,
       "tag": "0007_next_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1781136352642,
+      "tag": "0008_breezy_deathbird",
+      "breakpoints": true
     }
   ]
 }
