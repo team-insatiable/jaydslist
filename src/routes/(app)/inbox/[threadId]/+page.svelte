@@ -7,6 +7,7 @@
 	let body = $state('');
 	let sending = $state(false);
 	let sendError = $state('');
+	let exchangeWorking = $state(false);
 
 	const minLength = data.minLength;
 
@@ -65,6 +66,65 @@
 			{/each}
 		{/if}
 	</div>
+
+	<!-- Key Exchange -->
+	{#if data.thread.status === 'open'}
+		{#if data.exchange?.status === 'accepted'}
+			<div class="exchange-card accepted">
+				<div class="exchange-card-head">
+					<span class="exchange-label">Contact info exchanged</span>
+					<form method="POST" action="?/revokeExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+						<button type="submit" class="revoke-btn" disabled={exchangeWorking}>Revoke</button>
+					</form>
+				</div>
+				<div class="contact-grid">
+					<div class="contact-col">
+						<span class="contact-col-label">Them ({data.otherAlias})</span>
+						{#if data.theirContact}
+							{#if data.theirContact.phone}<p class="contact-value">📞 {data.theirContact.phone}</p>{/if}
+							{#if data.theirContact.email}<p class="contact-value">✉ {data.theirContact.email}</p>{/if}
+						{/if}
+					</div>
+					<div class="contact-col">
+						<span class="contact-col-label">You</span>
+						{#if data.myContact}
+							{#if data.myContact.phone}<p class="contact-value">📞 {data.myContact.phone}</p>{/if}
+							{#if data.myContact.email}<p class="contact-value">✉ {data.myContact.email}</p>{/if}
+						{/if}
+					</div>
+				</div>
+			</div>
+		{:else if data.exchange?.status === 'offered' && data.exchange.iAmOffering}
+			<div class="exchange-card pending">
+				<span class="exchange-label">Waiting for {data.otherAlias} to accept your contact request</span>
+				<form method="POST" action="?/revokeExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+					<button type="submit" class="revoke-btn" disabled={exchangeWorking}>Cancel</button>
+				</form>
+			</div>
+		{:else if data.exchange?.status === 'offered' && !data.exchange.iAmOffering}
+			<div class="exchange-card incoming">
+				<p class="exchange-label"><strong>{data.otherAlias}</strong> wants to exchange contact info</p>
+				<p class="exchange-hint">If you accept, you'll both see each other's verified phone and email.</p>
+				<div class="exchange-actions">
+					<form method="POST" action="?/acceptExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+						<button type="submit" class="accept-btn" disabled={exchangeWorking}>Accept</button>
+					</form>
+					<form method="POST" action="?/declineExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+						<button type="submit" class="decline-btn" disabled={exchangeWorking}>Decline</button>
+					</form>
+				</div>
+			</div>
+		{:else if data.eligible}
+			<div class="exchange-offer">
+				<form method="POST" action="?/offerExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+					<button type="submit" class="offer-btn" disabled={exchangeWorking}>
+						Share contact info
+					</button>
+				</form>
+				<span class="exchange-offer-hint">Mutually agree to exchange verified phone &amp; email</span>
+			</div>
+		{/if}
+	{/if}
 
 	{#if data.thread.status === 'open'}
 		<form
@@ -292,5 +352,145 @@
 		color: var(--pico-muted-color);
 		border-top: 1px solid var(--pico-muted-border-color);
 		flex-shrink: 0;
+	}
+
+	/* Key exchange */
+	.exchange-card,
+	.exchange-offer {
+		flex-shrink: 0;
+		margin: 0.5rem 0;
+		border-radius: 10px;
+		padding: 0.875rem 1rem;
+		font-size: 0.85rem;
+	}
+
+	.exchange-card.accepted {
+		background: color-mix(in srgb, var(--pico-ins-color) 8%, transparent);
+		border: 1px solid color-mix(in srgb, var(--pico-ins-color) 30%, transparent);
+	}
+
+	.exchange-card.pending {
+		background: color-mix(in srgb, var(--pico-primary) 6%, transparent);
+		border: 1px solid color-mix(in srgb, var(--pico-primary) 20%, transparent);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.exchange-card.incoming {
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+	}
+
+	.exchange-card-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.75rem;
+	}
+
+	.exchange-label {
+		font-weight: 500;
+		color: var(--pico-color);
+	}
+
+	.exchange-hint {
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		margin: 0.25rem 0 0.75rem;
+	}
+
+	.contact-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.75rem;
+		margin-top: 0.5rem;
+	}
+
+	.contact-col-label {
+		font-size: 0.75rem;
+		color: var(--pico-muted-color);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		font-weight: 500;
+		display: block;
+		margin-bottom: 0.25rem;
+	}
+
+	.contact-value {
+		margin: 0.15rem 0;
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.exchange-actions {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 0.5rem;
+	}
+
+	.exchange-actions form { margin: 0; }
+
+	.accept-btn {
+		background: var(--pico-primary);
+		color: white;
+		border: none;
+		padding: 0.45rem 1rem;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		cursor: pointer;
+		margin: 0;
+	}
+
+	.decline-btn {
+		background: transparent;
+		color: var(--pico-muted-color);
+		border: 1px solid var(--pico-muted-border-color);
+		padding: 0.45rem 1rem;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		cursor: pointer;
+		margin: 0;
+	}
+
+	.revoke-btn {
+		background: transparent;
+		color: var(--pico-del-color);
+		border: 1px solid color-mix(in srgb, var(--pico-del-color) 40%, transparent);
+		padding: 0.3rem 0.75rem;
+		border-radius: 6px;
+		font-size: 0.8rem;
+		cursor: pointer;
+		margin: 0;
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+
+	.exchange-offer {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		background: transparent;
+		border: 1px dashed var(--pico-muted-border-color);
+	}
+
+	.exchange-offer form { margin: 0; }
+
+	.offer-btn {
+		background: transparent;
+		color: var(--pico-primary);
+		border: 1px solid var(--pico-primary);
+		padding: 0.4rem 0.875rem;
+		border-radius: 6px;
+		font-size: 0.825rem;
+		cursor: pointer;
+		white-space: nowrap;
+		margin: 0;
+	}
+
+	.exchange-offer-hint {
+		font-size: 0.775rem;
+		color: var(--pico-muted-color);
 	}
 </style>
