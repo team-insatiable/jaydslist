@@ -1,12 +1,14 @@
-import { error, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import {
 	listings,
 	listingRequirements,
 	relativeTermDefinitions,
+	listingEvents,
 	userProfiles,
-	conversationThreads
+	conversationThreads,
+	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -96,6 +98,12 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	const ageMax = hardReqs.find((r) => r.field === 'age_max')?.value ?? null;
 	const trustTierReq = hardReqs.find((r) => r.field === 'trust_tier')?.value ?? null;
 
+	const bumpCooldownHours = parseInt(DEFAULT_CONFIG.LISTING_BUMP_COOLDOWN_HOURS);
+	const bumpCooldownMs = bumpCooldownHours * 60 * 60 * 1000;
+	const lastBumped = listing.lastBumpedAt ? new Date(listing.lastBumpedAt).getTime() : 0;
+	const canBump = isOwner && listing.status === 'active' && (Date.now() - lastBumped) >= bumpCooldownMs;
+	const nextBumpAt = isOwner ? new Date(lastBumped + bumpCooldownMs) : null;
+
 	return {
 		listing: {
 			id: listing.id,
@@ -128,7 +136,9 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		termDefinitions: termDefs.map((t) => ({ term: t.term, definition: t.definition })),
 		isOwner,
 		isLoggedIn: !!locals.user,
-		unavailable: false
+		unavailable: false,
+		canBump,
+		nextBumpAt
 	};
 };
 
@@ -164,6 +174,38 @@ export const actions: Actions = {
 			.set({ status: 'paused' })
 			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)));
 		return { success: true };
+	},
+
+	bump: async ({ params, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const db = getDb(env.DB);
+
+		const listing = await db
+			.select({ id: listings.id, userId: listings.userId, status: listings.status, lastBumpedAt: listings.lastBumpedAt })
+			.from(listings)
+			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)))
+			.get();
+
+		if (!listing) return fail(404, { error: 'Listing not found' });
+		if (listing.status !== 'active') return fail(400, { error: 'Only active listings can be bumped' });
+
+		const cooldownMs = parseInt(DEFAULT_CONFIG.LISTING_BUMP_COOLDOWN_HOURS) * 60 * 60 * 1000;
+		const lastBumped = listing.lastBumpedAt ? new Date(listing.lastBumpedAt).getTime() : 0;
+		if (Date.now() - lastBumped < cooldownMs) return fail(400, { error: 'Bump cooldown has not expired yet' });
+
+		const now = new Date();
+		await db.update(listings).set({ lastBumpedAt: now }).where(eq(listings.id, params.id));
+		await db.insert(listingEvents).values({
+			id: crypto.randomUUID(),
+			listingId: params.id,
+			eventType: 'bumped',
+			actorId: locals.user.id
+		});
+
+		return { bumped: true };
 	},
 
 	delete: async ({ params, locals, platform }) => {
