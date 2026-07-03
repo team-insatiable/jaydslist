@@ -125,6 +125,8 @@ export const actions: Actions = {
 		if (ageMax !== null && (isNaN(ageMax) || ageMax < 18 || ageMax > 99)) return fail(400, { error: 'Invalid maximum age' });
 		if (ageMin !== null && ageMax !== null && ageMin > ageMax) return fail(400, { error: 'Minimum age cannot exceed maximum age' });
 
+		const statusUpdate = listing.status === 'flagged' ? { status: 'active' as const } : {};
+
 		await db
 			.update(listings)
 			.set({
@@ -135,7 +137,8 @@ export const actions: Actions = {
 				mood,
 				availability,
 				ageRangeMin: ageMin,
-				ageRangeMax: ageMax
+				ageRangeMax: ageMax,
+				...statusUpdate
 			})
 			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)));
 
