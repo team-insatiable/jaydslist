@@ -33,7 +33,7 @@
 
 		<form
 			method="POST"
-			action="?/send"
+			action="?/send&listing={data.listing.id}"
 			use:enhance={() => {
 				sending = true;
 				return async ({ result, update }) => {
