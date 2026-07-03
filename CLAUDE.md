@@ -11,7 +11,13 @@ Target users are mobile browsers — all UI decisions prioritize mobile UX.
 - D1 + Drizzle ORM (schema fully written and pushed)
 - Better Auth (email/password scaffolded, phone verification to be built)
 - Pico CSS for styling (Paper CSS was tried and abandoned — do not add it back)
-- Cloudflare Images for photo storage (paid-tier feature — not yet configured; requires CF_IMAGES_ACCOUNT_ID and CF_IMAGES_API_TOKEN in .dev.vars)
+- Cloudflare Images for photo storage (configured — account on Starter plan, $5/mo)
+  - `CF_IMAGES_ACCOUNT_ID` and `CF_IMAGES_ACCOUNT_HASH` in wrangler.jsonc vars
+  - `CF_IMAGES_API_TOKEN` in .dev.vars (token named `jaydslist-images`, Images Write permission)
+  - Upload pattern: direct creator upload (server issues signed URL, client uploads directly to CF)
+  - Delivery URL format: `https://imagedelivery.net/{CF_IMAGES_ACCOUNT_HASH}/{cfImageId}/public`
+  - Utility: `src/lib/server/cloudflare-images.ts` (getDirectUploadUrl, deleteImage, imageUrl)
+  - Upload URL API: `POST /api/photos/upload-url` → `{ uploadUrl, id, deliveryUrl }`
 - Cloudflare Turnstile for spam prevention (not yet configured)
 
 ## Related Projects
@@ -74,9 +80,36 @@ DBBL being unavailable must NEVER block core Jaydslist functionality. Wrap all D
 - Full Drizzle schema pushed to D1 (src/lib/server/db/schema.ts)
 - Better Auth scaffolded with email/password (login, register routes live)
 - Phone verification flow partially built (verify-phone route, Twilio client, KV-backed OTP)
-- Custom CSS layout with Inter font in +layout.svelte (to be replaced with Pico CSS)
+- Pico CSS layout with bottom mobile nav, drawer, desktop nav (src/routes/(app)/+layout.svelte)
 - Wrangler configured with D1 binding (DB), KV binding (PHONE_VERIFICATION_KV), and DBBL_API_URL env var
-- DBBL_API_KEY in .dev.vars
+- Browse page with preference gate, listing feed, card/list view toggle, radius + nature filters
+- Listing creation — 5-step flow with relative terms scanner (src/routes/(app)/post/)
+- Listing detail — full view with respond flow (src/routes/(app)/listings/[id]/)
+- Listing edit — with age range dual slider, flagged listing notice (src/routes/(app)/listings/[id]/edit/)
+- My listings page with bump, status badges, flagged reactivation flow
+- Inbox — thread list and single thread view with key exchange, message photos
+- Message photos (all users) — camera button in compose, 140px thumbnail, tap-to-lightbox
+- Cloudflare Images pipeline — direct upload, delivery URL construction, lightbox viewer
+- Admin panel — report queue with dismiss/warn/suspend/ban actions, user lookup (src/routes/(app)/admin/)
+- Report flow — from listing detail (listing reports) and thread page (user reports)
+- Email notifications via Resend — listing suspension, user warning (src/lib/server/email.ts)
+- Trust tier lazy promotion — new→established (14 days), established→trusted (60 days + response rate)
+- Response rate tracking — totalThreads increments on new thread, respondedThreads on poster's first reply
+- Favicon (static/favicon.svg)
+
+### Schema additions beyond initial push
+- `photo_albums` table (id, userId, name, createdAt)
+- `album_id` column on `photo_vault` (nullable FK to photo_albums)
+- `cf_image_id` column on `messages` (nullable, for message photos)
+- `body` column on `messages` now has default '' (allows photo-only messages)
+
+## What's Next
+- Photo vault + albums (Phase 2) — supporter-only, profile vault management, album organization, listing photo picker
+- pHash blocklist enforcement (Phase 3, deferred)
+- DBBL integration — reputation checks at registration and first message
+- Relative terms scanner — real-time flagging in listing body
+- Stripe / supporter tier — monetization
+- Self-hosting docs
 
 ## Route Structure (to be built)
 src/routes/
@@ -332,7 +365,11 @@ Photos are a **paid-tier feature only**. Free users post text-only listings.
 
 **pHash blocklist:** photos are checked against a D1 blocklist (`photo_blocklist`) at upload using dHash (difference hash). Hamming distance threshold is `PHASH_HAMMING_THRESHOLD` (default 10 bits). On a confirmed ban, the banned user's photo hashes are added to the blocklist automatically (fire-and-forget). The blocklist starts empty and grows from bans and manual additions.
 
-**Schema tables:** `photo_vault`, `listing_photos` (junction), `photo_blocklist`
+**Albums:** vault photos can be organized into named albums (`photo_albums` table). `photo_vault.albumId` is nullable — unorganized photos appear in an "Uncategorized" bucket.
+
+**Message photos:** all users (not just supporters) can send a photo in a thread. Stored as `messages.cfImageId`. Separate from the vault — no vault involvement for message photos.
+
+**Schema tables:** `photo_albums`, `photo_vault`, `listing_photos` (junction), `photo_blocklist`
 
 ### Trust and Reputation
 **Trust tiers:** new → established → trusted
