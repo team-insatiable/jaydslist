@@ -14,6 +14,8 @@
 	let reportSubmitting = $state(false);
 	let reportDone = $state(false);
 
+	let lightboxUrl = $state<string | null>(null);
+
 	let photoId = $state<string | null>(null);
 	let photoPreviewUrl = $state<string | null>(null);
 	let photoUploading = $state(false);
@@ -143,7 +145,9 @@
 				<div class="bubble-wrap {msg.isMine ? 'mine' : 'theirs'}">
 					<div class="bubble" class:bubble-photo={msg.cfImageUrl}>
 						{#if msg.cfImageUrl}
-							<img class="msg-photo" src={msg.cfImageUrl} alt="" loading="lazy" />
+							<button class="msg-photo-btn" onclick={() => lightboxUrl = msg.cfImageUrl} type="button" aria-label="View photo">
+								<img class="msg-photo" src={msg.cfImageUrl} alt="" loading="lazy" />
+							</button>
 						{/if}
 						{#if msg.body}
 							<p class="bubble-body">{msg.body}</p>
@@ -230,6 +234,17 @@
 				</form>
 			</div>
 		{/if}
+	{/if}
+
+	{#if lightboxUrl}
+		<div class="lightbox" role="dialog" aria-modal="true" onclick={() => lightboxUrl = null}>
+			<button class="lightbox-close" type="button" aria-label="Close" onclick={() => lightboxUrl = null}>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+				</svg>
+			</button>
+			<img src={lightboxUrl} alt="" onclick={(e) => e.stopPropagation()} />
+		</div>
 	{/if}
 
 	{#if data.thread.status === 'open'}
@@ -511,16 +526,63 @@
 		padding: 0.25rem;
 	}
 
+	.msg-photo-btn {
+		background: none;
+		border: none;
+		padding: 0;
+		margin: 0;
+		cursor: pointer;
+		display: block;
+		border-radius: 10px;
+		overflow: hidden;
+	}
+
 	.msg-photo {
 		display: block;
-		max-width: 240px;
-		max-height: 300px;
-		border-radius: 12px;
+		width: 140px;
+		height: 140px;
 		object-fit: cover;
+		border-radius: 10px;
 	}
 
 	.bubble-photo .bubble-body {
 		padding: 0.35rem 0.65rem 0.5rem;
+	}
+
+	.lightbox {
+		position: fixed;
+		inset: 0;
+		background: rgba(0,0,0,0.85);
+		z-index: 1000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1rem;
+	}
+
+	.lightbox img {
+		max-width: 100%;
+		max-height: 90dvh;
+		border-radius: 8px;
+		object-fit: contain;
+	}
+
+	.lightbox-close {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		background: rgba(0,0,0,0.5);
+		border: none;
+		border-radius: 50%;
+		width: 36px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: white;
+		cursor: pointer;
+		padding: 0;
+		margin: 0;
 	}
 
 	.bubble-meta {
