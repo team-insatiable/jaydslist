@@ -239,6 +239,9 @@
 	{#if lightboxUrl}
 		<div
 			class="lightbox"
+			role="dialog"
+			aria-label="Photo viewer"
+			aria-modal="true"
 			tabindex="-1"
 			onclick={() => lightboxUrl = null}
 			onkeydown={(e) => { if (e.key === 'Escape') lightboxUrl = null; }}
