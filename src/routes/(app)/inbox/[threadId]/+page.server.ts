@@ -96,7 +96,12 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 
 		const decryptSafe = async (enc: string | null) => {
 			if (!enc) return null;
-			try { return await decryptContact(enc, env.CONTACT_ENCRYPTION_KEY!); } catch { return null; }
+			try {
+				const raw = await decryptContact(enc, env.CONTACT_ENCRYPTION_KEY!);
+				// Ensure E.164 format with leading +
+				if (raw && !raw.startsWith('+')) return `+${raw}`;
+				return raw;
+			} catch { return null; }
 		};
 
 		myContact = {
@@ -126,7 +131,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			sentAt: m.sentAt,
 			readAt: m.readAt
 		})),
-		minLength: parseInt(DEFAULT_CONFIG.MESSAGE_MIN_LENGTH),
+		minLength: 1,
 		exchange: activeExchange
 			? { id: activeExchange.id, status: activeExchange.status, iAmOffering: activeExchange.offeringUserId === userId }
 			: null,
@@ -157,16 +162,13 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const body = (data.get('body') as string)?.trim() ?? '';
-		const minLength = parseInt(DEFAULT_CONFIG.MESSAGE_MIN_LENGTH);
 
-		if (body.length < minLength) return fail(400, { error: `Message must be at least ${minLength} characters` });
+		if (body.length < 1) return fail(400, { error: 'Message cannot be empty' });
 		if (CONTACT_INFO_PATTERN.test(body))
 			return fail(400, { error: 'Contact information cannot be shared in messages. Use the contact exchange feature instead.' });
 
-		await db.transaction(async (tx) => {
-			await tx.insert(messages).values({ id: crypto.randomUUID(), threadId: params.threadId, senderId: userId, body, sentAt: new Date() });
-			await tx.update(conversationThreads).set({ lastActivityAt: new Date() }).where(eq(conversationThreads.id, params.threadId));
-		});
+		await db.insert(messages).values({ id: crypto.randomUUID(), threadId: params.threadId, senderId: userId, body, sentAt: new Date() });
+		await db.update(conversationThreads).set({ lastActivityAt: new Date() }).where(eq(conversationThreads.id, params.threadId));
 
 		return { success: true };
 	},
@@ -292,7 +294,8 @@ export const actions: Actions = {
 
 		if (!exchange || (exchange.status !== 'offered' && exchange.status !== 'accepted'))
 			return fail(400, { error: 'Nothing to revoke' });
-		if (exchange.offeringUserId !== userId) return fail(403, { error: 'Forbidden' });
+		if (exchange.offeringUserId !== userId && exchange.receivingUserId !== userId)
+			return fail(403, { error: 'Forbidden' });
 
 		await db.update(keyExchanges).set({ status: 'revoked', resolvedAt: new Date() }).where(eq(keyExchanges.id, exchange.id));
 
