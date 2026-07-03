@@ -310,8 +310,7 @@
 							<option value="spam">Spam</option>
 							<option value="fake_profile">Fake profile</option>
 							<option value="harassment">Harassment</option>
-							<option value="explicit_content">Unsolicited explicit content</option>
-							<option value="unsolicited_dm">Unsolicited DM pattern</option>
+							<option value="explicit_content">Explicit content</option>
 							<option value="other">Other</option>
 						</select>
 						<textarea name="detail" bind:value={reportDetail} placeholder="Additional details (optional)" rows="3"></textarea>
