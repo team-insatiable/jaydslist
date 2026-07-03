@@ -5,6 +5,7 @@ import { reports, moderationActions, userProfiles, listings } from '$lib/server/
 import { user } from '$lib/server/db/auth.schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { sendEmail, listingFlaggedEmail, userWarnedEmail } from '$lib/server/email';
+import { reportBanToDbbl } from '$lib/server/dbbl';
 
 export const load: PageServerLoad = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -125,6 +126,20 @@ export const actions: Actions = {
 			reportId
 		});
 
+		// Fire-and-forget DBBL ban report
+		const [bannedProfile, bannedUser] = await Promise.all([
+			db.select({ encryptedPhone: userProfiles.encryptedPhone }).from(userProfiles).where(eq(userProfiles.id, targetUserId)).get(),
+			db.select({ email: user.email }).from(user).where(eq(user.id, targetUserId)).get()
+		]);
+		if (bannedProfile?.encryptedPhone && bannedUser?.email) {
+			reportBanToDbbl({
+				encryptedPhone: bannedProfile.encryptedPhone,
+				email: bannedUser.email,
+				category: report.category,
+				env
+			}).catch((e) => console.error('Failed to report ban to DBBL:', e));
+		}
+
 		return { success: true, action: 'banned' };
 	},
 
@@ -236,6 +251,20 @@ export const actions: Actions = {
 			reason: notes ?? 'No reason given',
 			reportId
 		});
+
+		// Fire-and-forget DBBL ban report
+		const [bannedProfile, bannedUser] = await Promise.all([
+			db.select({ encryptedPhone: userProfiles.encryptedPhone }).from(userProfiles).where(eq(userProfiles.id, listing.userId)).get(),
+			db.select({ email: user.email }).from(user).where(eq(user.id, listing.userId)).get()
+		]);
+		if (bannedProfile?.encryptedPhone && bannedUser?.email) {
+			reportBanToDbbl({
+				encryptedPhone: bannedProfile.encryptedPhone,
+				email: bannedUser.email,
+				category: report.category,
+				env
+			}).catch((e) => console.error('Failed to report ban to DBBL:', e));
+		}
 
 		return { success: true, action: 'banned' };
 	},
