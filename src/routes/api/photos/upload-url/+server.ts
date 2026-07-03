@@ -10,7 +10,8 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 	try {
 		const result = await getDirectUploadUrl(env);
 		return json(result);
-	} catch {
-		throw error(500, 'Failed to get upload URL');
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : 'Unknown error';
+		throw error(500, `Failed to get upload URL: ${msg}`);
 	}
 };
