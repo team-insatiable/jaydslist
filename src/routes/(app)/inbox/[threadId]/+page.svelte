@@ -523,7 +523,9 @@
 	}
 
 	.bubble-photo {
-		padding: 0.25rem;
+		padding: 0;
+		overflow: hidden;
+		max-width: 200px;
 	}
 
 	.msg-photo-btn {
@@ -533,20 +535,20 @@
 		margin: 0;
 		cursor: pointer;
 		display: block;
-		border-radius: 10px;
+		width: 100%;
+		border-radius: 14px 14px 0 0;
 		overflow: hidden;
 	}
 
 	.msg-photo {
 		display: block;
-		width: 140px;
-		height: 140px;
+		width: 100%;
+		height: 180px;
 		object-fit: cover;
-		border-radius: 10px;
 	}
 
 	.bubble-photo .bubble-body {
-		padding: 0.35rem 0.65rem 0.5rem;
+		padding: 0.4rem 0.75rem 0.5rem;
 	}
 
 	.lightbox {
