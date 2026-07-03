@@ -372,18 +372,16 @@
 						onclick={() => (seekingIdentity = new Set())}
 					>All</button>
 					{#each identityOptions as opt}
-						<label class="chip {seekingIdentity.has(opt.value) ? 'selected' : ''}">
-							<input
-								type="checkbox"
-								name="seekingIdentity"
-								value={opt.value}
-								checked={seekingIdentity.has(opt.value)}
-								onchange={() => (seekingIdentity = toggleSet(seekingIdentity, opt.value))}
-							/>
-							{opt.label}
-						</label>
+						<button
+							type="button"
+							class="chip {seekingIdentity.has(opt.value) ? 'selected' : ''}"
+							onclick={() => (seekingIdentity = toggleSet(seekingIdentity, opt.value))}
+						>{opt.label}</button>
 					{/each}
 				</div>
+				{#each [...seekingIdentity] as val}
+					<input type="hidden" name="seekingIdentity" value={val} />
+				{/each}
 			</div>
 
 			<div class="field">
@@ -395,36 +393,32 @@
 						onclick={() => (seekingBodyType = new Set())}
 					>All</button>
 					{#each bodyTypeOptions as opt}
-						<label class="chip {seekingBodyType.has(opt.value) ? 'selected' : ''}">
-							<input
-								type="checkbox"
-								name="seekingBodyType"
-								value={opt.value}
-								checked={seekingBodyType.has(opt.value)}
-								onchange={() => (seekingBodyType = toggleSet(seekingBodyType, opt.value))}
-							/>
-							{opt.label}
-						</label>
+						<button
+							type="button"
+							class="chip {seekingBodyType.has(opt.value) ? 'selected' : ''}"
+							onclick={() => (seekingBodyType = toggleSet(seekingBodyType, opt.value))}
+						>{opt.label}</button>
 					{/each}
 				</div>
+				{#each [...seekingBodyType] as val}
+					<input type="hidden" name="seekingBodyType" value={val} />
+				{/each}
 			</div>
 
 			<div class="field">
 				<span class="field-label">Nature of connection</span>
 				<div class="chip-group">
 					{#each natureOptions as opt}
-						<label class="chip {seekingNature.has(opt.value) ? 'selected' : ''}">
-							<input
-								type="checkbox"
-								name="seekingNatureOfConnection"
-								value={opt.value}
-								checked={seekingNature.has(opt.value)}
-								onchange={() => toggleNature(opt.value)}
-							/>
-							{opt.label}
-						</label>
+						<button
+							type="button"
+							class="chip {seekingNature.has(opt.value) ? 'selected' : ''}"
+							onclick={() => toggleNature(opt.value)}
+						>{opt.label}</button>
 					{/each}
 				</div>
+				{#each [...seekingNature] as val}
+					<input type="hidden" name="seekingNatureOfConnection" value={val} />
+				{/each}
 			</div>
 
 			<button type="submit" aria-busy={prefSaving} disabled={prefSaving}>
@@ -591,10 +585,6 @@
 		transition: background 0.1s, border-color 0.1s;
 		margin: 0;
 		font-weight: normal;
-	}
-
-	.chip input {
-		display: none;
 	}
 
 	button.chip {
