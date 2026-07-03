@@ -130,6 +130,20 @@ export const actions: Actions = {
 			sentAt: new Date()
 		});
 
+		// Increment poster's total thread count and recalculate response rate
+		const posterProfile = await db
+			.select({ totalThreads: userProfiles.totalThreads, respondedThreads: userProfiles.respondedThreads })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, listing.userId))
+			.get();
+		if (posterProfile) {
+			const newTotal = posterProfile.totalThreads + 1;
+			const rate = newTotal > 0 ? posterProfile.respondedThreads / newTotal : 0;
+			await db.update(userProfiles)
+				.set({ totalThreads: newTotal, responseRate: rate })
+				.where(eq(userProfiles.id, listing.userId));
+		}
+
 		throw redirect(303, `/inbox/${threadId}`);
 	}
 };
