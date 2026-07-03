@@ -63,8 +63,7 @@
 
 <!-- Mobile flyout drawer -->
 {#if menuOpen}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div class="overlay" onclick={closeMenu}></div>
+	<div class="overlay" role="button" tabindex="-1" aria-label="Close menu" onclick={closeMenu} onkeydown={(e) => e.key === 'Enter' && closeMenu()}></div>
 {/if}
 <div class="drawer" class:open={menuOpen}>
 	<nav class="drawer-nav">
@@ -309,45 +308,6 @@
 		max-height: 480px;
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 		border-bottom: 1px solid var(--pico-muted-border-color);
-	}
-
-	.drawer-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 1rem 1.25rem;
-		border-bottom: 1px solid var(--pico-muted-border-color);
-		height: 56px;
-	}
-
-	.drawer-logo {
-		font-size: 1.1rem;
-		font-weight: 700;
-		letter-spacing: -0.02em;
-		color: var(--pico-primary);
-	}
-
-	.drawer-close {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 32px;
-		height: 32px;
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: var(--pico-muted-color);
-		border-radius: 6px;
-	}
-
-	.drawer-close:hover {
-		background: var(--pico-muted-background-color);
-		color: var(--pico-color);
-	}
-
-	.drawer-close svg {
-		width: 18px;
-		height: 18px;
 	}
 
 	.drawer-nav {
