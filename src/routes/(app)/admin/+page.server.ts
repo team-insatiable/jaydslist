@@ -2,7 +2,9 @@ import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { reports, moderationActions, userProfiles, listings } from '$lib/server/db/schema';
+import { user } from '$lib/server/db/auth.schema';
 import { eq, desc, and } from 'drizzle-orm';
+import { sendEmail, listingFlaggedEmail, userWarnedEmail } from '$lib/server/email';
 
 export const load: PageServerLoad = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -173,6 +175,9 @@ export const actions: Actions = {
 		const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
 		if (!report) return fail(404, { error: 'Report not found' });
 
+		const listing = await db.select({ userId: listings.userId, subject: listings.subject }).from(listings).where(eq(listings.id, listingId)).get();
+		if (!listing) return fail(404, { error: 'Listing not found' });
+
 		await db.update(listings).set({ status: 'flagged' }).where(eq(listings.id, listingId));
 		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
 
@@ -185,6 +190,17 @@ export const actions: Actions = {
 			reason: notes ?? 'No reason given',
 			reportId
 		});
+
+		// Notify the listing owner
+		const owner = await db.select({ email: user.email }).from(user).where(eq(user.id, listing.userId)).get();
+		if (owner?.email) {
+			sendEmail({
+				to: owner.email,
+				subject: 'Your listing has been suspended',
+				html: listingFlaggedEmail(listing.subject, notes),
+				apiKey: env.RESEND_API_KEY
+			}).catch((e) => console.error('Failed to send suspension email:', e));
+		}
 
 		return { success: true, action: 'listing_flagged' };
 	},
@@ -254,6 +270,17 @@ export const actions: Actions = {
 			reason: notes ?? 'No reason given',
 			reportId
 		});
+
+		// Notify the warned user
+		const warnedUser = await db.select({ email: user.email }).from(user).where(eq(user.id, targetUserId)).get();
+		if (warnedUser?.email) {
+			sendEmail({
+				to: warnedUser.email,
+				subject: 'Warning issued on your Jaydslist account',
+				html: userWarnedEmail(notes),
+				apiKey: env.RESEND_API_KEY
+			}).catch((e) => console.error('Failed to send warning email:', e));
+		}
 
 		return { success: true, action: 'warned' };
 	}
