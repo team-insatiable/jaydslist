@@ -14,7 +14,47 @@
 	let reportSubmitting = $state(false);
 	let reportDone = $state(false);
 
+	let photoId = $state<string | null>(null);
+	let photoPreviewUrl = $state<string | null>(null);
+	let photoUploading = $state(false);
+	let photoError = $state('');
+	let fileInputEl: HTMLInputElement;
+
 	const minLength = data.minLength;
+
+	async function handleFileSelect(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+		if (!file.type.startsWith('image/')) { photoError = 'Only image files are supported'; return; }
+		if (file.size > 10 * 1024 * 1024) { photoError = 'Image must be under 10MB'; return; }
+
+		photoError = '';
+		photoUploading = true;
+		try {
+			const urlRes = await fetch('/api/photos/upload-url', { method: 'POST' });
+			if (!urlRes.ok) throw new Error('Failed to get upload URL');
+			const { uploadUrl, id, deliveryUrl } = await urlRes.json() as { uploadUrl: string; id: string; deliveryUrl: string };
+
+			const form = new FormData();
+			form.append('file', file);
+			const uploadRes = await fetch(uploadUrl, { method: 'POST', body: form });
+			if (!uploadRes.ok) throw new Error('Upload failed');
+
+			photoId = id;
+			photoPreviewUrl = deliveryUrl;
+		} catch {
+			photoError = 'Photo upload failed. Try again.';
+		} finally {
+			photoUploading = false;
+		}
+	}
+
+	function clearPhoto() {
+		photoId = null;
+		photoPreviewUrl = null;
+		photoError = '';
+		if (fileInputEl) fileInputEl.value = '';
+	}
 
 	function formatTime(date: Date | string | null): string {
 		if (!date) return '';
@@ -97,8 +137,13 @@
 		{:else}
 			{#each data.messages as msg (msg.id)}
 				<div class="bubble-wrap {msg.isMine ? 'mine' : 'theirs'}">
-					<div class="bubble">
-						<p class="bubble-body">{msg.body}</p>
+					<div class="bubble" class:bubble-photo={msg.cfImageUrl}>
+						{#if msg.cfImageUrl}
+							<img class="msg-photo" src={msg.cfImageUrl} alt="Photo" loading="lazy" />
+						{/if}
+						{#if msg.body}
+							<p class="bubble-body">{msg.body}</p>
+						{/if}
 					</div>
 					<div class="bubble-meta">
 						<span>{formatTime(msg.sentAt)}</span>
@@ -195,6 +240,7 @@
 					sending = false;
 					if (result.type === 'success') {
 						body = '';
+						clearPhoto();
 						await update();
 					} else if (result.type === 'failure') {
 						sendError = (result.data?.error as string) ?? 'Failed to send';
@@ -202,10 +248,52 @@
 				};
 			}}
 		>
+			{#if photoId}
+				<input type="hidden" name="cfImageId" value={photoId} />
+			{/if}
 			{#if sendError}
 				<p class="send-error">{sendError}</p>
 			{/if}
+			{#if photoPreviewUrl}
+				<div class="photo-preview">
+					<img src={photoPreviewUrl} alt="Photo to send" />
+					<button type="button" class="photo-remove" onclick={clearPhoto} aria-label="Remove photo">
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+							<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+						</svg>
+					</button>
+				</div>
+			{/if}
+			{#if photoError}
+				<p class="send-error">{photoError}</p>
+			{/if}
 			<div class="compose-row">
+				<input
+					type="file"
+					accept="image/*"
+					class="file-input"
+					bind:this={fileInputEl}
+					onchange={handleFileSelect}
+					disabled={sending || photoUploading}
+					aria-label="Attach photo"
+				/>
+				<button
+					type="button"
+					class="photo-btn"
+					onclick={() => fileInputEl.click()}
+					disabled={sending || photoUploading || !!photoId}
+					aria-label="Attach photo"
+					aria-busy={photoUploading}
+				>
+					{#if photoUploading}
+						<span class="spinner"></span>
+					{:else}
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+							<polyline points="21 15 16 10 5 21"/>
+						</svg>
+					{/if}
+				</button>
 				<textarea
 					name="body"
 					bind:value={body}
@@ -216,7 +304,7 @@
 				<button
 					type="submit"
 					aria-busy={sending}
-					disabled={sending || body.trim().length < minLength}
+					disabled={sending || photoUploading || (!photoId && body.trim().length < minLength)}
 				>
 					{#if !sending}
 						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -226,9 +314,11 @@
 					{/if}
 				</button>
 			</div>
-			<div class="char-count {body.trim().length < minLength ? 'short' : 'ok'}">
-				{body.trim().length}/{minLength} min
-			</div>
+			{#if !photoId}
+				<div class="char-count {body.trim().length < minLength ? 'short' : 'ok'}">
+					{body.trim().length}/{minLength} min
+				</div>
+			{/if}
 		</form>
 	{:else}
 		<div class="thread-closed">This conversation is closed.</div>
@@ -413,6 +503,22 @@
 		white-space: pre-wrap;
 	}
 
+	.bubble-photo {
+		padding: 0.25rem;
+	}
+
+	.msg-photo {
+		display: block;
+		max-width: 240px;
+		max-height: 300px;
+		border-radius: 12px;
+		object-fit: cover;
+	}
+
+	.bubble-photo .bubble-body {
+		padding: 0.35rem 0.65rem 0.5rem;
+	}
+
 	.bubble-meta {
 		display: flex;
 		gap: 0.4rem;
@@ -438,6 +544,81 @@
 		margin-bottom: 0.5rem;
 	}
 
+	.photo-preview {
+		position: relative;
+		display: inline-block;
+		margin-bottom: 0.5rem;
+	}
+
+	.photo-preview img {
+		max-width: 120px;
+		max-height: 120px;
+		border-radius: 8px;
+		object-fit: cover;
+		display: block;
+		border: 1px solid var(--pico-muted-border-color);
+	}
+
+	.photo-remove {
+		position: absolute;
+		top: -6px;
+		right: -6px;
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 50%;
+		width: 20px;
+		height: 20px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		padding: 0;
+		margin: 0;
+		color: var(--pico-muted-color);
+	}
+
+	.file-input {
+		display: none;
+	}
+
+	.photo-btn {
+		flex-shrink: 0;
+		width: 2.75rem;
+		height: 2.75rem;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 50%;
+		margin: 0;
+		background: var(--pico-muted-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		color: var(--pico-muted-color);
+		cursor: pointer;
+	}
+
+	.photo-btn:hover:not(:disabled) {
+		color: var(--pico-primary);
+		border-color: var(--pico-primary);
+	}
+
+	.photo-btn:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.spinner {
+		width: 14px;
+		height: 14px;
+		border: 2px solid var(--pico-muted-border-color);
+		border-top-color: var(--pico-primary);
+		border-radius: 50%;
+		animation: spin 0.6s linear infinite;
+		display: block;
+	}
+
+	@keyframes spin { to { transform: rotate(360deg); } }
+
 	.compose-row {
 		display: flex;
 		gap: 0.5rem;
@@ -451,7 +632,7 @@
 		font-size: 0.9rem;
 	}
 
-	.compose-row button {
+	.compose-row > button[type="submit"] {
 		flex-shrink: 0;
 		width: 2.75rem;
 		height: 2.75rem;

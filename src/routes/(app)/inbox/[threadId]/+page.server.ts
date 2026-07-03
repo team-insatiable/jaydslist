@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
+import { imageUrl } from '$lib/server/cloudflare-images';
 import {
 	conversationThreads,
 	listings,
@@ -49,7 +50,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		db.select({ alias: userProfiles.alias }).from(userProfiles).where(eq(userProfiles.id, otherUserId)).get(),
 		db.select({ isSupporter: userProfiles.isSupporter }).from(userProfiles).where(eq(userProfiles.id, userId)).get(),
 		db
-			.select({ id: messages.id, senderId: messages.senderId, body: messages.body, sentAt: messages.sentAt, readAt: messages.readAt })
+			.select({ id: messages.id, senderId: messages.senderId, body: messages.body, cfImageId: messages.cfImageId, sentAt: messages.sentAt, readAt: messages.readAt })
 			.from(messages)
 			.where(eq(messages.threadId, params.threadId))
 			.orderBy(asc(messages.sentAt))
@@ -130,6 +131,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			id: m.id,
 			isMine: m.senderId === userId,
 			body: m.body,
+			cfImageUrl: m.cfImageId ? imageUrl(env.CF_IMAGES_ACCOUNT_HASH, m.cfImageId) : null,
 			sentAt: m.sentAt,
 			readAt: m.readAt
 		})),
@@ -164,12 +166,13 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const body = (data.get('body') as string)?.trim() ?? '';
+		const cfImageId = (data.get('cfImageId') as string)?.trim() || null;
 
-		if (body.length < 1) return fail(400, { error: 'Message cannot be empty' });
-		if (CONTACT_INFO_PATTERN.test(body))
+		if (!cfImageId && body.length < 1) return fail(400, { error: 'Message cannot be empty' });
+		if (body && CONTACT_INFO_PATTERN.test(body))
 			return fail(400, { error: 'Contact information cannot be shared in messages. Use the contact exchange feature instead.' });
 
-		await db.insert(messages).values({ id: crypto.randomUUID(), threadId: params.threadId, senderId: userId, body, sentAt: new Date() });
+		await db.insert(messages).values({ id: crypto.randomUUID(), threadId: params.threadId, senderId: userId, body, cfImageId, sentAt: new Date() });
 		await db.update(conversationThreads).set({ lastActivityAt: new Date() }).where(eq(conversationThreads.id, params.threadId));
 
 		// If the poster is sending their first reply, increment respondedThreads

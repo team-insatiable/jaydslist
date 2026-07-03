@@ -130,11 +130,25 @@ export const listingRequirements = sqliteTable(
 	})
 );
 
+export const photoAlbums = sqliteTable(
+	'photo_albums',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+	},
+	(table) => ({
+		userIdx: index('albums_user_idx').on(table.userId)
+	})
+);
+
 export const photoVault = sqliteTable(
 	'photo_vault',
 	{
 		id: text('id').primaryKey(),
 		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
+		albumId: text('album_id').references(() => photoAlbums.id, { onDelete: 'set null' }),
 		cfImageId: text('cf_image_id').notNull(),
 		pHash: text('p_hash'),
 		scanStatus: text('scan_status').notNull().default('pending'),
@@ -143,7 +157,8 @@ export const photoVault = sqliteTable(
 	},
 	(table) => ({
 		userIdx: index('vault_user_idx').on(table.userId),
-		scanIdx: index('vault_scan_idx').on(table.scanStatus)
+		scanIdx: index('vault_scan_idx').on(table.scanStatus),
+		albumIdx: index('vault_album_idx').on(table.albumId)
 	})
 );
 
@@ -234,7 +249,8 @@ export const messages = sqliteTable(
 		id: text('id').primaryKey(),
 		threadId: text('thread_id').notNull().references(() => conversationThreads.id, { onDelete: 'cascade' }),
 		senderId: text('sender_id').notNull().references(() => userProfiles.id),
-		body: text('body').notNull(),
+		body: text('body').notNull().default(''),
+		cfImageId: text('cf_image_id'),
 		scanStatus: text('scan_status').notNull().default('pending'),
 		qualityScore: real('quality_score'),
 		qualityFlags: text('quality_flags').notNull().default('[]'),

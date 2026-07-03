@@ -10,7 +10,9 @@ declare namespace Cloudflare {
 		DB: D1Database;
 		ASSETS: Fetcher;
 		DBBL_API_URL: "https://api.dbblprotocol.org";
-		CF_IMAGES_ACCOUNT_ID: "";
+		CF_IMAGES_ACCOUNT_ID: string;
+		CF_IMAGES_API_TOKEN: string;
+		CF_IMAGES_ACCOUNT_HASH: string;
 		ENVIRONMENT: string;
 		BETTER_AUTH_SECRET: string;
 		ORIGIN: string;
