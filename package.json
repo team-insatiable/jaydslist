@@ -11,6 +11,8 @@
 		"check": "wrangler types --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"format": "prettier --write .",
 		"gen": "wrangler types",
 		"db:push": "drizzle-kit push",
@@ -41,6 +43,7 @@
 		"typescript": "^6.0.2",
 		"typescript-eslint": "^8.58.1",
 		"vite": "^8.0.7",
+		"vitest": "^4.1.9",
 		"wrangler": "^4.81.0"
 	},
 	"dependencies": {

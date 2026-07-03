@@ -4,6 +4,7 @@ import { lookupPhone, sendOtp } from '$lib/server/twilio';
 import { getDb } from '$lib/server/db';
 import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { hashPhoneLocal } from '$lib/server/phone';
 
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,7 +35,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const normalizedPhone = lookup.e164 ?? phone;
 
 	// Check if phone hash already in use by another account
-	const phoneHash = await hashPhone(normalizedPhone, env.PHONE_PEPPER ?? 'default-pepper');
+	const phoneHash = await hashPhoneLocal(normalizedPhone, env.PHONE_PEPPER ?? 'default-pepper');
 	const existing = await db
 		.select({ id: userProfiles.id })
 		.from(userProfiles)
@@ -61,11 +62,3 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 	return json({ success: true, phone: normalizedPhone });
 };
-
-async function hashPhone(phone: string, pepper: string): Promise<string> {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(phone + pepper);
-	const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
