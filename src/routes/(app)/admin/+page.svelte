@@ -67,6 +67,8 @@
 						<span class="target-type">{TARGET_LABELS[report.targetType] ?? report.targetType}</span>
 						{#if report.listingSubject}
 							<span class="target-subject">{report.listingSubject}</span>
+						{:else if report.targetAlias}
+							<span class="target-subject">{report.targetAlias}</span>
 						{:else}
 							<span class="target-id">{report.targetId.slice(0, 8)}…</span>
 						{/if}
@@ -89,6 +91,8 @@
 									{TARGET_LABELS[report.targetType] ?? report.targetType}
 									{#if report.targetType === 'listing'}
 										— <a href="/listings/{report.targetId}" target="_blank">{report.listingSubject ?? report.targetId}</a>
+									{:else if report.targetType === 'user'}
+										— {report.targetAlias ?? report.targetId}
 									{:else}
 										— {report.targetId}
 									{/if}

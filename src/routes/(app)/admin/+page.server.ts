@@ -37,15 +37,24 @@ export const load: PageServerLoad = async ({ url, platform }) => {
 	const listingIds = [...new Set(rows.filter((r) => r.targetType === 'listing').map((r) => r.targetId))];
 	const listingMap: Record<string, string> = {};
 	if (listingIds.length > 0) {
-		const ls = await db
-			.select({ id: listings.id, subject: listings.subject })
-			.from(listings)
-			.all();
+		const ls = await db.select({ id: listings.id, subject: listings.subject }).from(listings).all();
 		for (const l of ls) listingMap[l.id] = l.subject;
 	}
 
+	// Fetch aliases for user-targeted reports
+	const targetUserIds = [...new Set(rows.filter((r) => r.targetType === 'user').map((r) => r.targetId))];
+	const targetAliasMap: Record<string, string> = {};
+	if (targetUserIds.length > 0) {
+		const profiles = await db.select({ id: userProfiles.id, alias: userProfiles.alias }).from(userProfiles).all();
+		for (const p of profiles) targetAliasMap[p.id] = p.alias ?? 'Unknown';
+	}
+
 	return {
-		reports: rows.map((r) => ({ ...r, listingSubject: r.targetType === 'listing' ? (listingMap[r.targetId] ?? null) : null })),
+		reports: rows.map((r) => ({
+			...r,
+			listingSubject: r.targetType === 'listing' ? (listingMap[r.targetId] ?? null) : null,
+			targetAlias: r.targetType === 'user' ? (targetAliasMap[r.targetId] ?? null) : null
+		})),
 		status
 	};
 };
