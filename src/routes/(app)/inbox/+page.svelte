@@ -32,9 +32,6 @@
 						</div>
 						<div class="thread-mid">
 							<span class="other-alias">{thread.otherAlias}</span>
-							<span class="role-chip role-{thread.role}">
-								{thread.role === 'poster' ? 'Your ad' : 'Your reply'}
-							</span>
 						</div>
 						<div class="thread-bottom">
 							<span class="preview">{thread.lastMessagePreview || 'No messages yet'}</span>
@@ -128,25 +125,6 @@
 
 	.other-alias {
 		font-size: 0.8rem;
-		color: var(--pico-muted-color);
-	}
-
-	.role-chip {
-		font-size: 0.7rem;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		font-weight: 500;
-		border: 1px solid;
-	}
-
-	.role-poster {
-		border-color: var(--pico-primary);
-		color: var(--pico-primary);
-		background: color-mix(in srgb, var(--pico-primary) 8%, transparent);
-	}
-
-	.role-responder {
-		border-color: var(--pico-muted-border-color);
 		color: var(--pico-muted-color);
 	}
 
