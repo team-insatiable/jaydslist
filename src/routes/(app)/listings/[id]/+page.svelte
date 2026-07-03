@@ -3,7 +3,7 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 
-	let { data } = $props();
+	let { data, form } = $props();
 
 	const listing = $derived(data.listing);
 	const requirements = $derived(data.requirements);
@@ -279,6 +279,9 @@
 						</button>
 					{/if}
 				</div>
+				{#if form?.error}
+					<p class="form-error">{form.error}</p>
+				{/if}
 			{:else if isLoggedIn}
 				{#if data.existingThreadId}
 					<a href="/inbox/{data.existingThreadId}" class="respond-btn">View conversation</a>
@@ -892,5 +895,15 @@
 	.btn-secondary:hover {
 		border-color: var(--pico-primary);
 		color: var(--pico-primary);
+	}
+
+	.form-error {
+		background: color-mix(in srgb, var(--pico-del-color) 10%, transparent);
+		border: 1px solid color-mix(in srgb, var(--pico-del-color) 30%, transparent);
+		color: var(--pico-del-color);
+		border-radius: 8px;
+		padding: 0.75rem 1rem;
+		font-size: 0.875rem;
+		margin-top: 1rem;
 	}
 </style>

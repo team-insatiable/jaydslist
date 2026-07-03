@@ -159,7 +159,20 @@ export const actions: Actions = {
 		if (!locals.user) throw redirect(302, '/login');
 		const env = platform?.env;
 		if (!env) throw error(500, 'Server configuration error');
-		await getDb(env.DB)
+
+		const db = getDb(env.DB);
+
+		const activeCount = await db
+			.select({ id: listings.id })
+			.from(listings)
+			.where(and(eq(listings.userId, locals.user.id), eq(listings.status, 'active')))
+			.all();
+
+		if (activeCount.length >= 1) {
+			return fail(400, { error: 'You already have an active listing. Pause it before resuming another.' });
+		}
+
+		await db
 			.update(listings)
 			.set({ status: 'active' })
 			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)));
