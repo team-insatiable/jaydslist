@@ -1,24 +1,30 @@
 <script lang="ts">
 	import { authClient } from '$lib/client/auth';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/stores';
 
-	let email = $state('');
+	let newPassword = $state('');
+	let confirm = $state('');
 	let loading = $state(false);
-	let sent = $state(false);
+	let done = $state(false);
 	let error = $state('');
 
+	const token = $derived($page.url.searchParams.get('token') ?? '');
+	const tokenError = $derived($page.url.searchParams.get('error'));
+
 	async function submit() {
+		if (newPassword !== confirm) {
+			error = 'Passwords do not match';
+			return;
+		}
 		error = '';
 		loading = true;
 		try {
-			const res = await authClient.requestPasswordReset({
-				email,
-				redirectTo: `${window.location.origin}/reset-password`
-			});
+			const res = await authClient.resetPassword({ newPassword, token });
 			if (res.error) {
-				error = res.error.message ?? 'Something went wrong';
+				error = res.error.message ?? 'Failed to reset password';
 			} else {
-				sent = true;
+				done = true;
 			}
 		} catch {
 			error = 'Network error. Please try again.';
@@ -34,16 +40,22 @@
 			<span class="wordmark">Jaydslist</span>
 		</div>
 
-		{#if sent}
+		{#if done}
 			<div class="auth-header">
-				<h1>Check your email</h1>
-				<p>If that address is in our system, we've sent a reset link. Check your inbox.</p>
+				<h1>Password updated</h1>
+				<p>Your password has been reset. You can now sign in.</p>
 			</div>
-			<a href={resolve('/login')} class="back-link">Back to sign in</a>
+			<a href={resolve('/login')} class="submit-btn" style="display:block;text-align:center;text-decoration:none;">Sign in</a>
+		{:else if tokenError || !token}
+			<div class="auth-header">
+				<h1>Link expired</h1>
+				<p>This reset link is invalid or has expired. Please request a new one.</p>
+			</div>
+			<a href={resolve('/forgot-password')} class="submit-btn" style="display:block;text-align:center;text-decoration:none;">Request new link</a>
 		{:else}
 			<div class="auth-header">
-				<h1>Forgot password?</h1>
-				<p>Enter your email and we'll send you a reset link.</p>
+				<h1>Set new password</h1>
+				<p>Choose a new password for your account.</p>
 			</div>
 
 			{#if error}
@@ -52,21 +64,19 @@
 
 			<form onsubmit={(e) => { e.preventDefault(); submit(); }}>
 				<div class="field">
-					<label for="email">Email</label>
-					<div class="input-wrap">
-						<svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-						</svg>
-						<input id="email" type="email" placeholder="you@example.com" bind:value={email} disabled={loading} />
-					</div>
+					<label for="password">New password</label>
+					<input id="password" type="password" placeholder="At least 8 characters" bind:value={newPassword} disabled={loading} />
 				</div>
 
-				<button type="submit" class="submit-btn" disabled={loading || !email} aria-busy={loading}>
-					{loading ? '' : 'Send reset link'}
+				<div class="field">
+					<label for="confirm">Confirm password</label>
+					<input id="confirm" type="password" placeholder="Repeat your password" bind:value={confirm} disabled={loading} />
+				</div>
+
+				<button type="submit" class="submit-btn" disabled={loading || !newPassword || !confirm} aria-busy={loading}>
+					{loading ? '' : 'Reset password'}
 				</button>
 			</form>
-
-			<p class="switch-link"><a href={resolve('/login')}>Back to sign in</a></p>
 		{/if}
 	</div>
 </div>
@@ -124,23 +134,7 @@
 		margin-bottom: 0.4rem;
 	}
 
-	.input-wrap {
-		position: relative;
-	}
-
-	.input-icon {
-		position: absolute;
-		left: 0.75rem;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 16px;
-		height: 16px;
-		color: var(--pico-muted-color);
-		pointer-events: none;
-	}
-
-	.input-wrap input {
-		padding-left: 2.5rem;
+	.field input {
 		margin-bottom: 0;
 	}
 
@@ -175,20 +169,5 @@
 	.submit-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.switch-link {
-		text-align: center;
-		font-size: 0.875rem;
-		color: var(--pico-muted-color);
-		margin-top: 1.5rem;
-		margin-bottom: 0;
-	}
-
-	.back-link {
-		display: block;
-		text-align: center;
-		font-size: 0.875rem;
-		margin-top: 1.5rem;
 	}
 </style>

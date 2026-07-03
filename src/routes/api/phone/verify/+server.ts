@@ -5,6 +5,7 @@ import { getDb } from '$lib/server/db';
 import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { encryptContact } from '$lib/server/crypto';
+import { hashPhoneLocal, hashPhoneForDbbl, hashEmailForDbbl } from '$lib/server/phone';
 
 const BLOCK_RATINGS = new Set(['restricted', 'blacklisted']);
 
@@ -36,9 +37,9 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	if (!result.success) return json({ error: 'Invalid or expired verification code' }, { status: 422 });
 
 	// Two separate hashes — local uses pepper for DB security, DBBL uses plain E.164 for cross-platform consistency
-	const phoneHash = await hashPhone(pendingPhone, env.PHONE_PEPPER ?? 'default-pepper');
-	const dbblPhoneHash = await hashPhonePlain(pendingPhone);
-	const dbblEmailHash = await hashEmail(locals.user.email);
+	const phoneHash = await hashPhoneLocal(pendingPhone, env.PHONE_PEPPER ?? 'default-pepper');
+	const dbblPhoneHash = await hashPhoneForDbbl(pendingPhone);
+	const dbblEmailHash = await hashEmailForDbbl(locals.user.email);
 
 	// Query DBBL with both signals in one request — entity model resolves them server-side
 	let dbblRiskScore: number | null = null;
@@ -106,25 +107,3 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	return json({ success: true });
 };
 
-async function hashPhone(phone: string, pepper: string): Promise<string> {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(phone + pepper);
-	const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Plain E.164 SHA256 — no pepper — for cross-platform DBBL consistency
-async function hashPhonePlain(phone: string): Promise<string> {
-	const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(phone));
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Lowercase + trim email before hashing — for cross-platform DBBL consistency
-async function hashEmail(email: string): Promise<string> {
-	const normalized = email.toLowerCase().trim();
-	const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized));
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
