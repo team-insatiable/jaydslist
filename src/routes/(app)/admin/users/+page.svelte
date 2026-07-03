@@ -80,6 +80,7 @@
 							</form>
 						{:else}
 							<input
+								id="ban-reason-{u.id}"
 								type="text"
 								class="ban-reason"
 								placeholder="Ban reason"

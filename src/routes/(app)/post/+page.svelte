@@ -180,7 +180,7 @@
 			<div class="chip-group">
 				{#each identityOptions as opt}
 					<label class="chip {lookingFor.has(opt.value) ? 'selected' : ''}">
-						<input type="checkbox" checked={lookingFor.has(opt.value)}
+						<input id="looking-for-{opt.value}" type="checkbox" checked={lookingFor.has(opt.value)}
 							onchange={() => (lookingFor = toggleSet(lookingFor, opt.value))} />
 						{opt.label}
 					</label>
@@ -192,7 +192,7 @@
 			<div class="age-toggle-row">
 				<span class="field-label">Age range</span>
 				<label class="toggle-label">
-					<input type="checkbox" bind:checked={ageRangeEnabled} />
+					<input id="age-range-enabled" type="checkbox" bind:checked={ageRangeEnabled} />
 					{ageRangeEnabled ? 'Enabled' : 'No preference'}
 				</label>
 			</div>
@@ -206,10 +206,10 @@
 				<div class="range-track">
 					<div class="range-fill" style="left: {minPct}%; right: {100 - maxPct}%"></div>
 				</div>
-				<input type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMinNum}
+				<input id="age-min-range" type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMinNum}
 					oninput={() => { ageRangeEnabled = true; clampMin(); }}
 					class="range-input range-min" />
-				<input type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMaxNum}
+				<input id="age-max-range" type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMaxNum}
 					oninput={() => { ageRangeEnabled = true; clampMax(); }}
 					class="range-input range-max" />
 			</div>
@@ -231,7 +231,7 @@
 			<div class="chip-group">
 				{#each natureOptions as opt}
 					<label class="chip {nature.has(opt.value) ? 'selected' : ''}">
-						<input type="checkbox" checked={nature.has(opt.value)}
+						<input id="nature-{opt.value}" type="checkbox" checked={nature.has(opt.value)}
 							onchange={() => toggleNature(opt.value)} />
 						{opt.label}
 					</label>
@@ -294,6 +294,7 @@
 			<div class="term-row">
 				<span class="term-chip">{term}</span>
 				<input
+					id="term-{term}"
 					type="text"
 					placeholder="What do you mean by this?"
 					value={termDefinitions[term] ?? ''}
@@ -332,6 +333,7 @@
 			<p class="field-hint">Responders must acknowledge these before messaging you.</p>
 			{#each softRequirements as _, i}
 			<input
+				id="soft-req-{i}"
 				type="text"
 				placeholder="e.g. Must be okay with my schedule"
 				bind:value={softRequirements[i]}
