@@ -7,6 +7,7 @@ import {
 	messages,
 	userProfiles,
 	keyExchanges,
+	reports,
 	user,
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
@@ -122,6 +123,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			status: thread.status,
 			role
 		},
+		otherUserId,
 		otherAlias: otherProfile?.alias ?? 'Anonymous',
 		isSupporter: currentProfile?.isSupporter ?? false,
 		messages: threadMessages.map((m) => ({
@@ -300,5 +302,46 @@ export const actions: Actions = {
 		await db.update(keyExchanges).set({ status: 'revoked', resolvedAt: new Date() }).where(eq(keyExchanges.id, exchange.id));
 
 		return { success: true };
+	},
+
+	report: async ({ params, request, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const userId = locals.user.id;
+		const db = getDb(env.DB);
+
+		const thread = await db
+			.select({ initiatorId: conversationThreads.initiatorId, posterId: conversationThreads.posterId })
+			.from(conversationThreads)
+			.where(eq(conversationThreads.id, params.threadId))
+			.get();
+
+		if (!thread) return fail(404, { error: 'Thread not found' });
+		if (thread.initiatorId !== userId && thread.posterId !== userId) return fail(403, { error: 'Forbidden' });
+
+		const data = await request.formData();
+		const category = data.get('category') as string;
+		const detail = (data.get('detail') as string)?.trim() || null;
+		const targetUserId = data.get('targetUserId') as string;
+
+		const VALID_CATEGORIES = ['harassment', 'spam', 'fake_profile', 'explicit_content', 'unsolicited_dm', 'other'];
+		if (!VALID_CATEGORIES.includes(category)) return fail(400, { error: 'Invalid category' });
+		if (targetUserId === userId) return fail(400, { error: 'Cannot report yourself' });
+
+		const reporter = await db.select({ reporterTrustScore: userProfiles.reporterTrustScore }).from(userProfiles).where(eq(userProfiles.id, userId)).get();
+
+		await db.insert(reports).values({
+			id: crypto.randomUUID(),
+			reporterId: userId,
+			targetType: 'user',
+			targetId: targetUserId,
+			category,
+			detail,
+			reporterTrustScoreSnapshot: reporter?.reporterTrustScore ?? 0.5
+		});
+
+		return { reported: true };
 	}
 };

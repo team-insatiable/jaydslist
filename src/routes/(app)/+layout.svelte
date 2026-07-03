@@ -35,7 +35,7 @@
 		<a href={resolve('/browse')} class="logo">Jaydslist</a>
 		<ul class="desktop-nav">
 			<li><a href={resolve('/browse')}>Browse</a></li>
-			<li><a href={resolve('/post')}>Post an ad</a></li>
+			<li><a href={resolve('/post')}>New listing</a></li>
 			<li>
 				<a href={resolve('/inbox')} class="inbox-link">
 					Inbox
@@ -78,7 +78,7 @@
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/>
 			</svg>
-			Manage posts
+			My listings
 		</a>
 		<a href={resolve('/inbox')} class="drawer-item" onclick={closeMenu}>
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -116,7 +116,7 @@
 	</a>
 	<a href={resolve('/post')} class="tab-item" class:active={active('/post')}>
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
-		<span>Post</span>
+		<span>New</span>
 	</a>
 	<a href={resolve('/inbox')} class="tab-item" class:active={active('/inbox')}>
 		<span class="tab-icon-wrap">

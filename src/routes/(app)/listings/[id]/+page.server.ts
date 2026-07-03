@@ -8,6 +8,7 @@ import {
 	listingEvents,
 	userProfiles,
 	conversationThreads,
+	reports,
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -217,5 +218,39 @@ export const actions: Actions = {
 			.set({ status: 'removed' })
 			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)));
 		throw redirect(303, '/my-listings');
+	},
+
+	report: async ({ params, request, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const userId = locals.user.id;
+		const db = getDb(env.DB);
+
+		const listing = await db.select({ userId: listings.userId }).from(listings).where(eq(listings.id, params.id)).get();
+		if (!listing) return fail(404, { error: 'Listing not found' });
+		if (listing.userId === userId) return fail(400, { error: 'Cannot report your own listing' });
+
+		const data = await request.formData();
+		const category = data.get('category') as string;
+		const detail = (data.get('detail') as string)?.trim() || null;
+
+		const VALID_CATEGORIES = ['harassment', 'spam', 'fake_profile', 'explicit_content', 'unsolicited_dm', 'other'];
+		if (!VALID_CATEGORIES.includes(category)) return fail(400, { error: 'Invalid category' });
+
+		const reporter = await db.select({ reporterTrustScore: userProfiles.reporterTrustScore }).from(userProfiles).where(eq(userProfiles.id, userId)).get();
+
+		await db.insert(reports).values({
+			id: crypto.randomUUID(),
+			reporterId: userId,
+			targetType: 'listing',
+			targetId: params.id,
+			category,
+			detail,
+			reporterTrustScoreSnapshot: reporter?.reporterTrustScore ?? 0.5
+		});
+
+		return { reported: true };
 	}
 };

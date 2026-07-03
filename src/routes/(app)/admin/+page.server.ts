@@ -2,7 +2,9 @@ import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { reports, moderationActions, userProfiles, listings } from '$lib/server/db/schema';
+import { user } from '$lib/server/db/auth.schema';
 import { eq, desc, and } from 'drizzle-orm';
+import { sendEmail, listingFlaggedEmail, userWarnedEmail } from '$lib/server/email';
 
 export const load: PageServerLoad = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -37,15 +39,24 @@ export const load: PageServerLoad = async ({ url, platform }) => {
 	const listingIds = [...new Set(rows.filter((r) => r.targetType === 'listing').map((r) => r.targetId))];
 	const listingMap: Record<string, string> = {};
 	if (listingIds.length > 0) {
-		const ls = await db
-			.select({ id: listings.id, subject: listings.subject })
-			.from(listings)
-			.all();
+		const ls = await db.select({ id: listings.id, subject: listings.subject }).from(listings).all();
 		for (const l of ls) listingMap[l.id] = l.subject;
 	}
 
+	// Fetch aliases for user-targeted reports
+	const targetUserIds = [...new Set(rows.filter((r) => r.targetType === 'user').map((r) => r.targetId))];
+	const targetAliasMap: Record<string, string> = {};
+	if (targetUserIds.length > 0) {
+		const profiles = await db.select({ id: userProfiles.id, alias: userProfiles.alias }).from(userProfiles).all();
+		for (const p of profiles) targetAliasMap[p.id] = p.alias ?? 'Unknown';
+	}
+
 	return {
-		reports: rows.map((r) => ({ ...r, listingSubject: r.targetType === 'listing' ? (listingMap[r.targetId] ?? null) : null })),
+		reports: rows.map((r) => ({
+			...r,
+			listingSubject: r.targetType === 'listing' ? (listingMap[r.targetId] ?? null) : null,
+			targetAlias: r.targetType === 'user' ? (targetAliasMap[r.targetId] ?? null) : null
+		})),
 		status
 	};
 };
@@ -147,5 +158,130 @@ export const actions: Actions = {
 		});
 
 		return { success: true, action: 'listing_removed' };
+	},
+
+	flagListing: async ({ request, locals, platform }) => {
+		if (!locals.user) return fail(401, { error: 'Unauthorized' });
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const data = await request.formData();
+		const reportId = data.get('reportId') as string;
+		const listingId = data.get('listingId') as string;
+		const notes = (data.get('notes') as string)?.trim() || null;
+
+		const db = getDb(env.DB);
+
+		const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
+		if (!report) return fail(404, { error: 'Report not found' });
+
+		const listing = await db.select({ userId: listings.userId, subject: listings.subject }).from(listings).where(eq(listings.id, listingId)).get();
+		if (!listing) return fail(404, { error: 'Listing not found' });
+
+		await db.update(listings).set({ status: 'flagged' }).where(eq(listings.id, listingId));
+		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+
+		await db.insert(moderationActions).values({
+			id: crypto.randomUUID(),
+			actorId: locals.user.id,
+			targetType: 'listing',
+			targetId: listingId,
+			actionType: 'restrict',
+			reason: notes ?? 'No reason given',
+			reportId
+		});
+
+		// Notify the listing owner
+		const owner = await db.select({ email: user.email }).from(user).where(eq(user.id, listing.userId)).get();
+		if (owner?.email) {
+			sendEmail({
+				to: owner.email,
+				subject: 'Your listing has been suspended',
+				html: listingFlaggedEmail(listing.subject, notes),
+				apiKey: env.RESEND_API_KEY
+			}).catch((e) => console.error('Failed to send suspension email:', e));
+		}
+
+		return { success: true, action: 'listing_flagged' };
+	},
+
+	banUserFromListing: async ({ request, locals, platform }) => {
+		if (!locals.user) return fail(401, { error: 'Unauthorized' });
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const data = await request.formData();
+		const reportId = data.get('reportId') as string;
+		const listingId = data.get('listingId') as string;
+		const notes = (data.get('notes') as string)?.trim() || null;
+
+		const db = getDb(env.DB);
+
+		const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
+		if (!report) return fail(404, { error: 'Report not found' });
+
+		const listing = await db.select({ userId: listings.userId }).from(listings).where(eq(listings.id, listingId)).get();
+		if (!listing) return fail(404, { error: 'Listing not found' });
+
+		await db.update(userProfiles).set({ status: 'banned' }).where(eq(userProfiles.id, listing.userId));
+		await db.update(listings).set({ status: 'removed' }).where(and(eq(listings.userId, listing.userId), eq(listings.status, 'active')));
+		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+
+		await db.insert(moderationActions).values({
+			id: crypto.randomUUID(),
+			actorId: locals.user.id,
+			targetType: 'user',
+			targetId: listing.userId,
+			actionType: 'ban',
+			reason: notes ?? 'No reason given',
+			reportId
+		});
+
+		return { success: true, action: 'banned' };
+	},
+
+	warn: async ({ request, locals, platform }) => {
+		if (!locals.user) return fail(401, { error: 'Unauthorized' });
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const data = await request.formData();
+		const reportId = data.get('reportId') as string;
+		const targetUserId = data.get('targetUserId') as string;
+		const notes = (data.get('notes') as string)?.trim() || null;
+
+		const db = getDb(env.DB);
+
+		const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
+		if (!report) return fail(404, { error: 'Report not found' });
+
+		await db.update(userProfiles)
+			.set({ warningIssued: true, warningIssuedAt: new Date() })
+			.where(eq(userProfiles.id, targetUserId));
+
+		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+
+		await db.insert(moderationActions).values({
+			id: crypto.randomUUID(),
+			actorId: locals.user.id,
+			targetType: 'user',
+			targetId: targetUserId,
+			actionType: 'warn',
+			reason: notes ?? 'No reason given',
+			reportId
+		});
+
+		// Notify the warned user
+		const warnedUser = await db.select({ email: user.email }).from(user).where(eq(user.id, targetUserId)).get();
+		if (warnedUser?.email) {
+			sendEmail({
+				to: warnedUser.email,
+				subject: 'Warning issued on your Jaydslist account',
+				html: userWarnedEmail(notes),
+				apiKey: env.RESEND_API_KEY
+			}).catch((e) => console.error('Failed to send warning email:', e));
+		}
+
+		return { success: true, action: 'warned' };
 	}
 };

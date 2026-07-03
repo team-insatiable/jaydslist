@@ -153,6 +153,16 @@
 		<h1>Edit listing</h1>
 	</header>
 
+	{#if listing.status === 'flagged'}
+		<div class="flagged-notice">
+			<strong>Your listing has been suspended by a moderator.</strong>
+			{#if data.suspensionReason}
+				<br />Reason: {data.suspensionReason}
+			{/if}
+			<br />Edit it to address the issue, then save to reactivate it.
+		</div>
+	{/if}
+
 	{#if form?.error}
 		<p class="form-error">{form.error}</p>
 	{/if}
@@ -495,6 +505,17 @@
 
 	.soft-req-input { margin-bottom: 0.5rem; }
 	.soft-req-input:last-child { margin-bottom: 0; }
+
+	.flagged-notice {
+		background: color-mix(in srgb, #d97706 10%, transparent);
+		border: 1px solid color-mix(in srgb, #d97706 30%, transparent);
+		color: #d97706;
+		border-radius: 8px;
+		padding: 0.75rem 1rem;
+		font-size: 0.875rem;
+		margin-bottom: 1rem;
+		line-height: 1.5;
+	}
 
 	.save-bar {
 		display: flex;
