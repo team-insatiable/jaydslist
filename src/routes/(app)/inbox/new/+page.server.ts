@@ -114,22 +114,20 @@ export const actions: Actions = {
 
 		const threadId = crypto.randomUUID();
 
-		await db.transaction(async (tx) => {
-			await tx.insert(conversationThreads).values({
-				id: threadId,
-				listingId,
-				initiatorId: userId,
-				posterId: listing.userId,
-				status: 'open',
-				lastActivityAt: new Date()
-			});
-			await tx.insert(messages).values({
-				id: crypto.randomUUID(),
-				threadId,
-				senderId: userId,
-				body,
-				sentAt: new Date()
-			});
+		await db.insert(conversationThreads).values({
+			id: threadId,
+			listingId,
+			initiatorId: userId,
+			posterId: listing.userId,
+			status: 'open',
+			lastActivityAt: new Date()
+		});
+		await db.insert(messages).values({
+			id: crypto.randomUUID(),
+			threadId,
+			senderId: userId,
+			body,
+			sentAt: new Date()
 		});
 
 		throw redirect(303, `/inbox/${threadId}`);
