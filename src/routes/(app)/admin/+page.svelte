@@ -116,6 +116,7 @@
 							{#if data.status === 'pending'}
 								<div class="notes-row">
 									<textarea
+										id="notes-{report.id}"
 										placeholder="Reviewer notes (optional)"
 										bind:value={notes[report.id]}
 										rows="2"
