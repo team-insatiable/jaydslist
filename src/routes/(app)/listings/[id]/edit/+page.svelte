@@ -156,7 +156,10 @@
 	{#if listing.status === 'flagged'}
 		<div class="flagged-notice">
 			<strong>Your listing has been suspended by a moderator.</strong>
-			Edit it to address the issue, then save to reactivate it.
+			{#if data.suspensionReason}
+				<br />Reason: {data.suspensionReason}
+			{/if}
+			<br />Edit it to address the issue, then save to reactivate it.
 		</div>
 	{/if}
 
