@@ -6,9 +6,10 @@ import {
 	listingRequirements,
 	relativeTermDefinitions,
 	listingEvents,
-	userProfiles
+	userProfiles,
+	moderationActions
 } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other', 'couple'];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
@@ -51,6 +52,17 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		db.select().from(relativeTermDefinitions).where(eq(relativeTermDefinitions.listingId, params.id)).all()
 	]);
 
+	let suspensionReason: string | null = null;
+	if (listing.status === 'flagged') {
+		const action = await db
+			.select({ reason: moderationActions.reason })
+			.from(moderationActions)
+			.where(and(eq(moderationActions.targetId, params.id), eq(moderationActions.actionType, 'restrict')))
+			.orderBy(desc(moderationActions.createdAt))
+			.get();
+		suspensionReason = action?.reason ?? null;
+	}
+
 	const hardReqs = reqs.filter((r) => r.type === 'hard');
 	const softReqs = reqs.filter((r) => r.type === 'soft');
 
@@ -67,6 +79,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			ageRangeMin: listing.ageRangeMin,
 			ageRangeMax: listing.ageRangeMax
 		},
+		suspensionReason,
 		requirements: {
 			ageMin: hardReqs.find((r) => r.field === 'age_min')?.value ?? null,
 			ageMax: hardReqs.find((r) => r.field === 'age_max')?.value ?? null,
