@@ -64,7 +64,7 @@
 		</div>
 
 		<label class="remember-row">
-			<input type="checkbox" bind:checked={rememberMe} />
+			<input type="checkbox" bind:checked={rememberMe} autocomplete="off" />
 			Remember me
 		</label>
 
