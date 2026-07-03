@@ -18,9 +18,9 @@
 	let photoPreviewUrl = $state<string | null>(null);
 	let photoUploading = $state(false);
 	let photoError = $state('');
-	let fileInputEl: HTMLInputElement;
+	let fileInputEl = $state<HTMLInputElement | null>(null);
 
-	const minLength = data.minLength;
+	const minLength = $derived(data.minLength);
 
 	async function handleFileSelect(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
@@ -54,6 +54,10 @@
 		photoPreviewUrl = null;
 		photoError = '';
 		if (fileInputEl) fileInputEl.value = '';
+	}
+
+	function triggerFilePicker() {
+		fileInputEl?.click();
 	}
 
 	function formatTime(date: Date | string | null): string {
@@ -139,7 +143,7 @@
 				<div class="bubble-wrap {msg.isMine ? 'mine' : 'theirs'}">
 					<div class="bubble" class:bubble-photo={msg.cfImageUrl}>
 						{#if msg.cfImageUrl}
-							<img class="msg-photo" src={msg.cfImageUrl} alt="Photo" loading="lazy" />
+							<img class="msg-photo" src={msg.cfImageUrl} alt="" loading="lazy" />
 						{/if}
 						{#if msg.body}
 							<p class="bubble-body">{msg.body}</p>
@@ -256,7 +260,7 @@
 			{/if}
 			{#if photoPreviewUrl}
 				<div class="photo-preview">
-					<img src={photoPreviewUrl} alt="Photo to send" />
+					<img src={photoPreviewUrl} alt="" />
 					<button type="button" class="photo-remove" onclick={clearPhoto} aria-label="Remove photo">
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 							<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -272,7 +276,7 @@
 					type="file"
 					accept="image/*"
 					class="file-input"
-					bind:this={fileInputEl}
+					bind:this={fileInputEl as HTMLInputElement}
 					onchange={handleFileSelect}
 					disabled={sending || photoUploading}
 					aria-label="Attach photo"
@@ -280,7 +284,7 @@
 				<button
 					type="button"
 					class="photo-btn"
-					onclick={() => fileInputEl.click()}
+					onclick={triggerFilePicker}
 					disabled={sending || photoUploading || !!photoId}
 					aria-label="Attach photo"
 					aria-busy={photoUploading}
