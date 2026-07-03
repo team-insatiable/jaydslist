@@ -218,12 +218,17 @@
 		display: flex;
 		gap: 0.75rem;
 		align-items: stretch;
+		width: 100%;
+	}
+
+	.browse-controls .view-toggle {
+		margin-left: auto;
 	}
 
 	.browse-controls select {
 		width: auto;
 		font-size: 0.875rem;
-		padding: 0.4rem 0.75rem;
+		padding: 0.4rem 2rem 0.4rem 0.75rem;
 	}
 
 	/* Empty state */

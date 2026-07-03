@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { tick } from 'svelte';
+	import { browser } from '$app/environment';
+
+	$effect(() => {
+		if (!browser) return;
+		document.body.style.overflow = 'hidden';
+		return () => { document.body.style.overflow = ''; };
+	});
 
 	let { data } = $props();
 
@@ -359,6 +366,7 @@
 		display: flex;
 		flex-direction: column;
 		height: calc(100dvh - 120px);
+		overflow: hidden;
 	}
 
 	.thread-header {
@@ -515,9 +523,10 @@
 
 	.bubble-wrap.mine .bubble {
 		background: var(--pico-primary);
-		color: white;
+		color: white !important;
 		border-bottom-right-radius: 4px;
 	}
+
 
 	.bubble-wrap.theirs .bubble {
 		background: var(--pico-card-background-color);
@@ -528,6 +537,11 @@
 	.bubble-body {
 		margin: 0;
 		white-space: pre-wrap;
+		color: inherit;
+	}
+
+	.bubble-wrap.mine .bubble-body {
+		color: white !important;
 	}
 
 	.bubble-photo {

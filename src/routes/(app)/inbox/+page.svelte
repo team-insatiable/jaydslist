@@ -76,12 +76,15 @@
 	}
 
 	.thread-row {
+		list-style: none;
 		border: 1px solid var(--pico-muted-border-color);
 		border-radius: 10px;
 		margin-bottom: 0.6rem;
 		background: var(--pico-card-background-color);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 		transition: border-color 0.15s;
 	}
+
 
 	.thread-row.unread {
 		border-color: var(--pico-primary);

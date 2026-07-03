@@ -152,6 +152,12 @@
 		--pico-primary-inverse: #fff;
 	}
 
+	@media (prefers-color-scheme: light) {
+		:global(body) {
+			background: #f0f2f5;
+		}
+	}
+
 	:global(body) {
 		display: flex;
 		flex-direction: column;
@@ -269,21 +275,23 @@
 		width: 36px;
 		height: 36px;
 		padding: 6px;
-		background: none;
-		border: none;
+		background: none !important;
+		border: none !important;
+		box-shadow: none !important;
 		cursor: pointer;
 		border-radius: 6px;
+		color: var(--pico-muted-color) !important;
 	}
 
 	.hamburger:hover {
-		background: var(--pico-muted-background-color);
+		background: var(--pico-muted-background-color) !important;
 	}
 
 	.hamburger span {
 		display: block;
 		height: 2px;
 		width: 100%;
-		background: var(--pico-color);
+		background: currentColor;
 		border-radius: 2px;
 	}
 
