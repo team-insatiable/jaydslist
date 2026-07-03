@@ -36,7 +36,12 @@
 		<ul class="desktop-nav">
 			<li><a href={resolve('/browse')}>Browse</a></li>
 			<li><a href={resolve('/post')}>Post an ad</a></li>
-			<li><a href={resolve('/inbox')}>Inbox</a></li>
+			<li>
+				<a href={resolve('/inbox')} class="inbox-link">
+					Inbox
+					{#if data.unreadCount > 0}<span class="badge">{data.unreadCount}</span>{/if}
+				</a>
+			</li>
 			<li><a href={resolve('/profile')}>Profile</a></li>
 			<li>
 				{#if data.user}
@@ -80,6 +85,7 @@
 				<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
 			</svg>
 			Inbox
+			{#if data.unreadCount > 0}<span class="badge">{data.unreadCount}</span>{/if}
 		</a>
 		<a href={resolve('/profile')} class="drawer-item" onclick={closeMenu}>
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -113,7 +119,10 @@
 		<span>Post</span>
 	</a>
 	<a href={resolve('/inbox')} class="tab-item" class:active={active('/inbox')}>
-		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+		<span class="tab-icon-wrap">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+			{#if data.unreadCount > 0}<span class="badge">{data.unreadCount}</span>{/if}
+		</span>
 		<span>Inbox</span>
 	</a>
 	<a href={resolve('/profile')} class="tab-item" class:active={active('/profile')}>
@@ -461,6 +470,42 @@
 	.tab-item:hover {
 		color: var(--pico-color);
 		text-decoration: none;
+	}
+
+	/* ── Unread badge ── */
+	.badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 18px;
+		height: 18px;
+		padding: 0 4px;
+		background: var(--pico-primary);
+		color: #fff;
+		border-radius: 999px;
+		font-size: 0.65rem;
+		font-weight: 700;
+		line-height: 1;
+	}
+
+	.inbox-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.tab-icon-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+
+	.tab-icon-wrap .badge {
+		position: absolute;
+		top: -4px;
+		right: -6px;
+		min-width: 15px;
+		height: 15px;
+		font-size: 0.6rem;
 	}
 
 	/* ── Footer — hidden on mobile ── */
