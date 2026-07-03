@@ -82,6 +82,7 @@
 		</div>
 		<div class="browse-controls">
 			<select
+				name="nature"
 				aria-label="Nature of connection"
 				value={data.natureFilter ?? 'all'}
 				onchange={(e) => setFilter('nature', (e.currentTarget as HTMLSelectElement).value)}
@@ -94,6 +95,7 @@
 				<option value="open">Open to anything</option>
 			</select>
 			<select
+				name="radius"
 				aria-label="Radius"
 				value={data.radius}
 				onchange={(e) => setFilter('radius', (e.currentTarget as HTMLSelectElement).value)}

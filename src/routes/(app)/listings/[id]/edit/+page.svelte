@@ -290,8 +290,8 @@
 							<div class="age-fill" style="left:{minPct}%; right:{100-maxPct}%"></div>
 							<div class="age-thumb" style="left:{minPct}%"></div>
 							<div class="age-thumb" style="left:{maxPct}%"></div>
-							<input type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMinNum} oninput={clampMin} class="range-input range-min" />
-							<input type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMaxNum} oninput={clampMax} class="range-input range-max" />
+							<input id="age-min-range" type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMinNum} oninput={clampMin} class="range-input range-min" />
+							<input id="age-max-range" type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMaxNum} oninput={clampMax} class="range-input range-max" />
 						</div>
 						<div class="age-labels"><span>{ageMinNum}</span><span>{ageMaxNum}</span></div>
 					</div>
