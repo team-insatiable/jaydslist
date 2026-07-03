@@ -22,6 +22,7 @@ declare namespace Cloudflare {
 		CONTACT_ENCRYPTION_KEY: string;
 		DEV_BYPASS_OTP: string;
 		RESEND_API_KEY: string;
+		ADMIN_EMAILS: string;
 	}
 }
 interface Env extends Cloudflare.Env {}
