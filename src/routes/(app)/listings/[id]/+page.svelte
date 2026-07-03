@@ -13,6 +13,11 @@
 	const unavailable = $derived(data.unavailable);
 
 	let confirmingDelete = $state(false);
+	let showReportForm = $state(false);
+	let reportCategory = $state('');
+	let reportDetail = $state('');
+	let reportSubmitting = $state(false);
+	let reportDone = $state(false);
 
 	const IDENTITY_LABELS: Record<string, string> = {
 		man: 'Man',
@@ -285,6 +290,42 @@
 				<p class="login-hint">Already have an account? <a href={resolve('/login')}>Sign in</a></p>
 			{/if}
 		</div>
+
+		{#if isLoggedIn && !isOwner}
+			<div class="report-section">
+				{#if reportDone}
+					<p class="report-done">Report submitted. Our moderation team will review it.</p>
+				{:else if showReportForm}
+					<form method="POST" action="?/report" use:enhance={() => {
+						reportSubmitting = true;
+						return async ({ result, update }) => {
+							reportSubmitting = false;
+							if (result.type === 'success') { reportDone = true; showReportForm = false; }
+							await update();
+						};
+					}} class="report-form">
+						<p class="report-form-title">Report this listing</p>
+						<select name="category" bind:value={reportCategory} required>
+							<option value="" disabled>Select a reason…</option>
+							<option value="spam">Spam</option>
+							<option value="fake_profile">Fake profile</option>
+							<option value="harassment">Harassment</option>
+							<option value="explicit_content">Explicit content</option>
+							<option value="other">Other</option>
+						</select>
+						<textarea name="detail" bind:value={reportDetail} placeholder="Additional details (optional)" rows="3"></textarea>
+						<div class="report-actions">
+							<button type="button" class="report-cancel" onclick={() => showReportForm = false}>Cancel</button>
+							<button type="submit" class="report-submit" disabled={!reportCategory || reportSubmitting} aria-busy={reportSubmitting}>
+								Submit report
+							</button>
+						</div>
+					</form>
+				{:else}
+					<button type="button" class="report-link" onclick={() => showReportForm = true}>Report this listing</button>
+				{/if}
+			</div>
+		{/if}
 	</div>
 	{/if}
 </div>
@@ -609,6 +650,77 @@
 		margin-top: 0.75rem;
 		font-size: 0.875rem;
 		color: var(--pico-muted-color);
+	}
+
+	.report-section {
+		margin-top: 1.5rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--pico-muted-border-color);
+	}
+
+	.report-link {
+		background: none;
+		border: none;
+		padding: 0;
+		font-size: 0.78rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		font-family: inherit;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	.report-link:hover { color: var(--pico-del-color); }
+
+	.report-form-title {
+		font-size: 0.875rem;
+		font-weight: 600;
+		margin-bottom: 0.75rem;
+	}
+
+	.report-form select, .report-form textarea {
+		margin-bottom: 0.5rem;
+		font-size: 0.875rem;
+	}
+
+	.report-form textarea { resize: vertical; }
+
+	.report-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+	}
+
+	.report-cancel {
+		background: none;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 6px;
+		padding: 0.4rem 1rem;
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+	}
+
+	.report-submit {
+		background: color-mix(in srgb, var(--pico-del-color) 15%, transparent);
+		color: var(--pico-del-color);
+		border: 1px solid color-mix(in srgb, var(--pico-del-color) 30%, transparent);
+		border-radius: 6px;
+		padding: 0.4rem 1rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+	}
+
+	.report-done {
+		font-size: 0.8rem;
+		color: var(--pico-ins-color);
 	}
 
 	.owner-toolbar {

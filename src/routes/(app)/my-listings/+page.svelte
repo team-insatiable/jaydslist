@@ -74,7 +74,7 @@
 	{:else}
 		<ul class="listings-list">
 			{#each visibleListings as listing}
-				<li class="listing-item">
+				<li class="listing-item" class:flagged={listing.status === 'flagged'}>
 					<a href={resolve(`/listings/${listing.id}`)} class="listing-link">
 						<div class="listing-top">
 							<span class="listing-subject">{listing.subject}</span>
@@ -96,6 +96,11 @@
 							{/if}
 						</div>
 					</a>
+					{#if listing.status === 'flagged'}
+						<div class="flagged-bar">
+							Suspended by moderator — <a href={resolve(`/listings/${listing.id}/edit`)}>Edit to reactivate</a>
+						</div>
+					{/if}
 				</li>
 			{/each}
 		</ul>
@@ -271,8 +276,25 @@
 	}
 
 	.status-flagged {
-		background: color-mix(in srgb, var(--pico-del-color) 12%, transparent);
-		color: var(--pico-del-color);
+		background: color-mix(in srgb, #d97706 12%, transparent);
+		color: #d97706;
+	}
+
+	.listing-item.flagged {
+		border-color: color-mix(in srgb, #d97706 40%, transparent);
+	}
+
+	.flagged-bar {
+		padding: 0.5rem 1.125rem;
+		font-size: 0.78rem;
+		color: #d97706;
+		border-top: 1px solid color-mix(in srgb, #d97706 20%, transparent);
+		background: color-mix(in srgb, #d97706 5%, transparent);
+	}
+
+	.flagged-bar a {
+		color: #d97706;
+		font-weight: 600;
 	}
 
 	.listing-meta {
