@@ -278,6 +278,8 @@
 					<div class="age-range">
 						<div class="age-track">
 							<div class="age-fill" style="left:{minPct}%; right:{100-maxPct}%"></div>
+							<div class="age-thumb" style="left:{minPct}%"></div>
+							<div class="age-thumb" style="left:{maxPct}%"></div>
 							<input type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMinNum} oninput={clampMin} class="range-input range-min" />
 							<input type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMaxNum} oninput={clampMax} class="range-input range-max" />
 						</div>
@@ -456,6 +458,19 @@
 		border-radius: 2px;
 	}
 
+	.age-thumb {
+		position: absolute;
+		width: 18px;
+		height: 18px;
+		background: var(--pico-primary);
+		border: 2px solid var(--pico-background-color);
+		border-radius: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		pointer-events: none;
+		box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+	}
+
 	.range-input {
 		position: absolute;
 		width: 100%;
@@ -465,7 +480,11 @@
 		cursor: pointer;
 		margin: 0;
 		padding: 0;
+		pointer-events: none;
 	}
+
+	.range-input::-webkit-slider-thumb { pointer-events: all; }
+	.range-input::-moz-range-thumb { pointer-events: all; }
 
 	.age-labels {
 		display: flex;
@@ -483,6 +502,11 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 1rem 0 2rem;
+	}
+
+	.save-bar button {
+		width: auto;
+		margin: 0;
 	}
 
 	.cancel-btn {
