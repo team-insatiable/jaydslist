@@ -50,7 +50,9 @@
 	{#if form?.success}
 		<div class="toast">
 			{#if form.action === 'banned'}User banned and listings removed.
-			{:else if form.action === 'listing_removed'}Listing removed.
+			{:else if form.action === 'listing_flagged'}Listing suspended — user must edit to reactivate.
+			{:else if form.action === 'listing_removed'}Listing permanently removed.
+			{:else if form.action === 'warned'}Warning issued to user.
 			{:else if form.action === 'dismissed'}Report dismissed.
 			{/if}
 		</div>
@@ -121,57 +123,72 @@
 								</div>
 
 								<div class="action-row">
-									<!-- Dismiss -->
+									<!-- Dismiss (always available) -->
 									<form method="POST" action="?/dismiss" use:enhance={() => {
 										submitting = report.id + '_dismiss';
-										return async ({ result, update }) => {
-											submitting = null;
-											await update();
-											await invalidateAll();
-										};
+										return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
 									}}>
 										<input type="hidden" name="reportId" value={report.id} />
 										<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-										<button type="submit" class="btn-dismiss" disabled={submitting !== null} aria-busy={submitting === report.id + '_dismiss'}>
-											Dismiss
-										</button>
+										<button type="submit" class="btn-dismiss" disabled={submitting !== null} aria-busy={submitting === report.id + '_dismiss'}>Dismiss</button>
 									</form>
 
 									{#if report.targetType === 'listing'}
-										<!-- Remove listing -->
-										<form method="POST" action="?/removeListing" use:enhance={() => {
-											submitting = report.id + '_remove';
-											return async ({ result, update }) => {
-												submitting = null;
-												await update();
-												await invalidateAll();
-											};
+										<!-- Flag listing (suspend, user must edit to reactivate) -->
+										<form method="POST" action="?/flagListing" use:enhance={() => {
+											submitting = report.id + '_flag';
+											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
 										}}>
 											<input type="hidden" name="reportId" value={report.id} />
 											<input type="hidden" name="listingId" value={report.targetId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-											<button type="submit" class="btn-warn" disabled={submitting !== null} aria-busy={submitting === report.id + '_remove'}>
-												Remove Listing
-											</button>
+											<button type="submit" class="btn-warn" disabled={submitting !== null} aria-busy={submitting === report.id + '_flag'}>Suspend Listing</button>
+										</form>
+
+										<!-- Remove listing (permanent) -->
+										<form method="POST" action="?/removeListing" use:enhance={() => {
+											submitting = report.id + '_remove';
+											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
+										}}>
+											<input type="hidden" name="reportId" value={report.id} />
+											<input type="hidden" name="listingId" value={report.targetId} />
+											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
+											<button type="submit" class="btn-ban" disabled={submitting !== null} aria-busy={submitting === report.id + '_remove'}>Remove Listing</button>
+										</form>
+
+										<!-- Ban the listing's author -->
+										<form method="POST" action="?/banUserFromListing" use:enhance={() => {
+											submitting = report.id + '_banauthor';
+											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
+										}}>
+											<input type="hidden" name="reportId" value={report.id} />
+											<input type="hidden" name="listingId" value={report.targetId} />
+											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
+											<button type="submit" class="btn-ban" disabled={submitting !== null} aria-busy={submitting === report.id + '_banauthor'}>Ban Author</button>
 										</form>
 									{/if}
 
-									<!-- Ban user — need to resolve which user to ban -->
 									{#if report.targetType === 'user'}
-										<form method="POST" action="?/ban" use:enhance={() => {
-											submitting = report.id + '_ban';
-											return async ({ result, update }) => {
-												submitting = null;
-												await update();
-												await invalidateAll();
-											};
+										<!-- Warn user -->
+										<form method="POST" action="?/warn" use:enhance={() => {
+											submitting = report.id + '_warn';
+											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
 										}}>
 											<input type="hidden" name="reportId" value={report.id} />
 											<input type="hidden" name="targetUserId" value={report.targetId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-											<button type="submit" class="btn-ban" disabled={submitting !== null} aria-busy={submitting === report.id + '_ban'}>
-												Ban User
-											</button>
+											<button type="submit" class="btn-warn" disabled={submitting !== null} aria-busy={submitting === report.id + '_warn'}>Warn User</button>
+										</form>
+
+										<!-- Ban user -->
+										<form method="POST" action="?/ban" use:enhance={() => {
+											submitting = report.id + '_ban';
+											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
+										}}>
+											<input type="hidden" name="reportId" value={report.id} />
+											<input type="hidden" name="targetUserId" value={report.targetId} />
+											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
+											<button type="submit" class="btn-ban" disabled={submitting !== null} aria-busy={submitting === report.id + '_ban'}>Ban User</button>
 										</form>
 									{/if}
 								</div>
