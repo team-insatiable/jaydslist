@@ -172,6 +172,30 @@ export const actions: Actions = {
 		await db.insert(messages).values({ id: crypto.randomUUID(), threadId: params.threadId, senderId: userId, body, sentAt: new Date() });
 		await db.update(conversationThreads).set({ lastActivityAt: new Date() }).where(eq(conversationThreads.id, params.threadId));
 
+		// If the poster is sending their first reply, increment respondedThreads
+		if (userId === thread.posterId) {
+			const priorPosterMessages = await db
+				.select({ id: messages.id })
+				.from(messages)
+				.where(and(eq(messages.threadId, params.threadId), eq(messages.senderId, userId)))
+				.all();
+			// priorPosterMessages now includes the one just inserted — first reply means count === 1
+			if (priorPosterMessages.length === 1) {
+				const profile = await db
+					.select({ totalThreads: userProfiles.totalThreads, respondedThreads: userProfiles.respondedThreads })
+					.from(userProfiles)
+					.where(eq(userProfiles.id, userId))
+					.get();
+				if (profile) {
+					const newResponded = profile.respondedThreads + 1;
+					const rate = profile.totalThreads > 0 ? newResponded / profile.totalThreads : 0;
+					await db.update(userProfiles)
+						.set({ respondedThreads: newResponded, responseRate: rate })
+						.where(eq(userProfiles.id, userId));
+				}
+			}
+		}
+
 		return { success: true };
 	},
 

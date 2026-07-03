@@ -1,7 +1,8 @@
 import type { LayoutServerLoad } from './$types';
 import { requirePhoneVerifiedRedirect } from '$lib/server/guards/requirePhoneVerified';
 import { getDb } from '$lib/server/db';
-import { messages, conversationThreads } from '$lib/server/db/schema';
+import { messages, conversationThreads, userProfiles, DEFAULT_CONFIG } from '$lib/server/db/schema';
+import { user as authUser } from '$lib/server/db/auth.schema';
 import { eq, and, isNull, ne } from 'drizzle-orm';
 
 export const load: LayoutServerLoad = async ({ locals, platform }) => {
@@ -44,6 +45,28 @@ export const load: LayoutServerLoad = async ({ locals, platform }) => {
 			.all();
 
 		unreadCount = unread.length + unreadAsInitiator.length;
+
+		// Lazy trust tier promotion
+		const profile = await db
+			.select({ trustTier: userProfiles.trustTier, warningIssued: userProfiles.warningIssued, status: userProfiles.status, responseRate: userProfiles.responseRate })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, locals.user.id))
+			.get();
+
+		if (profile && profile.status === 'active' && !profile.warningIssued) {
+			const userRow = await db.select({ createdAt: authUser.createdAt }).from(authUser).where(eq(authUser.id, locals.user.id)).get();
+			if (userRow?.createdAt) {
+				const ageDays = (Date.now() - new Date(userRow.createdAt).getTime()) / 86400000;
+				const establishedDays = parseInt(DEFAULT_CONFIG.TRUST_TIER_ESTABLISHED_DAYS);
+				const trustedDays = parseInt(DEFAULT_CONFIG.TRUST_TIER_TRUSTED_DAYS);
+
+				if (profile.trustTier === 'new' && ageDays >= establishedDays) {
+					await db.update(userProfiles).set({ trustTier: 'established' }).where(eq(userProfiles.id, locals.user.id));
+				} else if (profile.trustTier === 'established' && ageDays >= trustedDays && profile.responseRate >= 0.5) {
+					await db.update(userProfiles).set({ trustTier: 'trusted' }).where(eq(userProfiles.id, locals.user.id));
+				}
+			}
+		}
 	}
 
 	return { user: locals.user, unreadCount };
