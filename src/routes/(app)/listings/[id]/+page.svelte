@@ -151,7 +151,7 @@
 			<span class="time">{timeAgo(listing.lastBumpedAt)}</span>
 		</div>
 
-		<!-- Nature + mood chips -->
+		<!-- Nature + mood + seeking chips -->
 		<div class="chips">
 			{#each listing.natureOfConnection as n}
 				<span class="chip chip-nature">{NATURE_LABELS[n] ?? n}</span>
@@ -159,20 +159,10 @@
 			{#if listing.mood}
 				<span class="chip chip-mood">{MOOD_LABELS[listing.mood] ?? listing.mood}</span>
 			{/if}
-		</div>
-
-		<!-- Seeking info -->
-		<div class="seeking-row">
-			<span class="seeking-label">Seeking</span>
-			<span class="seeking-val">{seekingLabel}</span>
-			{#if listing.ageRangeMin || listing.ageRangeMax}
-				<span class="seeking-age">
-					{#if listing.ageRangeMin && listing.ageRangeMax}
-						ages {listing.ageRangeMin}–{listing.ageRangeMax}
-					{:else if listing.ageRangeMin}
-						{listing.ageRangeMin}+
-					{:else}
-						up to {listing.ageRangeMax}
+			{#if seekingLabel !== 'Anyone'}
+				<span class="chip chip-seeking">
+					Seeking {seekingLabel}{#if listing.ageRangeMin || listing.ageRangeMax}&nbsp;
+						{#if listing.ageRangeMin && listing.ageRangeMax}· {listing.ageRangeMin}–{listing.ageRangeMax}{:else if listing.ageRangeMin}· {listing.ageRangeMin}+{:else}· –{listing.ageRangeMax}{/if}
 					{/if}
 				</span>
 			{/if}
@@ -466,34 +456,9 @@
 		color: var(--pico-muted-color);
 	}
 
-	.seeking-row {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 0.35rem;
-		margin-bottom: 1.25rem;
-		padding: 0.75rem 1rem;
+	.chip-seeking {
 		background: var(--pico-muted-background-color);
-		border-radius: 8px;
-		font-size: 0.875rem;
-	}
-
-	.seeking-label {
-		font-weight: 600;
 		color: var(--pico-muted-color);
-		text-transform: uppercase;
-		font-size: 0.72rem;
-		letter-spacing: 0.06em;
-	}
-
-	.seeking-val {
-		font-weight: 500;
-		color: var(--pico-color);
-	}
-
-	.seeking-age {
-		color: var(--pico-muted-color);
-		font-size: 0.8rem;
 	}
 
 	.listing-body {
