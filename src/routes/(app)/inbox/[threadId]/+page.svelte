@@ -8,6 +8,11 @@
 	let sending = $state(false);
 	let sendError = $state('');
 	let exchangeWorking = $state(false);
+	let showReportMenu = $state(false);
+	let reportCategory = $state('');
+	let reportDetail = $state('');
+	let reportSubmitting = $state(false);
+	let reportDone = $state(false);
 
 	const minLength = data.minLength;
 
@@ -45,7 +50,46 @@
 			<a href="/listings/{data.thread.listingId}" class="listing-link">{data.thread.listingSubject}</a>
 			<span class="other-alias">{data.otherAlias}</span>
 		</div>
+		<button class="more-btn" onclick={() => showReportMenu = !showReportMenu} type="button" aria-label="More options">
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+		</button>
 	</header>
+
+	{#if showReportMenu}
+		<div class="report-panel">
+			{#if reportDone}
+				<p class="report-done">Report submitted. Our moderation team will review it.</p>
+			{:else}
+				<p class="report-panel-title">Report {data.otherAlias}</p>
+				<form method="POST" action="?/report" use:enhance={() => {
+					reportSubmitting = true;
+					return async ({ result, update }) => {
+						reportSubmitting = false;
+						if (result.type === 'success') { reportDone = true; }
+						await update();
+					};
+				}}>
+					<input type="hidden" name="targetUserId" value={data.otherUserId} />
+					<select name="category" bind:value={reportCategory} required>
+						<option value="" disabled>Select a reason…</option>
+						<option value="harassment">Harassment</option>
+						<option value="spam">Spam</option>
+						<option value="fake_profile">Fake profile</option>
+						<option value="explicit_content">Unsolicited explicit content</option>
+						<option value="unsolicited_dm">Unsolicited DM pattern</option>
+						<option value="other">Other</option>
+					</select>
+					<textarea name="detail" bind:value={reportDetail} placeholder="Additional details (optional)" rows="2"></textarea>
+					<div class="report-actions">
+						<button type="button" class="report-cancel" onclick={() => showReportMenu = false}>Cancel</button>
+						<button type="submit" class="report-submit" disabled={!reportCategory || reportSubmitting} aria-busy={reportSubmitting}>
+							Submit report
+						</button>
+					</div>
+				</form>
+			{/if}
+		</div>
+	{/if}
 
 	<div class="messages" bind:this={messagesEl}>
 		{#if data.messages.length === 0}
@@ -220,6 +264,81 @@
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
+		flex: 1;
+	}
+
+	.more-btn {
+		background: none;
+		border: none;
+		padding: 0.25rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		flex-shrink: 0;
+		margin-left: auto;
+	}
+
+	.more-btn:hover { color: var(--pico-color); }
+
+	.report-panel {
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 10px;
+		padding: 1rem;
+		margin-bottom: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.report-panel-title {
+		font-size: 0.875rem;
+		font-weight: 600;
+		margin-bottom: 0.75rem;
+	}
+
+	.report-panel select, .report-panel textarea {
+		margin-bottom: 0.5rem;
+		font-size: 0.875rem;
+	}
+
+	.report-panel textarea { resize: vertical; }
+
+	.report-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+	}
+
+	.report-cancel {
+		background: none;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 6px;
+		padding: 0.4rem 1rem;
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+	}
+
+	.report-submit {
+		background: color-mix(in srgb, var(--pico-del-color) 15%, transparent);
+		color: var(--pico-del-color);
+		border: 1px solid color-mix(in srgb, var(--pico-del-color) 30%, transparent);
+		border-radius: 6px;
+		padding: 0.4rem 1rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+	}
+
+	.report-done {
+		font-size: 0.8rem;
+		color: var(--pico-ins-color);
 	}
 
 	.listing-link {
