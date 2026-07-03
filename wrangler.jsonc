@@ -27,7 +27,8 @@
   "vars": {
     "ENVIRONMENT": "production",
     "DBBL_API_URL": "https://api.dbblprotocol.org",
-    "CF_IMAGES_ACCOUNT_ID": ""
+    "CF_IMAGES_ACCOUNT_ID": "2144e074fdf03e2888d83e6815af8b96",
+    "CF_IMAGES_ACCOUNT_HASH": "8VjAau7ob8PpQADLz9tf3Q"
     // CF_IMAGES_API_TOKEN goes in .dev.vars (secret)
     // ADMIN_EMAILS goes in .dev.vars (comma-separated list of admin email addresses)
   }
