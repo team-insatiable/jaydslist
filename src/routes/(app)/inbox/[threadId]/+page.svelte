@@ -50,8 +50,8 @@
 			<a href="/listings/{data.thread.listingId}" class="listing-link">{data.thread.listingSubject}</a>
 			<span class="other-alias">{data.otherAlias}</span>
 		</div>
-		<button class="more-btn" onclick={() => showReportMenu = !showReportMenu} type="button" aria-label="More options">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+		<button class="more-btn" onclick={() => showReportMenu = !showReportMenu} type="button" aria-label="Report user">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
 		</button>
 	</header>
 
