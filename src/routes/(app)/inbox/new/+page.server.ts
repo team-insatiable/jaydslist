@@ -9,6 +9,9 @@ import {
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { queryDbblScore, isBlockedByDbbl } from '$lib/server/dbbl';
+import { hashPhoneForDbbl, hashEmailForDbbl } from '$lib/server/phone';
+import { decryptContact } from '$lib/server/crypto';
 
 const CONTACT_INFO_PATTERN = /(\+?[\d\s\-().]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/i;
 
@@ -101,6 +104,47 @@ export const actions: Actions = {
 			.get();
 
 		if (existing) throw redirect(303, `/inbox/${existing.id}`);
+
+		// DBBL re-check before opening a new thread
+		const initiatorProfile = await db
+			.select({
+				encryptedPhone: userProfiles.encryptedPhone,
+				dbblRiskRating: userProfiles.dbblRiskRating
+			})
+			.from(userProfiles)
+			.where(eq(userProfiles.id, userId))
+			.get();
+
+		if (isBlockedByDbbl(initiatorProfile?.dbblRiskRating)) {
+			return fail(403, { error: 'Your account is not permitted to send messages at this time.' });
+		}
+
+		if (initiatorProfile?.encryptedPhone) {
+			try {
+				const phone = await decryptContact(initiatorProfile.encryptedPhone, env.CONTACT_ENCRYPTION_KEY);
+				const phoneHash = await hashPhoneForDbbl(phone);
+				const emailHash = await hashEmailForDbbl(locals.user.email);
+				const dbblResult = await queryDbblScore(phoneHash, emailHash, env);
+
+				if (dbblResult) {
+					await db
+						.update(userProfiles)
+						.set({
+							dbblRiskScore: dbblResult.score,
+							dbblRiskRating: dbblResult.rating,
+							dbblConfidence: dbblResult.confidence,
+							dbblLastCheckedAt: new Date()
+						})
+						.where(eq(userProfiles.id, userId));
+
+					if (isBlockedByDbbl(dbblResult.rating)) {
+						return fail(403, { error: 'Your account is not permitted to send messages at this time.' });
+					}
+				}
+			} catch (err) {
+				console.error('DBBL check failed at first message, failing open:', err);
+			}
+		}
 
 		const data = await request.formData();
 		const body = (data.get('body') as string)?.trim() ?? '';
