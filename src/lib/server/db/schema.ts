@@ -191,6 +191,15 @@ export const photoVault = sqliteTable(
 		userId: text('user_id')
 			.notNull()
 			.references(() => userProfiles.id, { onDelete: 'cascade' }),
+		// NOTE: the applied migration (0009) added this column via ALTER TABLE
+		// ADD COLUMN, which doesn't carry the ON DELETE clause through to the
+		// real D1 table — the live constraint is actually unconditional (no
+		// action). Don't rely on the DB to null this out on album deletion;
+		// the deleteAlbum action in src/routes/(app)/vault/+page.server.ts does
+		// it explicitly. Fixing the real constraint would need a full table
+		// rebuild, which isn't safely doable against live data since D1 doesn't
+		// honor PRAGMA foreign_keys=OFF across statements (see git history for
+		// the abandoned attempt).
 		albumId: text('album_id').references(() => photoAlbums.id, { onDelete: 'set null' }),
 		cfImageId: text('cf_image_id').notNull(),
 		pHash: text('p_hash'),

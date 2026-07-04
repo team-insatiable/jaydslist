@@ -4,7 +4,9 @@ import {
 	listings,
 	conversationThreads,
 	messages,
-	photoVault
+	photoVault,
+	photoAlbums,
+	listingPhotos
 } from '$lib/server/db/schema';
 
 export async function createTestUser(
@@ -35,7 +37,12 @@ export async function createTestUser(
 export async function createTestVaultPhoto(
 	db: D1Database,
 	userId: string,
-	overrides: Partial<{ id: string; cfImageId: string; deletedAt: Date }> = {}
+	overrides: Partial<{
+		id: string;
+		cfImageId: string;
+		deletedAt: Date;
+		albumId: string | null;
+	}> = {}
 ) {
 	const id = overrides.id ?? crypto.randomUUID();
 	await getDb(db)
@@ -44,7 +51,47 @@ export async function createTestVaultPhoto(
 			id,
 			userId,
 			cfImageId: overrides.cfImageId ?? `test-cf-image-${id}`,
-			deletedAt: overrides.deletedAt
+			deletedAt: overrides.deletedAt,
+			albumId: overrides.albumId
+		});
+	return id;
+}
+
+export async function createTestAlbum(
+	db: D1Database,
+	userId: string,
+	overrides: Partial<{ id: string; name: string }> = {}
+) {
+	const id = overrides.id ?? crypto.randomUUID();
+	await getDb(db)
+		.insert(photoAlbums)
+		.values({
+			id,
+			userId,
+			name: overrides.name ?? 'Test Album'
+		});
+	return id;
+}
+
+export async function createTestListingPhoto(
+	db: D1Database,
+	opts: {
+		listingId: string;
+		vaultPhotoId: string;
+		id?: string;
+		displayOrder?: number;
+		purgedAt?: Date;
+	}
+) {
+	const id = opts.id ?? crypto.randomUUID();
+	await getDb(db)
+		.insert(listingPhotos)
+		.values({
+			id,
+			listingId: opts.listingId,
+			vaultPhotoId: opts.vaultPhotoId,
+			displayOrder: opts.displayOrder ?? 0,
+			purgedAt: opts.purgedAt
 		});
 	return id;
 }

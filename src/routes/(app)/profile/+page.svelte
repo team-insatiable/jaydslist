@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data } = $props();
@@ -469,7 +470,10 @@
 					? Math.round(data.profile.responseRate * 100) + '%'
 					: '—'}
 			</dd>
+			<dt>Supporter</dt>
+			<dd>{data.profile?.isSupporter ? 'Active' : 'Not a supporter'}</dd>
 		</dl>
+		<a href={resolve('/vault')}>Manage your photo vault</a>
 	</section>
 </div>
 
