@@ -282,7 +282,9 @@
 	<!-- eslint-disable svelte/no-navigation-without-resolve -- /about and /rules aren't routes yet; tracked separately -->
 	<small
 		>© {new Date().getFullYear()} Jaydslist &mdash; <a href="/about">About</a> &mdash;
-		<a href="/rules">Rules</a></small
+		<a href="/rules">Rules</a> &mdash;
+		<a href={resolve('/terms')}>Terms</a> &mdash;
+		<a href={resolve('/privacy')}>Privacy</a></small
 	>
 	<!-- eslint-enable svelte/no-navigation-without-resolve -->
 </footer>
