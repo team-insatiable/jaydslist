@@ -258,6 +258,28 @@ export const relativeTermDefinitions = sqliteTable(
 	})
 );
 
+// The scannable vocabulary itself (not a listing's committed definitions — see
+// relativeTermDefinitions above). Deliberately not FK'd to relativeTermDefinitions:
+// deactivating/deleting a vocabulary term must never affect an already-published
+// listing's glossary, which references terms by raw string, not by row id.
+export const relativeTermsVocabulary = sqliteTable(
+	'relative_terms_vocabulary',
+	{
+		id: text('id').primaryKey(),
+		term: text('term').notNull(),
+		category: text('category').notNull(),
+		active: integer('active', { mode: 'boolean' }).notNull().default(true),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
+	},
+	(table) => ({
+		termUnique: uniqueIndex('vocab_term_unique').on(table.term),
+		categoryIdx: index('vocab_category_idx').on(table.category),
+		activeIdx: index('vocab_active_idx').on(table.active)
+	})
+);
+
 export const listingEvents = sqliteTable(
 	'listing_events',
 	{

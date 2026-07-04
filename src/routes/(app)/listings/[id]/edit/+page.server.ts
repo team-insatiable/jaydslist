@@ -9,6 +9,8 @@ import {
 	moderationActions
 } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { getActiveVocabulary } from '$lib/server/relative-terms.server';
+import { scanTerms } from '$lib/relative-terms';
 
 const VALID_IDENTITIES = [
 	'man',
@@ -78,6 +80,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 
 	const hardReqs = reqs.filter((r) => r.type === 'hard');
 	const softReqs = reqs.filter((r) => r.type === 'soft');
+	const vocabulary = await getActiveVocabulary(env.DB);
 
 	return {
 		listing: {
@@ -99,7 +102,8 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			trustTierMin: hardReqs.find((r) => r.field === 'trust_tier')?.value ?? 'new',
 			softPrompts: softReqs.map((r) => r.promptText).filter(Boolean) as string[]
 		},
-		termDefinitions: termDefs.map((t) => ({ term: t.term, definition: t.definition }))
+		termDefinitions: termDefs.map((t) => ({ term: t.term, definition: t.definition })),
+		vocabulary
 	};
 };
 
@@ -134,6 +138,9 @@ export const actions: Actions = {
 		const body = ((data.get('body') as string) || '').trim();
 		const termKeys = data.getAll('termKey') as string[];
 		const termValues = data.getAll('termValue') as string[];
+		const termDefs = termKeys
+			.map((k, i) => ({ term: k.trim().toLowerCase(), definition: (termValues[i] ?? '').trim() }))
+			.filter((t) => t.term && t.definition);
 		const trustTierMin = (data.get('trustTierMin') as string) || 'new';
 		const softReqsRaw = data.getAll('softReq') as string[];
 		const ageMinRaw = (data.get('ageMin') as string) || '';
@@ -160,6 +167,17 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid maximum age' });
 		if (ageMin !== null && ageMax !== null && ageMin > ageMax)
 			return fail(400, { error: 'Minimum age cannot exceed maximum age' });
+
+		// Re-scan server-side so a client bypass (raw POST, disabled JS, tampered
+		// hidden inputs) can't publish a listing with flagged-but-undefined terms.
+		const vocabulary = await getActiveVocabulary(env.DB);
+		const definedTerms = new Set(termDefs.map((t) => t.term));
+		const missingDefs = scanTerms(body, vocabulary).filter((t) => !definedTerms.has(t));
+		if (missingDefs.length > 0) {
+			return fail(400, {
+				error: `Please define the following flagged terms before saving: ${missingDefs.join(', ')}`
+			});
+		}
 
 		const statusUpdate = listing.status === 'flagged' ? { status: 'active' as const } : {};
 
@@ -231,9 +249,6 @@ export const actions: Actions = {
 		await db
 			.delete(relativeTermDefinitions)
 			.where(eq(relativeTermDefinitions.listingId, params.id));
-		const termDefs = termKeys
-			.map((k, i) => ({ term: k.trim().toLowerCase(), definition: (termValues[i] ?? '').trim() }))
-			.filter((t) => t.term && t.definition);
 		if (termDefs.length > 0) {
 			await db.insert(relativeTermDefinitions).values(
 				termDefs.map((t) => ({
