@@ -6,13 +6,16 @@ import {
 	listingRequirements,
 	relativeTermDefinitions,
 	listingEvents,
+	listingPhotos,
+	photoVault,
 	userProfiles,
 	conversationThreads,
 	reports,
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { isBumpCooldownActive, getNextBumpAt } from '$lib/server/listing-bump';
+import { imageUrl } from '$lib/server/cloudflare-images';
 
 export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	const env = platform?.env;
@@ -59,6 +62,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			listing: { id: listing.id, subject: listing.subject, status: listing.status },
 			requirements: { ageMin: null, ageMax: null, trustTierMin: null, softPrompts: [] },
 			termDefinitions: [],
+			photos: [],
 			isOwner: false,
 			isLoggedIn: !!locals.user,
 			unavailable: true
@@ -92,6 +96,29 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		.from(relativeTermDefinitions)
 		.where(eq(relativeTermDefinitions.listingId, params.id))
 		.all();
+
+	const photoRows = await db
+		.select({
+			id: listingPhotos.id,
+			cfImageId: photoVault.cfImageId,
+			displayOrder: listingPhotos.displayOrder
+		})
+		.from(listingPhotos)
+		.innerJoin(photoVault, eq(listingPhotos.vaultPhotoId, photoVault.id))
+		.where(
+			and(
+				eq(listingPhotos.listingId, params.id),
+				isNull(listingPhotos.purgedAt),
+				isNull(photoVault.deletedAt)
+			)
+		)
+		.orderBy(listingPhotos.displayOrder)
+		.all();
+
+	const photos = photoRows.map((p) => ({
+		id: p.id,
+		deliveryUrl: imageUrl(env.CF_IMAGES_ACCOUNT_HASH, p.cfImageId)
+	}));
 
 	const hardReqs = reqs.filter((r) => r.type === 'hard');
 	const softReqs = reqs.filter((r) => r.type === 'soft');
@@ -137,6 +164,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			softPrompts: softReqs.map((r) => r.promptText).filter(Boolean) as string[]
 		},
 		termDefinitions: termDefs.map((t) => ({ term: t.term, definition: t.definition })),
+		photos,
 		isOwner,
 		isLoggedIn: !!locals.user,
 		unavailable: false,

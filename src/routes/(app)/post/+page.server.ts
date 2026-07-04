@@ -6,11 +6,15 @@ import {
 	listingRequirements,
 	relativeTermDefinitions,
 	listingEvents,
-	userProfiles
+	listingPhotos,
+	photoVault,
+	userProfiles,
+	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull, inArray } from 'drizzle-orm';
 import { getActiveVocabulary } from '$lib/server/relative-terms.server';
 import { scanTerms } from '$lib/relative-terms';
+import { getVaultPhotos } from '$lib/server/photo-vault';
 
 const MAX_ACTIVE_LISTINGS = 1; // free tier
 
@@ -36,7 +40,12 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 	if (!env) throw new Error('Server configuration error');
 
 	const profile = await getDb(env.DB)
-		.select({ identity: userProfiles.identity, lat: userProfiles.lat, lng: userProfiles.lng })
+		.select({
+			identity: userProfiles.identity,
+			lat: userProfiles.lat,
+			lng: userProfiles.lng,
+			isSupporter: userProfiles.isSupporter
+		})
 		.from(userProfiles)
 		.where(eq(userProfiles.id, locals.user.id))
 		.get();
@@ -52,8 +61,14 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		.all();
 
 	const vocabulary = await getActiveVocabulary(env.DB);
+	const vaultPhotos = await getVaultPhotos(env.DB, locals.user.id, env.CF_IMAGES_ACCOUNT_HASH);
 
-	return { hasActiveListing: activeListings.length >= MAX_ACTIVE_LISTINGS, vocabulary };
+	return {
+		hasActiveListing: activeListings.length >= MAX_ACTIVE_LISTINGS,
+		vocabulary,
+		isSupporter: profile.isSupporter,
+		vaultPhotos
+	};
 };
 
 export const actions: Actions = {
@@ -77,6 +92,7 @@ export const actions: Actions = {
 		const termValues = data.getAll('termValue') as string[];
 		const trustTierMin = (data.get('trustTierMin') as string) || 'new';
 		const softReqsRaw = data.getAll('softReq') as string[];
+		const photoIdsRaw = data.getAll('photoId') as string[];
 
 		const lookingFor = lookingForRaw.filter((v) => VALID_IDENTITIES.includes(v));
 		const nature = natureRaw.filter((v) => VALID_NATURE.includes(v));
@@ -132,13 +148,42 @@ export const actions: Actions = {
 		}
 
 		const profile = await db
-			.select({ lat: userProfiles.lat, lng: userProfiles.lng })
+			.select({
+				lat: userProfiles.lat,
+				lng: userProfiles.lng,
+				isSupporter: userProfiles.isSupporter
+			})
 			.from(userProfiles)
 			.where(eq(userProfiles.id, locals.user.id))
 			.get();
 
 		if (!profile?.lat || !profile?.lng)
 			return fail(400, { error: 'Location not set. Please update your profile first.' });
+
+		// Never trust the client's gray-out — silently drop photo ids for
+		// non-supporters (listing still posts, just without photos) and drop
+		// any id that isn't actually an active vault photo owned by this user
+		// (closes the IDOR angle: tampering with the hidden inputs to attach
+		// someone else's vault photo).
+		let photoIds: string[] = [];
+		if (profile.isSupporter && photoIdsRaw.length > 0) {
+			const owned = await db
+				.select({ id: photoVault.id })
+				.from(photoVault)
+				.where(
+					and(
+						inArray(photoVault.id, photoIdsRaw),
+						eq(photoVault.userId, locals.user.id),
+						isNull(photoVault.deletedAt)
+					)
+				)
+				.all();
+			const ownedIds = new Set(owned.map((o) => o.id));
+			photoIds = [...new Set(photoIdsRaw.filter((id) => ownedIds.has(id)))].slice(
+				0,
+				parseInt(DEFAULT_CONFIG.LISTING_MAX_PHOTOS)
+			);
+		}
 
 		const cf = platform?.cf;
 		const city = cf?.city as string | undefined;
@@ -223,6 +268,17 @@ export const actions: Actions = {
 					listingId,
 					term: t.term,
 					definition: t.definition
+				}))
+			);
+		}
+
+		if (photoIds.length > 0) {
+			await db.insert(listingPhotos).values(
+				photoIds.map((vaultPhotoId, index) => ({
+					id: crypto.randomUUID(),
+					listingId,
+					vaultPhotoId,
+					displayOrder: index
 				}))
 			);
 		}

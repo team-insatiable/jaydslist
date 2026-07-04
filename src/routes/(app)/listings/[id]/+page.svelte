@@ -13,6 +13,7 @@
 	const unavailable = $derived(data.unavailable);
 
 	let confirmingDelete = $state(false);
+	let lightboxUrl: string | null = $state(null);
 	let showReportForm = $state(false);
 	let reportCategory = $state('');
 	let reportDetail = $state('');
@@ -215,6 +216,22 @@
 					</span>
 				{/if}
 			</div>
+
+			<!-- Photos -->
+			{#if data.photos.length > 0}
+				<div class="photo-gallery">
+					{#each data.photos as photo (photo.id)}
+						<button
+							type="button"
+							class="gallery-thumb"
+							onclick={() => (lightboxUrl = photo.deliveryUrl)}
+							aria-label="View photo"
+						>
+							<img src={photo.deliveryUrl} alt="" />
+						</button>
+					{/each}
+				</div>
+			{/if}
 
 			<!-- Body -->
 			<div class="listing-body">
@@ -521,6 +538,41 @@
 	{/if}
 </div>
 
+{#if lightboxUrl}
+	<div
+		class="lightbox"
+		role="dialog"
+		aria-label="Photo viewer"
+		aria-modal="true"
+		tabindex="-1"
+		onclick={() => (lightboxUrl = null)}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') lightboxUrl = null;
+		}}
+	>
+		<button
+			class="lightbox-close"
+			type="button"
+			aria-label="Close"
+			onclick={() => (lightboxUrl = null)}
+		>
+			<svg
+				width="20"
+				height="20"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.5"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+			</svg>
+		</button>
+		<img src={lightboxUrl} alt="" />
+	</div>
+{/if}
+
 <style>
 	.detail-wrap {
 		max-width: 680px;
@@ -686,6 +738,66 @@
 	.chip-seeking {
 		background: var(--pico-muted-background-color);
 		color: var(--pico-muted-color);
+	}
+
+	.photo-gallery {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		margin-bottom: 1.5rem;
+	}
+
+	.gallery-thumb {
+		width: 96px;
+		height: 96px;
+		border-radius: 8px;
+		border: 1px solid var(--pico-muted-border-color);
+		background: none;
+		overflow: hidden;
+		padding: 0;
+		cursor: pointer;
+	}
+
+	.gallery-thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.lightbox {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.85);
+		z-index: 1000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1rem;
+	}
+
+	.lightbox img {
+		max-width: 100%;
+		max-height: 90dvh;
+		border-radius: 8px;
+		object-fit: contain;
+	}
+
+	.lightbox-close {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		background: rgba(0, 0, 0, 0.5);
+		border: none;
+		border-radius: 50%;
+		width: 36px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: white;
+		cursor: pointer;
+		padding: 0;
+		margin: 0;
 	}
 
 	.listing-body {
