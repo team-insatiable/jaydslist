@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import { actions } from './+page.server';
-import { createTestUser } from '$lib/server/test-helpers/fixtures';
+import { createTestUser, createTestVaultPhoto } from '$lib/server/test-helpers/fixtures';
 
 type PostEvent = Parameters<typeof actions.post>[0];
 
@@ -85,5 +85,108 @@ describe('post action', () => {
 		expect(result?.data?.error).toMatch(/fit/i);
 		expect(result?.data?.error).toMatch(/mature/i);
 		expect(result?.data?.error).not.toMatch(/\bcute\b/i);
+	});
+});
+
+describe('post action photo attachments', () => {
+	let supporterId: string;
+	let freeUserId: string;
+
+	beforeEach(async () => {
+		supporterId = await createTestUser(env.DB, {
+			identity: 'man',
+			lat: 38.5816,
+			lng: -121.4944,
+			isSupporter: true
+		});
+		freeUserId = await createTestUser(env.DB, {
+			identity: 'man',
+			lat: 38.5816,
+			lng: -121.4944,
+			isSupporter: false
+		});
+	});
+
+	it('attaches valid own vault photos in submitted order', async () => {
+		const photo1 = await createTestVaultPhoto(env.DB, supporterId);
+		const photo2 = await createTestVaultPhoto(env.DB, supporterId);
+
+		await expect(
+			actions.post(fakeEvent(supporterId, { ...VALID_FIELDS, photoId: [photo1, photo2] }))
+		).rejects.toMatchObject({ status: 303 });
+
+		const listing = await env.DB.prepare('SELECT id FROM listings WHERE user_id = ?')
+			.bind(supporterId)
+			.first<{ id: string }>();
+
+		const rows = await env.DB.prepare(
+			'SELECT vault_photo_id, display_order FROM listing_photos WHERE listing_id = ? ORDER BY display_order'
+		)
+			.bind(listing!.id)
+			.all();
+		expect(rows.results).toEqual([
+			{ vault_photo_id: photo1, display_order: 0 },
+			{ vault_photo_id: photo2, display_order: 1 }
+		]);
+	});
+
+	it('silently drops a photo id belonging to another user', async () => {
+		const otherUserId = await createTestUser(env.DB, { isSupporter: true });
+		const foreignPhoto = await createTestVaultPhoto(env.DB, otherUserId);
+		const ownPhoto = await createTestVaultPhoto(env.DB, supporterId);
+
+		await expect(
+			actions.post(fakeEvent(supporterId, { ...VALID_FIELDS, photoId: [foreignPhoto, ownPhoto] }))
+		).rejects.toMatchObject({ status: 303 });
+
+		const listing = await env.DB.prepare('SELECT id FROM listings WHERE user_id = ?')
+			.bind(supporterId)
+			.first<{ id: string }>();
+
+		const rows = await env.DB.prepare(
+			'SELECT vault_photo_id FROM listing_photos WHERE listing_id = ?'
+		)
+			.bind(listing!.id)
+			.all();
+		expect(rows.results).toEqual([{ vault_photo_id: ownPhoto }]);
+	});
+
+	it('silently drops all photo ids for a non-supporter, listing still posts', async () => {
+		const photo = await createTestVaultPhoto(env.DB, freeUserId);
+
+		await expect(
+			actions.post(fakeEvent(freeUserId, { ...VALID_FIELDS, photoId: [photo] }))
+		).rejects.toMatchObject({ status: 303 });
+
+		const listing = await env.DB.prepare('SELECT id FROM listings WHERE user_id = ?')
+			.bind(freeUserId)
+			.first<{ id: string }>();
+
+		const rows = await env.DB.prepare('SELECT id FROM listing_photos WHERE listing_id = ?')
+			.bind(listing!.id)
+			.all();
+		expect(rows.results.length).toBe(0);
+	});
+
+	it('caps attached photos at LISTING_MAX_PHOTOS', async () => {
+		const photos = await Promise.all([
+			createTestVaultPhoto(env.DB, supporterId),
+			createTestVaultPhoto(env.DB, supporterId),
+			createTestVaultPhoto(env.DB, supporterId),
+			createTestVaultPhoto(env.DB, supporterId)
+		]);
+
+		await expect(
+			actions.post(fakeEvent(supporterId, { ...VALID_FIELDS, photoId: photos }))
+		).rejects.toMatchObject({ status: 303 });
+
+		const listing = await env.DB.prepare('SELECT id FROM listings WHERE user_id = ?')
+			.bind(supporterId)
+			.first<{ id: string }>();
+
+		const rows = await env.DB.prepare('SELECT id FROM listing_photos WHERE listing_id = ?')
+			.bind(listing!.id)
+			.all();
+		expect(rows.results.length).toBe(3);
 	});
 });
