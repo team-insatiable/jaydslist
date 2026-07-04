@@ -9,6 +9,8 @@ import {
 	userProfiles
 } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getActiveVocabulary } from '$lib/server/relative-terms.server';
+import { scanTerms } from '$lib/relative-terms';
 
 const MAX_ACTIVE_LISTINGS = 1; // free tier
 
@@ -49,7 +51,9 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		.where(and(eq(listings.userId, locals.user.id), eq(listings.status, 'active')))
 		.all();
 
-	return { hasActiveListing: activeListings.length >= MAX_ACTIVE_LISTINGS };
+	const vocabulary = await getActiveVocabulary(env.DB);
+
+	return { hasActiveListing: activeListings.length >= MAX_ACTIVE_LISTINGS, vocabulary };
 };
 
 export const actions: Actions = {
@@ -76,6 +80,9 @@ export const actions: Actions = {
 
 		const lookingFor = lookingForRaw.filter((v) => VALID_IDENTITIES.includes(v));
 		const nature = natureRaw.filter((v) => VALID_NATURE.includes(v));
+		const termDefs = termKeys
+			.map((k, i) => ({ term: k.trim().toLowerCase(), definition: (termValues[i] ?? '').trim() }))
+			.filter((t) => t.term && t.definition);
 
 		if (nature.length === 0)
 			return fail(400, { error: 'Select at least one nature of connection' });
@@ -98,6 +105,17 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid maximum age' });
 		if (ageMin !== null && ageMax !== null && ageMin > ageMax)
 			return fail(400, { error: 'Minimum age cannot exceed maximum age' });
+
+		// Re-scan server-side so a client bypass (raw POST, disabled JS, tampered
+		// hidden inputs) can't publish a listing with flagged-but-undefined terms.
+		const vocabulary = await getActiveVocabulary(env.DB);
+		const definedTerms = new Set(termDefs.map((t) => t.term));
+		const missingDefs = scanTerms(body, vocabulary).filter((t) => !definedTerms.has(t));
+		if (missingDefs.length > 0) {
+			return fail(400, {
+				error: `Please define the following flagged terms before posting: ${missingDefs.join(', ')}`
+			});
+		}
 
 		const db = getDb(env.DB);
 
@@ -197,10 +215,6 @@ export const actions: Actions = {
 		}
 
 		if (reqs.length > 0) await db.insert(listingRequirements).values(reqs);
-
-		const termDefs = termKeys
-			.map((k, i) => ({ term: k.trim().toLowerCase(), definition: (termValues[i] ?? '').trim() }))
-			.filter((t) => t.term && t.definition);
 
 		if (termDefs.length > 0) {
 			await db.insert(relativeTermDefinitions).values(

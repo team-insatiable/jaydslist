@@ -3,12 +3,18 @@ import { userProfiles, listings, conversationThreads, messages } from '$lib/serv
 
 export async function createTestUser(
 	db: D1Database,
-	overrides: Partial<{ id: string; alias: string }> = {}
+	overrides: Partial<{ id: string; alias: string; identity: string; lat: number; lng: number }> = {}
 ) {
 	const id = overrides.id ?? crypto.randomUUID();
 	await getDb(db)
 		.insert(userProfiles)
-		.values({ id, alias: overrides.alias ?? 'Test User' });
+		.values({
+			id,
+			alias: overrides.alias ?? 'Test User',
+			identity: overrides.identity,
+			lat: overrides.lat,
+			lng: overrides.lng
+		});
 	return id;
 }
 

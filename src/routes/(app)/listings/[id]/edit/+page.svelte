@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { scanTerms } from '$lib/relative-terms';
 	import { SvelteSet } from 'svelte/reactivity';
+	import RelativeTermsEditor from '$lib/components/listings/RelativeTermsEditor.svelte';
 
 	let { data, form } = $props();
 
@@ -113,20 +114,12 @@
 		}
 	}
 
-	const foundTerms = $derived(scanTerms(body));
+	// Kept for the hidden termKey/termValue form-serialization loop below —
+	// RelativeTermsEditor computes its own copy internally for editing/gating,
+	// from the same pure scanTerms().
+	const foundTerms = $derived(scanTerms(body, data.vocabulary));
 
-	$effect(() => {
-		const current = new Set(foundTerms);
-		for (const key of Object.keys(termDefs)) {
-			if (!current.has(key)) {
-				const next = { ...termDefs };
-				delete next[key];
-				termDefs = next;
-			}
-		}
-	});
-
-	const allTermsDefined = $derived(foundTerms.every((t) => (termDefs[t] ?? '').trim().length > 0));
+	let allTermsDefined = $state(true);
 
 	const canSave = $derived(
 		nature.size > 0 &&
@@ -266,43 +259,21 @@
 			</div>
 			<div class="field">
 				<label class="field-label" for="body">Body <span class="required">*</span></label>
-				<textarea
-					id="body"
-					name="body"
-					bind:value={body}
-					rows="10"
+				<RelativeTermsEditor
+					bind:body
+					vocabulary={data.vocabulary}
+					bind:definitions={termDefs}
+					textareaName="body"
+					rows={10}
 					placeholder="Tell them about yourself and what you're looking for…"
-				></textarea>
+					onValidityChange={(v) => (allTermsDefined = v)}
+				/>
 				<span class="char-hint"
 					>{body.trim().length} chars {body.trim().length < 50
 						? `(${50 - body.trim().length} more needed)`
 						: ''}</span
 				>
 			</div>
-
-			{#if foundTerms.length > 0}
-				<div class="terms-section">
-					<p class="terms-heading">Define your relative terms</p>
-					<p class="hint">
-						These words mean different things to different people. Help responders understand what
-						you mean.
-					</p>
-					{#each foundTerms as term (term)}
-						<div class="term-row">
-							<span class="term-badge">{term}</span>
-							<input
-								id="term-{term}"
-								type="text"
-								placeholder="What do you mean by this?"
-								bind:value={termDefs[term]}
-								oninput={(e) => {
-									termDefs = { ...termDefs, [term]: (e.target as HTMLInputElement).value };
-								}}
-							/>
-						</div>
-					{/each}
-				</div>
-			{/if}
 		</section>
 
 		<!-- Section: Requirements -->
@@ -489,40 +460,6 @@
 	}
 	.char-hint.over {
 		color: var(--pico-del-color);
-	}
-
-	.terms-section {
-		margin-top: 1rem;
-		padding-top: 1rem;
-		border-top: 1px solid var(--pico-muted-border-color);
-	}
-
-	.terms-heading {
-		font-size: 0.875rem;
-		font-weight: 600;
-		margin-bottom: 0.25rem;
-	}
-
-	.term-row {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.term-badge {
-		background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
-		color: var(--pico-primary);
-		border-radius: 4px;
-		padding: 0.2rem 0.5rem;
-		font-size: 0.8rem;
-		font-weight: 600;
-		white-space: nowrap;
-	}
-
-	.term-row input {
-		margin: 0;
-		flex: 1;
 	}
 
 	/* Age range slider */

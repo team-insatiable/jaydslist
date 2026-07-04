@@ -72,6 +72,13 @@ ON CONFLICT (id) DO UPDATE SET status = 'active', expires_at = excluded.expires_
 DELETE FROM messages WHERE thread_id IN (SELECT id FROM conversation_threads WHERE listing_id = ${sq(KIERA_LISTING_ID)});
 DELETE FROM key_exchanges WHERE thread_id IN (SELECT id FROM conversation_threads WHERE listing_id = ${sq(KIERA_LISTING_ID)});
 DELETE FROM conversation_threads WHERE listing_id = ${sq(KIERA_LISTING_ID)};
+
+-- reset any listing keirockjd created during a previous e2e run (free tier
+-- allows only one active listing, so this must stay empty for the listing-
+-- creation spec to run repeatably)
+DELETE FROM relative_term_definitions WHERE listing_id IN (SELECT id FROM listings WHERE user_id = (SELECT id FROM user WHERE email = 'keirockjd@gmail.com'));
+DELETE FROM listing_requirements WHERE listing_id IN (SELECT id FROM listings WHERE user_id = (SELECT id FROM user WHERE email = 'keirockjd@gmail.com'));
+DELETE FROM listings WHERE user_id = (SELECT id FROM user WHERE email = 'keirockjd@gmail.com');
 `;
 
 	const tmpPath = '/tmp/jdl-e2e-seed.sql';
