@@ -38,7 +38,7 @@
 		<div class="empty">No users found for "{data.q}".</div>
 	{:else if data.users.length > 0}
 		<ul class="user-list">
-			{#each data.users as u}
+			{#each data.users as u (u.id)}
 				<li class="user-card">
 					<div class="user-top">
 						<div class="user-info">
@@ -64,17 +64,31 @@
 							<span>Joined {timeAgo(u.createdAt)}</span>
 						{/if}
 						<span class="sep">·</span>
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- /listings?userId= isn't a real route yet; tracked separately -->
 						<a href="/listings?userId={u.id}" target="_blank" class="view-link">View listings</a>
 					</div>
 
 					<div class="user-actions">
 						{#if u.status === 'banned'}
-							<form method="POST" action="?/unban" use:enhance={() => {
-								submitting = u.id + '_unban';
-								return async ({ update }) => { submitting = null; await update(); await invalidateAll(); };
-							}}>
+							<form
+								method="POST"
+								action="?/unban"
+								use:enhance={() => {
+									submitting = u.id + '_unban';
+									return async ({ update }) => {
+										submitting = null;
+										await update();
+										await invalidateAll();
+									};
+								}}
+							>
 								<input type="hidden" name="targetUserId" value={u.id} />
-								<button type="submit" class="btn-unban" disabled={submitting !== null} aria-busy={submitting === u.id + '_unban'}>
+								<button
+									type="submit"
+									class="btn-unban"
+									disabled={submitting !== null}
+									aria-busy={submitting === u.id + '_unban'}
+								>
 									Unban
 								</button>
 							</form>
@@ -86,13 +100,26 @@
 								placeholder="Ban reason"
 								bind:value={banReason[u.id]}
 							/>
-							<form method="POST" action="?/ban" use:enhance={() => {
-								submitting = u.id + '_ban';
-								return async ({ update }) => { submitting = null; await update(); await invalidateAll(); };
-							}}>
+							<form
+								method="POST"
+								action="?/ban"
+								use:enhance={() => {
+									submitting = u.id + '_ban';
+									return async ({ update }) => {
+										submitting = null;
+										await update();
+										await invalidateAll();
+									};
+								}}
+							>
 								<input type="hidden" name="targetUserId" value={u.id} />
 								<input type="hidden" name="reason" value={banReason[u.id] ?? ''} />
-								<button type="submit" class="btn-ban" disabled={submitting !== null} aria-busy={submitting === u.id + '_ban'}>
+								<button
+									type="submit"
+									class="btn-ban"
+									disabled={submitting !== null}
+									aria-busy={submitting === u.id + '_ban'}
+								>
 									Ban
 								</button>
 							</form>
@@ -203,11 +230,26 @@
 		letter-spacing: 0.04em;
 	}
 
-	.tier-new { background: var(--pico-muted-background-color); color: var(--pico-muted-color); }
-	.tier-established { background: color-mix(in srgb, #0891b2 12%, transparent); color: #0891b2; }
-	.tier-trusted { background: color-mix(in srgb, #16a34a 12%, transparent); color: #16a34a; }
-	.status-banned { background: color-mix(in srgb, var(--pico-del-color) 12%, transparent); color: var(--pico-del-color); }
-	.status-supporter { background: color-mix(in srgb, var(--pico-primary) 12%, transparent); color: var(--pico-primary); }
+	.tier-new {
+		background: var(--pico-muted-background-color);
+		color: var(--pico-muted-color);
+	}
+	.tier-established {
+		background: color-mix(in srgb, #0891b2 12%, transparent);
+		color: #0891b2;
+	}
+	.tier-trusted {
+		background: color-mix(in srgb, #16a34a 12%, transparent);
+		color: #16a34a;
+	}
+	.status-banned {
+		background: color-mix(in srgb, var(--pico-del-color) 12%, transparent);
+		color: var(--pico-del-color);
+	}
+	.status-supporter {
+		background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+		color: var(--pico-primary);
+	}
 
 	.user-meta {
 		display: flex;
@@ -218,7 +260,9 @@
 		color: var(--pico-muted-color);
 	}
 
-	.sep { opacity: 0.4; }
+	.sep {
+		opacity: 0.4;
+	}
 
 	.view-link {
 		color: var(--pico-primary);
@@ -240,7 +284,9 @@
 		padding: 0.35rem 0.65rem;
 	}
 
-	.user-actions form { margin: 0; }
+	.user-actions form {
+		margin: 0;
+	}
 
 	.user-actions button {
 		font-size: 0.8rem;

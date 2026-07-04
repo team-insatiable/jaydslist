@@ -51,9 +51,33 @@
 					title={showRemoved ? 'Hide deleted' : 'Show deleted'}
 				>
 					{#if showRemoved}
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><path
+								d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"
+							/><path
+								d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"
+							/><line x1="1" y1="1" x2="23" y2="23" /></svg
+						>
 					{:else}
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
+								cx="12"
+								cy="12"
+								r="3"
+							/></svg
+						>
 					{/if}
 					{removedCount}
 				</button>
@@ -69,16 +93,23 @@
 		</div>
 	{:else if visibleListings.length === 0}
 		<div class="empty">
-			<p>All your deleted listings are hidden. <button class="text-btn" onclick={() => showRemoved = true}>Show them</button></p>
+			<p>
+				All your deleted listings are hidden. <button
+					class="text-btn"
+					onclick={() => (showRemoved = true)}>Show them</button
+				>
+			</p>
 		</div>
 	{:else}
 		<ul class="listings-list">
-			{#each visibleListings as listing}
+			{#each visibleListings as listing (listing.id)}
 				<li class="listing-item" class:flagged={listing.status === 'flagged'}>
 					<a href={resolve(`/listings/${listing.id}`)} class="listing-link">
 						<div class="listing-top">
 							<span class="listing-subject">{listing.subject}</span>
-							<span class="status status-{listing.status}">{STATUS_LABELS[listing.status] ?? listing.status}</span>
+							<span class="status status-{listing.status}"
+								>{STATUS_LABELS[listing.status] ?? listing.status}</span
+							>
 						</div>
 						<div class="listing-meta">
 							{#if listing.status === 'active' && listing.expiresAt}
@@ -98,7 +129,9 @@
 					</a>
 					{#if listing.status === 'flagged'}
 						<div class="flagged-bar">
-							Suspended by moderator — <a href={resolve(`/listings/${listing.id}/edit`)}>Edit to reactivate</a>
+							Suspended by moderator — <a href={resolve(`/listings/${listing.id}/edit`)}
+								>Edit to reactivate</a
+							>
 						</div>
 					{/if}
 				</li>
@@ -145,7 +178,9 @@
 		border-radius: 6px;
 		cursor: pointer;
 		font-family: inherit;
-		transition: color 0.15s, border-color 0.15s;
+		transition:
+			color 0.15s,
+			border-color 0.15s;
 	}
 
 	.toggle-removed svg {
@@ -270,7 +305,8 @@
 		color: #d97706;
 	}
 
-	.status-expired, .status-removed {
+	.status-expired,
+	.status-removed {
 		background: var(--pico-muted-background-color);
 		color: var(--pico-muted-color);
 	}

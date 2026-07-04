@@ -6,7 +6,13 @@ interface SendEmailOptions {
 	from?: string;
 }
 
-export async function sendEmail({ to, subject, html, apiKey, from }: SendEmailOptions): Promise<void> {
+export async function sendEmail({
+	to,
+	subject,
+	html,
+	apiKey,
+	from
+}: SendEmailOptions): Promise<void> {
 	const res = await fetch('https://api.resend.com/emails', {
 		method: 'POST',
 		headers: {

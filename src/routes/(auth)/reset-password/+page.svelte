@@ -45,13 +45,21 @@
 				<h1>Password updated</h1>
 				<p>Your password has been reset. You can now sign in.</p>
 			</div>
-			<a href={resolve('/login')} class="submit-btn" style="display:block;text-align:center;text-decoration:none;">Sign in</a>
+			<a
+				href={resolve('/login')}
+				class="submit-btn"
+				style="display:block;text-align:center;text-decoration:none;">Sign in</a
+			>
 		{:else if tokenError || !token}
 			<div class="auth-header">
 				<h1>Link expired</h1>
 				<p>This reset link is invalid or has expired. Please request a new one.</p>
 			</div>
-			<a href={resolve('/forgot-password')} class="submit-btn" style="display:block;text-align:center;text-decoration:none;">Request new link</a>
+			<a
+				href={resolve('/forgot-password')}
+				class="submit-btn"
+				style="display:block;text-align:center;text-decoration:none;">Request new link</a
+			>
 		{:else}
 			<div class="auth-header">
 				<h1>Set new password</h1>
@@ -62,18 +70,40 @@
 				<div class="auth-error">{error}</div>
 			{/if}
 
-			<form onsubmit={(e) => { e.preventDefault(); submit(); }}>
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					submit();
+				}}
+			>
 				<div class="field">
 					<label for="password">New password</label>
-					<input id="password" type="password" placeholder="At least 8 characters" bind:value={newPassword} disabled={loading} />
+					<input
+						id="password"
+						type="password"
+						placeholder="At least 8 characters"
+						bind:value={newPassword}
+						disabled={loading}
+					/>
 				</div>
 
 				<div class="field">
 					<label for="confirm">Confirm password</label>
-					<input id="confirm" type="password" placeholder="Repeat your password" bind:value={confirm} disabled={loading} />
+					<input
+						id="confirm"
+						type="password"
+						placeholder="Repeat your password"
+						bind:value={confirm}
+						disabled={loading}
+					/>
 				</div>
 
-				<button type="submit" class="submit-btn" disabled={loading || !newPassword || !confirm} aria-busy={loading}>
+				<button
+					type="submit"
+					class="submit-btn"
+					disabled={loading || !newPassword || !confirm}
+					aria-busy={loading}
+				>
 					{loading ? '' : 'Reset password'}
 				</button>
 			</form>

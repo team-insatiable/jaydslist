@@ -6,8 +6,7 @@ import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { encryptContact } from '$lib/server/crypto';
 import { hashPhoneLocal, hashPhoneForDbbl, hashEmailForDbbl } from '$lib/server/phone';
-
-const BLOCK_RATINGS = new Set(['restricted', 'blacklisted']);
+import { isBlockedByDbbl } from '$lib/server/dbbl';
 
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
@@ -23,7 +22,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	// Retrieve pending phone from KV
 	const pendingPhone = await env.PHONE_VERIFICATION_KV.get(`pending_phone:${locals.user.id}`);
 	if (!pendingPhone) {
-		return json({ error: 'No pending phone number found. Please submit your phone number first.' }, { status: 400 });
+		return json(
+			{ error: 'No pending phone number found. Please submit your phone number first.' },
+			{ status: 400 }
+		);
 	}
 
 	let result;
@@ -34,7 +36,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		return json({ error: 'Failed to check verification code' }, { status: 502 });
 	}
 
-	if (!result.success) return json({ error: 'Invalid or expired verification code' }, { status: 422 });
+	if (!result.success)
+		return json({ error: 'Invalid or expired verification code' }, { status: 422 });
 
 	// Two separate hashes — local uses pepper for DB security, DBBL uses plain E.164 for cross-platform consistency
 	const phoneHash = await hashPhoneLocal(pendingPhone, env.PHONE_PEPPER ?? 'default-pepper');
@@ -72,7 +75,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			}
 		}
 
-		if (dbblRiskRating && BLOCK_RATINGS.has(dbblRiskRating)) {
+		if (isBlockedByDbbl(dbblRiskRating)) {
 			return json(
 				{ error: 'Account registration is not permitted at this time.' },
 				{ status: 403 }
@@ -106,4 +109,3 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 	return json({ success: true });
 };
-

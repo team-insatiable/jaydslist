@@ -4,9 +4,26 @@ import { getDb } from '$lib/server/db';
 import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
-const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other', 'couple'];
+const VALID_IDENTITIES = [
+	'man',
+	'woman',
+	'non_binary',
+	'transgender_man',
+	'transgender_woman',
+	'other',
+	'couple'
+];
 const VALID_COUPLE_COMPOSITIONS = ['mf', 'mm', 'ff', 'other'];
-const VALID_BODY_TYPES = ['slim', 'athletic', 'average', 'curvy', 'stocky', 'muscular', 'plus_size', 'extra_padding'];
+const VALID_BODY_TYPES = [
+	'slim',
+	'athletic',
+	'average',
+	'curvy',
+	'stocky',
+	'muscular',
+	'plus_size',
+	'extra_padding'
+];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
 const VALID_RADII = [5, 10, 25, 50, 100];
 
@@ -44,7 +61,9 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 					locationSet: !!profile.locationSet,
 					seekingIdentity: JSON.parse(profile.seekingIdentity ?? '[]') as string[],
 					seekingBodyType: JSON.parse(profile.seekingBodyType ?? '[]') as string[],
-					seekingNatureOfConnection: JSON.parse(profile.seekingNatureOfConnection ?? '[]') as string[],
+					seekingNatureOfConnection: JSON.parse(
+						profile.seekingNatureOfConnection ?? '[]'
+					) as string[],
 					dateOfBirthValue: profile.dateOfBirth
 						? profile.dateOfBirth.toISOString().slice(0, 10)
 						: null,
@@ -69,14 +88,17 @@ export const actions: Actions = {
 		const coupleCompositionRaw = (data.get('coupleComposition') as string) || null;
 		const dobRaw = data.get('dateOfBirth') as string;
 
-		if (!VALID_IDENTITIES.includes(identity)) return fail(400, { error: 'Invalid identity selection' });
+		if (!VALID_IDENTITIES.includes(identity))
+			return fail(400, { error: 'Invalid identity selection' });
 		if (identity === 'couple') {
 			if (!coupleCompositionRaw || !VALID_COUPLE_COMPOSITIONS.includes(coupleCompositionRaw))
 				return fail(400, { error: 'Please select your couple composition' });
 		}
 		const coupleComposition = identity === 'couple' ? coupleCompositionRaw : null;
-		if (bodyType && !VALID_BODY_TYPES.includes(bodyType)) return fail(400, { error: 'Invalid body type selection' });
-		if (!dobRaw || !/^\d{4}-\d{2}-\d{2}$/.test(dobRaw)) return fail(400, { error: 'Date of birth is required' });
+		if (bodyType && !VALID_BODY_TYPES.includes(bodyType))
+			return fail(400, { error: 'Invalid body type selection' });
+		if (!dobRaw || !/^\d{4}-\d{2}-\d{2}$/.test(dobRaw))
+			return fail(400, { error: 'Date of birth is required' });
 
 		const dateOfBirth = new Date(dobRaw + 'T00:00:00Z');
 		if (isNaN(dateOfBirth.getTime())) return fail(400, { error: 'Invalid date of birth' });
@@ -149,7 +171,10 @@ export const actions: Actions = {
 		const alias = (data.get('alias') as string)?.trim() ?? '';
 
 		if (alias.length > 30) return fail(400, { error: 'Alias must be 30 characters or less' });
-		if (alias && !/^[\w\s\-_.]+$/.test(alias)) return fail(400, { error: 'Alias can only contain letters, numbers, spaces, hyphens, underscores, and dots' });
+		if (alias && !/^[\w\s\-_.]+$/.test(alias))
+			return fail(400, {
+				error: 'Alias can only contain letters, numbers, spaces, hyphens, underscores, and dots'
+			});
 
 		await getDb(env.DB)
 			.update(userProfiles)

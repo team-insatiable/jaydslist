@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
+	import { scanTerms } from '$lib/relative-terms';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data, form } = $props();
 
@@ -84,12 +87,17 @@
 	const minPct = $derived(((ageMinNum - AGE_MIN) / (AGE_MAX - AGE_MIN)) * 100);
 	const maxPct = $derived(((ageMaxNum - AGE_MIN) / (AGE_MAX - AGE_MIN)) * 100);
 
-	function clampMin() { if (ageMinNum >= ageMaxNum) ageMinNum = ageMaxNum - 1; }
-	function clampMax() { if (ageMaxNum <= ageMinNum) ageMaxNum = ageMinNum + 1; }
+	function clampMin() {
+		if (ageMinNum >= ageMaxNum) ageMinNum = ageMaxNum - 1;
+	}
+	function clampMax() {
+		if (ageMaxNum <= ageMinNum) ageMaxNum = ageMinNum + 1;
+	}
 
 	function toggleSet(s: Set<string>, value: string): Set<string> {
-		const next = new Set(s);
-		if (next.has(value)) next.delete(value); else next.add(value);
+		const next = new SvelteSet(s);
+		if (next.has(value)) next.delete(value);
+		else next.add(value);
 		return next;
 	}
 
@@ -97,27 +105,12 @@
 		if (value === 'open') {
 			nature = nature.has('open') ? new Set() : new Set(['open']);
 		} else {
-			const next = new Set(nature);
+			const next = new SvelteSet(nature);
 			next.delete('open');
-			if (next.has(value)) next.delete(value); else next.add(value);
+			if (next.has(value)) next.delete(value);
+			else next.add(value);
 			nature = next;
 		}
-	}
-
-	const RELATIVE_TERMS = [
-		'cute', 'pretty', 'attractive', 'hot', 'fit', 'athletic', 'slim', 'thick',
-		'large', 'small', 'tall', 'short', 'average',
-		'nearby', 'close', 'local', 'far',
-		'young', 'older', 'mature', 'younger',
-		'serious', 'casual', 'laid back', 'intense', 'outgoing',
-		'soon', 'later', 'regular', 'occasional', 'often'
-	];
-
-	function scanTerms(text: string): string[] {
-		return RELATIVE_TERMS.filter((term) => {
-			const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			return new RegExp(`\\b${escaped}\\b`, 'i').test(text);
-		});
 	}
 
 	const foundTerms = $derived(scanTerms(body));
@@ -137,17 +130,26 @@
 
 	const canSave = $derived(
 		nature.size > 0 &&
-		subject.trim().length >= 10 &&
-		subject.trim().length <= 120 &&
-		body.trim().length >= 50 &&
-		allTermsDefined
+			subject.trim().length >= 10 &&
+			subject.trim().length <= 120 &&
+			body.trim().length >= 50 &&
+			allTermsDefined
 	);
 </script>
 
 <div class="edit-page">
 	<header class="edit-header">
-		<a href="/listings/{listing.id}" class="back-link">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+		<a href={resolve(`/listings/${listing.id}`)} class="back-link">
+			<svg
+				width="18"
+				height="18"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg
+			>
 			Back to listing
 		</a>
 		<h1>Edit listing</h1>
@@ -167,15 +169,21 @@
 		<p class="form-error">{form.error}</p>
 	{/if}
 
-	<form method="POST" action="?/save" use:enhance={() => {
-		submitting = true;
-		return async ({ update }) => { submitting = false; await update(); };
-	}}>
-
+	<form
+		method="POST"
+		action="?/save"
+		use:enhance={() => {
+			submitting = true;
+			return async ({ update }) => {
+				submitting = false;
+				await update();
+			};
+		}}
+	>
 		<!-- Hidden inputs for sets -->
-		{#each [...lookingFor] as val}<input type="hidden" name="lookingFor" value={val} />{/each}
-		{#each [...nature] as val}<input type="hidden" name="nature" value={val} />{/each}
-		{#each foundTerms as term}
+		{#each [...lookingFor] as val (val)}<input type="hidden" name="lookingFor" value={val} />{/each}
+		{#each [...nature] as val (val)}<input type="hidden" name="nature" value={val} />{/each}
+		{#each foundTerms as term (term)}
 			<input type="hidden" name="termKey" value={term} />
 			<input type="hidden" name="termValue" value={termDefs[term] ?? ''} />
 		{/each}
@@ -185,9 +193,12 @@
 			<h2>Who can respond?</h2>
 			<p class="hint">Leave all unselected to allow anyone.</p>
 			<div class="chip-group">
-				{#each identityOptions as opt}
-					<button type="button" class="chip {lookingFor.has(opt.value) ? 'selected' : ''}"
-						onclick={() => (lookingFor = toggleSet(lookingFor, opt.value))}>
+				{#each identityOptions as opt (opt.value)}
+					<button
+						type="button"
+						class="chip {lookingFor.has(opt.value) ? 'selected' : ''}"
+						onclick={() => (lookingFor = toggleSet(lookingFor, opt.value))}
+					>
 						{opt.label}
 					</button>
 				{/each}
@@ -198,9 +209,12 @@
 		<section class="card">
 			<h2>Nature of connection <span class="required">*</span></h2>
 			<div class="chip-group">
-				{#each natureOptions as opt}
-					<button type="button" class="chip {nature.has(opt.value) ? 'selected' : ''}"
-						onclick={() => toggleNature(opt.value)}>
+				{#each natureOptions as opt (opt.value)}
+					<button
+						type="button"
+						class="chip {nature.has(opt.value) ? 'selected' : ''}"
+						onclick={() => toggleNature(opt.value)}
+					>
 						{opt.label}
 					</button>
 				{/each}
@@ -215,7 +229,7 @@
 					<label class="field-label" for="mood">Mood</label>
 					<select id="mood" name="mood" bind:value={mood}>
 						<option value="">Not specified</option>
-						{#each moodOptions as opt}
+						{#each moodOptions as opt (opt.value)}
 							<option value={opt.value}>{opt.label}</option>
 						{/each}
 					</select>
@@ -224,7 +238,7 @@
 					<label class="field-label" for="availability">Availability</label>
 					<select id="availability" name="availability" bind:value={availability}>
 						<option value="">Not specified</option>
-						{#each availabilityOptions as opt}
+						{#each availabilityOptions as opt (opt.value)}
 							<option value={opt.value}>{opt.label}</option>
 						{/each}
 					</select>
@@ -236,28 +250,55 @@
 		<section class="card">
 			<h2>Your listing</h2>
 			<div class="field">
-				<label class="field-label" for="subject">Subject line <span class="required">*</span></label>
-				<input id="subject" name="subject" type="text" bind:value={subject}
-					placeholder="Your hook — what makes you stand out?" maxlength="120" />
-				<span class="char-hint {subject.trim().length > 120 ? 'over' : ''}">{subject.trim().length}/120</span>
+				<label class="field-label" for="subject">Subject line <span class="required">*</span></label
+				>
+				<input
+					id="subject"
+					name="subject"
+					type="text"
+					bind:value={subject}
+					placeholder="Your hook — what makes you stand out?"
+					maxlength="120"
+				/>
+				<span class="char-hint {subject.trim().length > 120 ? 'over' : ''}"
+					>{subject.trim().length}/120</span
+				>
 			</div>
 			<div class="field">
 				<label class="field-label" for="body">Body <span class="required">*</span></label>
-				<textarea id="body" name="body" bind:value={body} rows="10"
-					placeholder="Tell them about yourself and what you're looking for…"></textarea>
-				<span class="char-hint">{body.trim().length} chars {body.trim().length < 50 ? `(${50 - body.trim().length} more needed)` : ''}</span>
+				<textarea
+					id="body"
+					name="body"
+					bind:value={body}
+					rows="10"
+					placeholder="Tell them about yourself and what you're looking for…"
+				></textarea>
+				<span class="char-hint"
+					>{body.trim().length} chars {body.trim().length < 50
+						? `(${50 - body.trim().length} more needed)`
+						: ''}</span
+				>
 			</div>
 
 			{#if foundTerms.length > 0}
 				<div class="terms-section">
 					<p class="terms-heading">Define your relative terms</p>
-					<p class="hint">These words mean different things to different people. Help responders understand what you mean.</p>
-					{#each foundTerms as term}
+					<p class="hint">
+						These words mean different things to different people. Help responders understand what
+						you mean.
+					</p>
+					{#each foundTerms as term (term)}
 						<div class="term-row">
 							<span class="term-badge">{term}</span>
-							<input id="term-{term}" type="text" placeholder="What do you mean by this?"
+							<input
+								id="term-{term}"
+								type="text"
+								placeholder="What do you mean by this?"
 								bind:value={termDefs[term]}
-								oninput={(e) => { termDefs = { ...termDefs, [term]: (e.target as HTMLInputElement).value }; }} />
+								oninput={(e) => {
+									termDefs = { ...termDefs, [term]: (e.target as HTMLInputElement).value };
+								}}
+							/>
 						</div>
 					{/each}
 				</div>
@@ -271,7 +312,7 @@
 			<div class="field">
 				<label class="field-label">Minimum trust tier</label>
 				<select name="trustTierMin" bind:value={trustTierMin}>
-					{#each trustOptions as opt}
+					{#each trustOptions as opt (opt.value)}
 						<option value={opt.value}>{opt.label}</option>
 					{/each}
 				</select>
@@ -287,11 +328,27 @@
 					<input type="hidden" name="ageMax" value={ageMaxNum} />
 					<div class="age-range">
 						<div class="age-track">
-							<div class="age-fill" style="left:{minPct}%; right:{100-maxPct}%"></div>
+							<div class="age-fill" style="left:{minPct}%; right:{100 - maxPct}%"></div>
 							<div class="age-thumb" style="left:{minPct}%"></div>
 							<div class="age-thumb" style="left:{maxPct}%"></div>
-							<input id="age-min-range" type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMinNum} oninput={clampMin} class="range-input range-min" />
-							<input id="age-max-range" type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMaxNum} oninput={clampMax} class="range-input range-max" />
+							<input
+								id="age-min-range"
+								type="range"
+								min={AGE_MIN}
+								max={AGE_MAX}
+								bind:value={ageMinNum}
+								oninput={clampMin}
+								class="range-input range-min"
+							/>
+							<input
+								id="age-max-range"
+								type="range"
+								min={AGE_MIN}
+								max={AGE_MAX}
+								bind:value={ageMaxNum}
+								oninput={clampMax}
+								class="range-input range-max"
+							/>
 						</div>
 						<div class="age-labels"><span>{ageMinNum}</span><span>{ageMaxNum}</span></div>
 					</div>
@@ -301,20 +358,24 @@
 			<div class="field">
 				<label class="field-label">Soft requirements</label>
 				<p class="hint">Responders must acknowledge these before messaging.</p>
-				{#each softRequirements as _, i}
-					<input type="text" name="softReq" bind:value={softRequirements[i]}
-						placeholder="e.g. Please read the full listing before responding" class="soft-req-input" />
+				{#each softRequirements as _, i (i)}
+					<input
+						type="text"
+						name="softReq"
+						bind:value={softRequirements[i]}
+						placeholder="e.g. Please read the full listing before responding"
+						class="soft-req-input"
+					/>
 				{/each}
 			</div>
 		</section>
 
 		<div class="save-bar">
-			<a href="/listings/{listing.id}" class="cancel-btn">Cancel</a>
+			<a href={resolve(`/listings/${listing.id}`)} class="cancel-btn">Cancel</a>
 			<button type="submit" disabled={!canSave || submitting} aria-busy={submitting}>
 				{submitting ? '' : 'Save changes'}
 			</button>
 		</div>
-
 	</form>
 </div>
 
@@ -338,7 +399,9 @@
 		margin-bottom: 0.75rem;
 	}
 
-	.back-link:hover { color: var(--pico-color); }
+	.back-link:hover {
+		color: var(--pico-color);
+	}
 
 	h1 {
 		font-size: 1.4rem;
@@ -366,7 +429,9 @@
 		margin: -0.25rem 0 0.75rem;
 	}
 
-	.required { color: var(--pico-del-color); }
+	.required {
+		color: var(--pico-del-color);
+	}
 
 	.chip-group {
 		display: flex;
@@ -398,8 +463,12 @@
 		gap: 1rem;
 	}
 
-	.field { margin-bottom: 1rem; }
-	.field:last-child { margin-bottom: 0; }
+	.field {
+		margin-bottom: 1rem;
+	}
+	.field:last-child {
+		margin-bottom: 0;
+	}
 
 	.field-label {
 		display: block;
@@ -418,7 +487,9 @@
 		text-align: right;
 		margin-top: 0.25rem;
 	}
-	.char-hint.over { color: var(--pico-del-color); }
+	.char-hint.over {
+		color: var(--pico-del-color);
+	}
 
 	.terms-section {
 		margin-top: 1rem;
@@ -449,10 +520,15 @@
 		white-space: nowrap;
 	}
 
-	.term-row input { margin: 0; flex: 1; }
+	.term-row input {
+		margin: 0;
+		flex: 1;
+	}
 
 	/* Age range slider */
-	.age-range { margin-top: 0.75rem; }
+	.age-range {
+		margin-top: 0.75rem;
+	}
 
 	.age-track {
 		position: relative;
@@ -479,7 +555,7 @@
 		top: 50%;
 		transform: translate(-50%, -50%);
 		pointer-events: none;
-		box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 	}
 
 	.range-input {
@@ -494,8 +570,12 @@
 		pointer-events: none;
 	}
 
-	.range-input::-webkit-slider-thumb { pointer-events: all; }
-	.range-input::-moz-range-thumb { pointer-events: all; }
+	.range-input::-webkit-slider-thumb {
+		pointer-events: all;
+	}
+	.range-input::-moz-range-thumb {
+		pointer-events: all;
+	}
 
 	.age-labels {
 		display: flex;
@@ -504,8 +584,12 @@
 		font-weight: 600;
 	}
 
-	.soft-req-input { margin-bottom: 0.5rem; }
-	.soft-req-input:last-child { margin-bottom: 0; }
+	.soft-req-input {
+		margin-bottom: 0.5rem;
+	}
+	.soft-req-input:last-child {
+		margin-bottom: 0;
+	}
 
 	.flagged-notice {
 		background: color-mix(in srgb, #d97706 10%, transparent);
@@ -537,7 +621,9 @@
 		text-decoration: none;
 	}
 
-	.cancel-btn:hover { color: var(--pico-color); }
+	.cancel-btn:hover {
+		color: var(--pico-color);
+	}
 
 	.form-error {
 		background: color-mix(in srgb, var(--pico-del-color) 10%, transparent);

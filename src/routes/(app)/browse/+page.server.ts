@@ -46,7 +46,8 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	const radius = VALID_RADII.includes(radiusParam) ? radiusParam : (profile.browseRadius ?? 25);
 
 	const natureFilter = url.searchParams.get('nature') ?? null;
-	const validNatureFilter = natureFilter && VALID_NATURE.includes(natureFilter) ? natureFilter : null;
+	const validNatureFilter =
+		natureFilter && VALID_NATURE.includes(natureFilter) ? natureFilter : null;
 
 	const now = new Date();
 
@@ -100,7 +101,8 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 		const lookingFor: string[] = JSON.parse(row.lookingForIdentity ?? '[]');
 
 		// URL nature filter
-		if (validNatureFilter && !nature.includes(validNatureFilter) && !nature.includes('open')) continue;
+		if (validNatureFilter && !nature.includes(validNatureFilter) && !nature.includes('open'))
+			continue;
 
 		// User's seeking nature pref (skip if empty = all, or if listing is open)
 		if (seekingNature.length > 0 && !seekingNature.includes('open')) {
