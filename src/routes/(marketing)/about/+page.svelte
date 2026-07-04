@@ -17,9 +17,9 @@
 		dating app. A handful of services have tried to fill that gap since. Most of them treat it
 		purely as a monetization play: they lock basic functionality behind a paid tier, they do little
 		to nothing about accounts that are obviously fake — sometimes glaringly so, just from looking at
-		the photos — and they'll block a post or a message with no explanation and no way to find out
-		why. The product experience is an afterthought. The goal is clearly to extract payment, not to
-		build something people actually want to use.
+		the photos — and they'll take a listing down with no explanation and no way to find out why. The
+		product experience is an afterthought. The goal is clearly to extract payment, not to build
+		something people actually want to use.
 	</p>
 
 	<p>
@@ -42,9 +42,14 @@
 			show up here with a clean slate. It's not a perfect system, but it's a real one, not a checkbox.
 		</li>
 		<li>
+			<strong>If your listing gets suspended, you're told why.</strong> You get an email with the actual
+			reason, and you can fix the issue and have it automatically reactivate — not a silent takedown with
+			no way to find out what happened.
+		</li>
+		<li>
 			<strong>Moderation has actual categories and a real process</strong> — not an opaque black box.
 			Reports are reviewed against defined violation types, and the platform uses a one-lifetime-warning
-			policy rather than instant, unexplained bans for a first mistake.
+			policy rather than instant account bans for a first mistake.
 		</li>
 		<li>
 			<strong>Listings are held to a basic standard of clarity.</strong> If you use a vague term like
