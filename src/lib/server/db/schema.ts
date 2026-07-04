@@ -1,33 +1,59 @@
 import { sql } from 'drizzle-orm';
-import {
-	sqliteTable,
-	text,
-	integer,
-	real,
-	index,
-	uniqueIndex
-} from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
-export type UserIdentity = 'man' | 'woman' | 'non_binary' | 'transgender_man' | 'transgender_woman' | 'other' | 'couple';
+export type UserIdentity =
+	| 'man'
+	| 'woman'
+	| 'non_binary'
+	| 'transgender_man'
+	| 'transgender_woman'
+	| 'other'
+	| 'couple';
 export type CoupleComposition = 'mf' | 'mm' | 'ff' | 'other';
 export type PhysicalType = 'male' | 'female' | 'other';
-export type BodyType = 'slim' | 'athletic' | 'average' | 'curvy' | 'stocky' | 'muscular' | 'plus_size' | 'extra_padding';
+export type BodyType =
+	| 'slim'
+	| 'athletic'
+	| 'average'
+	| 'curvy'
+	| 'stocky'
+	| 'muscular'
+	| 'plus_size'
+	| 'extra_padding';
 export type TrustTier = 'new' | 'established' | 'trusted';
 export type AccountStatus = 'active' | 'suspended' | 'banned';
 export type ListingStatus = 'active' | 'paused' | 'expired' | 'renewed' | 'removed' | 'flagged';
 export type NatureOfConnection = 'dating' | 'fwb' | 'one_time' | 'platonic' | 'open';
-export type MoodVibe = 'coffee_first' | 'dinner_date' | 'netflix_chill' | 'ready_now' | 'just_browsing';
+export type MoodVibe =
+	| 'coffee_first'
+	| 'dinner_date'
+	| 'netflix_chill'
+	| 'ready_now'
+	| 'just_browsing';
 export type Availability = 'available_now' | 'available_today' | 'available_weekend' | 'flexible';
 export type ListingCategory = 'casual_encounters';
 export type RequirementType = 'hard' | 'soft';
-export type RequirementField = 'age_min' | 'age_max' | 'distance' | 'trust_tier' | 'verified_only' | 'identity' | 'physical';
+export type RequirementField =
+	| 'age_min'
+	| 'age_max'
+	| 'distance'
+	| 'trust_tier'
+	| 'verified_only'
+	| 'identity'
+	| 'physical';
 export type MediaScanStatus = 'pending' | 'cleared' | 'flagged';
 export type ThreadStatus = 'open' | 'closed' | 'archived';
 export type MessageScanStatus = 'pending' | 'cleared' | 'flagged' | 'blocked';
 export type KeyExchangeStatus = 'offered' | 'accepted' | 'declined' | 'revoked';
 export type ReportTargetType = 'listing' | 'message' | 'user';
 export type ReportStatus = 'pending' | 'reviewed' | 'confirmed' | 'dismissed';
-export type ModerationActionType = 'warn' | 'restrict' | 'suspend' | 'ban' | 'remove_listing' | 'remove_message';
+export type ModerationActionType =
+	| 'warn'
+	| 'restrict'
+	| 'suspend'
+	| 'ban'
+	| 'remove_listing'
+	| 'remove_message';
 export type ListingEventType = 'created' | 'bumped' | 'renewed' | 'expired' | 'archived';
 
 export const userProfiles = sqliteTable(
@@ -43,7 +69,9 @@ export const userProfiles = sqliteTable(
 		phoneHash: text('phone_hash').unique(),
 		encryptedPhone: text('encrypted_phone'),
 		phoneVerified: integer('phone_verified', { mode: 'boolean' }).notNull().default(false),
-		phoneCarrierValidated: integer('phone_carrier_validated', { mode: 'boolean' }).notNull().default(false),
+		phoneCarrierValidated: integer('phone_carrier_validated', { mode: 'boolean' })
+			.notNull()
+			.default(false),
 		trustTier: text('trust_tier').notNull().default('new'),
 		reporterTrustScore: real('reporter_trust_score').notNull().default(0.5),
 		responseRate: real('response_rate').notNull().default(0),
@@ -69,7 +97,9 @@ export const userProfiles = sqliteTable(
 		seekingBodyType: text('seeking_body_type').notNull().default('[]'),
 		seekingNatureOfConnection: text('seeking_nature_of_connection').notNull().default('[]'),
 		browseRadius: integer('browse_radius').notNull().default(25),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		phoneHashIdx: index('profiles_phone_hash_idx').on(table.phoneHash),
@@ -79,12 +109,13 @@ export const userProfiles = sqliteTable(
 	})
 );
 
-
 export const listings = sqliteTable(
 	'listings',
 	{
 		id: text('id').primaryKey(),
-		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => userProfiles.id, { onDelete: 'cascade' }),
 		category: text('category').notNull().default('casual_encounters'),
 		subject: text('subject').notNull(),
 		body: text('body').notNull(),
@@ -103,8 +134,12 @@ export const listings = sqliteTable(
 		lastBumpedAt: integer('last_bumped_at', { mode: 'timestamp' }),
 		bumpCount: integer('bump_count').notNull().default(0),
 		renewedAt: integer('renewed_at', { mode: 'timestamp' }),
-		originalCreatedAt: integer('original_created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		originalCreatedAt: integer('original_created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		userIdx: index('listings_user_idx').on(table.userId),
@@ -119,7 +154,9 @@ export const listingRequirements = sqliteTable(
 	'listing_requirements',
 	{
 		id: text('id').primaryKey(),
-		listingId: text('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
+		listingId: text('listing_id')
+			.notNull()
+			.references(() => listings.id, { onDelete: 'cascade' }),
 		type: text('type').notNull(),
 		field: text('field').notNull(),
 		value: text('value').notNull(),
@@ -134,9 +171,13 @@ export const photoAlbums = sqliteTable(
 	'photo_albums',
 	{
 		id: text('id').primaryKey(),
-		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => userProfiles.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		userIdx: index('albums_user_idx').on(table.userId)
@@ -147,13 +188,17 @@ export const photoVault = sqliteTable(
 	'photo_vault',
 	{
 		id: text('id').primaryKey(),
-		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => userProfiles.id, { onDelete: 'cascade' }),
 		albumId: text('album_id').references(() => photoAlbums.id, { onDelete: 'set null' }),
 		cfImageId: text('cf_image_id').notNull(),
 		pHash: text('p_hash'),
 		scanStatus: text('scan_status').notNull().default('pending'),
 		deletedAt: integer('deleted_at', { mode: 'timestamp' }),
-		uploadedAt: integer('uploaded_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		uploadedAt: integer('uploaded_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		userIdx: index('vault_user_idx').on(table.userId),
@@ -166,8 +211,12 @@ export const listingPhotos = sqliteTable(
 	'listing_photos',
 	{
 		id: text('id').primaryKey(),
-		listingId: text('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
-		vaultPhotoId: text('vault_photo_id').notNull().references(() => photoVault.id),
+		listingId: text('listing_id')
+			.notNull()
+			.references(() => listings.id, { onDelete: 'cascade' }),
+		vaultPhotoId: text('vault_photo_id')
+			.notNull()
+			.references(() => photoVault.id),
 		displayOrder: integer('display_order').notNull().default(0),
 		purgedAt: integer('purged_at', { mode: 'timestamp' })
 	},
@@ -184,7 +233,9 @@ export const photoBlocklist = sqliteTable(
 		pHash: text('p_hash').notNull().unique(),
 		reason: text('reason').notNull(),
 		sourceUserId: text('source_user_id').references(() => userProfiles.id),
-		addedAt: integer('added_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		addedAt: integer('added_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		pHashIdx: index('blocklist_phash_idx').on(table.pHash)
@@ -195,7 +246,9 @@ export const relativeTermDefinitions = sqliteTable(
 	'relative_term_definitions',
 	{
 		id: text('id').primaryKey(),
-		listingId: text('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
+		listingId: text('listing_id')
+			.notNull()
+			.references(() => listings.id, { onDelete: 'cascade' }),
 		term: text('term').notNull(),
 		definition: text('definition').notNull()
 	},
@@ -209,10 +262,14 @@ export const listingEvents = sqliteTable(
 	'listing_events',
 	{
 		id: text('id').primaryKey(),
-		listingId: text('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
+		listingId: text('listing_id')
+			.notNull()
+			.references(() => listings.id, { onDelete: 'cascade' }),
 		eventType: text('event_type').notNull(),
 		actorId: text('actor_id').references(() => userProfiles.id),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		listingIdx: index('events_listing_idx').on(table.listingId),
@@ -224,15 +281,25 @@ export const conversationThreads = sqliteTable(
 	'conversation_threads',
 	{
 		id: text('id').primaryKey(),
-		listingId: text('listing_id').notNull().references(() => listings.id),
-		initiatorId: text('initiator_id').notNull().references(() => userProfiles.id),
-		posterId: text('poster_id').notNull().references(() => userProfiles.id),
+		listingId: text('listing_id')
+			.notNull()
+			.references(() => listings.id),
+		initiatorId: text('initiator_id')
+			.notNull()
+			.references(() => userProfiles.id),
+		posterId: text('poster_id')
+			.notNull()
+			.references(() => userProfiles.id),
 		status: text('status').notNull().default('open'),
 		acknowledgedRequirements: text('acknowledged_requirements').notNull().default('[]'),
 		initiatorResponseRate: real('initiator_response_rate'),
 		initiatorWarned: integer('initiator_warned', { mode: 'boolean' }).notNull().default(false),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-		lastActivityAt: integer('last_activity_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
+		lastActivityAt: integer('last_activity_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
 		lastNotifiedAt: integer('last_notified_at', { mode: 'timestamp' })
 	},
 	(table) => ({
@@ -240,7 +307,10 @@ export const conversationThreads = sqliteTable(
 		initiatorIdx: index('threads_initiator_idx').on(table.initiatorId),
 		posterIdx: index('threads_poster_idx').on(table.posterId),
 		statusIdx: index('threads_status_idx').on(table.status),
-		uniqueThreadPerListing: uniqueIndex('threads_unique_per_listing').on(table.listingId, table.initiatorId)
+		uniqueThreadPerListing: uniqueIndex('threads_unique_per_listing').on(
+			table.listingId,
+			table.initiatorId
+		)
 	})
 );
 
@@ -248,8 +318,12 @@ export const messages = sqliteTable(
 	'messages',
 	{
 		id: text('id').primaryKey(),
-		threadId: text('thread_id').notNull().references(() => conversationThreads.id, { onDelete: 'cascade' }),
-		senderId: text('sender_id').notNull().references(() => userProfiles.id),
+		threadId: text('thread_id')
+			.notNull()
+			.references(() => conversationThreads.id, { onDelete: 'cascade' }),
+		senderId: text('sender_id')
+			.notNull()
+			.references(() => userProfiles.id),
 		body: text('body').notNull().default(''),
 		cfImageId: text('cf_image_id'),
 		scanStatus: text('scan_status').notNull().default('pending'),
@@ -258,7 +332,9 @@ export const messages = sqliteTable(
 		similarityScore: real('similarity_score'),
 		wasPrompted: integer('was_prompted', { mode: 'boolean' }).notNull().default(false),
 		wasRewritten: integer('was_rewritten', { mode: 'boolean' }).notNull().default(false),
-		sentAt: integer('sent_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+		sentAt: integer('sent_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
 		readAt: integer('read_at', { mode: 'timestamp' })
 	},
 	(table) => ({
@@ -273,13 +349,19 @@ export const messageQualityLog = sqliteTable(
 	'message_quality_log',
 	{
 		id: text('id').primaryKey(),
-		messageId: text('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
-		senderId: text('sender_id').notNull().references(() => userProfiles.id),
+		messageId: text('message_id')
+			.notNull()
+			.references(() => messages.id, { onDelete: 'cascade' }),
+		senderId: text('sender_id')
+			.notNull()
+			.references(() => userProfiles.id),
 		checkType: text('check_type').notNull(),
 		score: real('score'),
 		flagged: integer('flagged', { mode: 'boolean' }).notNull().default(false),
 		detail: text('detail'),
-		checkedAt: integer('checked_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		checkedAt: integer('checked_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		messageIdx: index('quality_log_message_idx').on(table.messageId),
@@ -291,11 +373,19 @@ export const keyExchanges = sqliteTable(
 	'key_exchanges',
 	{
 		id: text('id').primaryKey(),
-		threadId: text('thread_id').notNull().references(() => conversationThreads.id, { onDelete: 'cascade' }),
-		offeringUserId: text('offering_user_id').notNull().references(() => userProfiles.id),
-		receivingUserId: text('receiving_user_id').notNull().references(() => userProfiles.id),
+		threadId: text('thread_id')
+			.notNull()
+			.references(() => conversationThreads.id, { onDelete: 'cascade' }),
+		offeringUserId: text('offering_user_id')
+			.notNull()
+			.references(() => userProfiles.id),
+		receivingUserId: text('receiving_user_id')
+			.notNull()
+			.references(() => userProfiles.id),
 		status: text('status').notNull().default('offered'),
-		offeredAt: integer('offered_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+		offeredAt: integer('offered_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
 		resolvedAt: integer('resolved_at', { mode: 'timestamp' })
 	},
 	(table) => ({
@@ -309,7 +399,9 @@ export const reports = sqliteTable(
 	'reports',
 	{
 		id: text('id').primaryKey(),
-		reporterId: text('reporter_id').notNull().references(() => userProfiles.id),
+		reporterId: text('reporter_id')
+			.notNull()
+			.references(() => userProfiles.id),
 		targetType: text('target_type').notNull(),
 		targetId: text('target_id').notNull(),
 		category: text('category').notNull(),
@@ -317,7 +409,9 @@ export const reports = sqliteTable(
 		status: text('status').notNull().default('pending'),
 		reviewerNotes: text('reviewer_notes'),
 		reporterTrustScoreSnapshot: real('reporter_trust_score_snapshot').notNull(),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
 		resolvedAt: integer('resolved_at', { mode: 'timestamp' })
 	},
 	(table) => ({
@@ -338,7 +432,9 @@ export const moderationActions = sqliteTable(
 		reason: text('reason').notNull(),
 		reportId: text('report_id').references(() => reports.id),
 		expiresAt: integer('expires_at', { mode: 'timestamp' }),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		actorIdx: index('mod_actions_actor_idx').on(table.actorId),
@@ -351,18 +447,24 @@ export const platformConfig = sqliteTable('platform_config', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull(),
 	description: text('description'),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
 });
 
 export const pushSubscriptions = sqliteTable(
 	'push_subscriptions',
 	{
 		id: text('id').primaryKey(),
-		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => userProfiles.id, { onDelete: 'cascade' }),
 		endpoint: text('endpoint').notNull().unique(),
 		p256dh: text('p256dh').notNull(),
 		auth: text('auth').notNull(),
-		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
 	},
 	(table) => ({
 		userIdx: index('push_subs_user_idx').on(table.userId)

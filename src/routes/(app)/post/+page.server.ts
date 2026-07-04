@@ -10,7 +10,6 @@ import {
 } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 
-
 const MAX_ACTIVE_LISTINGS = 1; // free tier
 
 const VALID_IDENTITIES = [
@@ -78,7 +77,8 @@ export const actions: Actions = {
 		const lookingFor = lookingForRaw.filter((v) => VALID_IDENTITIES.includes(v));
 		const nature = natureRaw.filter((v) => VALID_NATURE.includes(v));
 
-		if (nature.length === 0) return fail(400, { error: 'Select at least one nature of connection' });
+		if (nature.length === 0)
+			return fail(400, { error: 'Select at least one nature of connection' });
 		if (mood && !VALID_MOODS.includes(mood)) return fail(400, { error: 'Invalid mood' });
 		if (availability && !VALID_AVAILABILITY.includes(availability))
 			return fail(400, { error: 'Invalid availability' });
@@ -87,7 +87,8 @@ export const actions: Actions = {
 		if (subject.length > 120) return fail(400, { error: 'Subject must be 120 characters or less' });
 		if (!body || body.length < 50)
 			return fail(400, { error: 'Listing body must be at least 50 characters' });
-		if (!VALID_TRUST_TIERS.includes(trustTierMin)) return fail(400, { error: 'Invalid trust tier' });
+		if (!VALID_TRUST_TIERS.includes(trustTierMin))
+			return fail(400, { error: 'Invalid trust tier' });
 
 		const ageMin = ageMinRaw ? parseInt(ageMinRaw) : null;
 		const ageMax = ageMaxRaw ? parseInt(ageMaxRaw) : null;
@@ -107,7 +108,9 @@ export const actions: Actions = {
 			.all();
 
 		if (activeListings.length >= MAX_ACTIVE_LISTINGS) {
-			return fail(400, { error: `You already have an active listing. You can post another after it expires or is removed.` });
+			return fail(400, {
+				error: `You already have an active listing. You can post another after it expires or is removed.`
+			});
 		}
 
 		const profile = await db
@@ -156,15 +159,41 @@ export const actions: Actions = {
 		}[] = [];
 
 		if (ageMin !== null)
-			reqs.push({ id: crypto.randomUUID(), listingId, type: 'hard', field: 'age_min', value: String(ageMin) });
+			reqs.push({
+				id: crypto.randomUUID(),
+				listingId,
+				type: 'hard',
+				field: 'age_min',
+				value: String(ageMin)
+			});
 		if (ageMax !== null)
-			reqs.push({ id: crypto.randomUUID(), listingId, type: 'hard', field: 'age_max', value: String(ageMax) });
+			reqs.push({
+				id: crypto.randomUUID(),
+				listingId,
+				type: 'hard',
+				field: 'age_max',
+				value: String(ageMax)
+			});
 		if (trustTierMin !== 'new')
-			reqs.push({ id: crypto.randomUUID(), listingId, type: 'hard', field: 'trust_tier', value: trustTierMin });
+			reqs.push({
+				id: crypto.randomUUID(),
+				listingId,
+				type: 'hard',
+				field: 'trust_tier',
+				value: trustTierMin
+			});
 
 		for (const prompt of softReqsRaw) {
 			const trimmed = prompt.trim();
-			if (trimmed) reqs.push({ id: crypto.randomUUID(), listingId, type: 'soft', field: 'prompt', value: 'acknowledged', promptText: trimmed });
+			if (trimmed)
+				reqs.push({
+					id: crypto.randomUUID(),
+					listingId,
+					type: 'soft',
+					field: 'prompt',
+					value: 'acknowledged',
+					promptText: trimmed
+				});
 		}
 
 		if (reqs.length > 0) await db.insert(listingRequirements).values(reqs);
@@ -175,7 +204,12 @@ export const actions: Actions = {
 
 		if (termDefs.length > 0) {
 			await db.insert(relativeTermDefinitions).values(
-				termDefs.map((t) => ({ id: crypto.randomUUID(), listingId, term: t.term, definition: t.definition }))
+				termDefs.map((t) => ({
+					id: crypto.randomUUID(),
+					listingId,
+					term: t.term,
+					definition: t.definition
+				}))
 			);
 		}
 

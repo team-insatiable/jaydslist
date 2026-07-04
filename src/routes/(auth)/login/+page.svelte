@@ -41,36 +41,76 @@
 			<div class="auth-error">{error}</div>
 		{/if}
 
-		<form onsubmit={(e) => { e.preventDefault(); login(); }}>
-		<div class="field">
-			<label for="email">Email</label>
-			<div class="input-wrap">
-				<svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-				</svg>
-				<input id="email" type="email" placeholder="you@example.com" bind:value={email} disabled={loading} />
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				login();
+			}}
+		>
+			<div class="field">
+				<label for="email">Email</label>
+				<div class="input-wrap">
+					<svg
+						class="input-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<rect x="2" y="4" width="20" height="16" rx="2" /><path
+							d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+						/>
+					</svg>
+					<input
+						id="email"
+						type="email"
+						placeholder="you@example.com"
+						bind:value={email}
+						disabled={loading}
+					/>
+				</div>
 			</div>
-		</div>
 
-		<div class="field">
-			<label for="password">Password</label>
-			<div class="input-wrap">
-				<svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-				</svg>
-				<input id="password" type="password" placeholder="Your password" bind:value={password} disabled={loading} />
+			<div class="field">
+				<label for="password">Password</label>
+				<div class="input-wrap">
+					<svg
+						class="input-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+					</svg>
+					<input
+						id="password"
+						type="password"
+						placeholder="Your password"
+						bind:value={password}
+						disabled={loading}
+					/>
+				</div>
+				<a href={resolve('/forgot-password')} class="forgot">Forgot password?</a>
 			</div>
-			<a href={resolve('/forgot-password')} class="forgot">Forgot password?</a>
-		</div>
 
-		<label class="remember-row">
-			<input type="checkbox" bind:checked={rememberMe} autocomplete="off" />
-			Remember me
-		</label>
+			<label class="remember-row">
+				<input type="checkbox" bind:checked={rememberMe} autocomplete="off" />
+				Remember me
+			</label>
 
-		<button type="submit" class="submit-btn" disabled={loading || !email || !password} aria-busy={loading}>
-			{loading ? '' : 'Sign in'}
-		</button>
+			<button
+				type="submit"
+				class="submit-btn"
+				disabled={loading || !email || !password}
+				aria-busy={loading}
+			>
+				{loading ? '' : 'Sign in'}
+			</button>
 		</form>
 
 		<p class="switch-link">Don't have an account? <a href={resolve('/register')}>Sign up</a></p>

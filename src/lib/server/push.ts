@@ -10,38 +10,59 @@ function b64u(buf: ArrayBuffer | Uint8Array): string {
 
 function fromB64u(s: string): Uint8Array {
 	const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-	const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');
+	const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '=');
 	const bin = atob(padded);
 	return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 }
 
-async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, length: number): Promise<Uint8Array> {
+async function hkdf(
+	salt: Uint8Array,
+	ikm: Uint8Array,
+	info: Uint8Array,
+	length: number
+): Promise<Uint8Array> {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const key = await (crypto.subtle as any).importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const bits = await (crypto.subtle as any).deriveBits(
+	const bits = (await (crypto.subtle as any).deriveBits(
 		{ name: 'HKDF', hash: 'SHA-256', salt, info },
 		key,
 		length * 8
-	) as ArrayBuffer;
+	)) as ArrayBuffer;
 	return new Uint8Array(bits);
 }
 
-async function encryptPayload(plaintext: string, p256dhB64u: string, authB64u: string): Promise<Uint8Array> {
+async function encryptPayload(
+	plaintext: string,
+	p256dhB64u: string,
+	authB64u: string
+): Promise<Uint8Array> {
 	const enc = new TextEncoder();
 	const subscriberKey = fromB64u(p256dhB64u); // 65-byte uncompressed P-256 point
 	const authSecret = fromB64u(authB64u);
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const subtle = crypto.subtle as any;
-	const serverKeyPair = await subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']) as CryptoKeyPair;
-	const serverPublicRaw = new Uint8Array(await subtle.exportKey('raw', serverKeyPair.publicKey) as ArrayBuffer);
+	const serverKeyPair = (await subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, [
+		'deriveBits'
+	])) as CryptoKeyPair;
+	const serverPublicRaw = new Uint8Array(
+		(await subtle.exportKey('raw', serverKeyPair.publicKey)) as ArrayBuffer
+	);
 
-	const subscriberCryptoKey = await subtle.importKey(
-		'raw', subscriberKey, { name: 'ECDH', namedCurve: 'P-256' }, false, []
-	) as CryptoKey;
+	const subscriberCryptoKey = (await subtle.importKey(
+		'raw',
+		subscriberKey,
+		{ name: 'ECDH', namedCurve: 'P-256' },
+		false,
+		[]
+	)) as CryptoKey;
 	const sharedSecret = new Uint8Array(
-		await subtle.deriveBits({ name: 'ECDH', public: subscriberCryptoKey }, serverKeyPair.privateKey, 256) as ArrayBuffer
+		(await subtle.deriveBits(
+			{ name: 'ECDH', public: subscriberCryptoKey },
+			serverKeyPair.privateKey,
+			256
+		)) as ArrayBuffer
 	);
 
 	const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -61,9 +82,9 @@ async function encryptPayload(plaintext: string, p256dhB64u: string, authB64u: s
 	padded.set(plaintextBytes);
 	padded[plaintextBytes.length] = 2; // aes128gcm last-record delimiter
 
-	const aesKey = await subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']) as CryptoKey;
+	const aesKey = (await subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt'])) as CryptoKey;
 	const ciphertext = new Uint8Array(
-		await subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, padded) as ArrayBuffer
+		(await subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, padded)) as ArrayBuffer
 	);
 
 	// aes128gcm content-encoding header: salt(16) || rs(4) || keyid_len(1) || server_key(65)
@@ -91,23 +112,25 @@ async function buildVapidJwt(
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const subtle = crypto.subtle as any;
-	const sigKey = await subtle.importKey(
+	const sigKey = (await subtle.importKey(
 		'jwk',
 		{ kty: 'EC', crv: 'P-256', d: privB64u, x, y, key_ops: ['sign'] },
 		{ name: 'ECDSA', namedCurve: 'P-256' },
 		false,
 		['sign']
-	) as CryptoKey;
+	)) as CryptoKey;
 
 	const enc = new TextEncoder();
 	const now = Math.floor(Date.now() / 1000);
 	const header = b64u(enc.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
-	const payload = b64u(enc.encode(JSON.stringify({ aud: audience, exp: now + 43200, sub: contact })));
-	const sig = await subtle.sign(
+	const payload = b64u(
+		enc.encode(JSON.stringify({ aud: audience, exp: now + 43200, sub: contact }))
+	);
+	const sig = (await subtle.sign(
 		{ name: 'ECDSA', hash: 'SHA-256' },
 		sigKey,
 		enc.encode(`${header}.${payload}`)
-	) as ArrayBuffer;
+	)) as ArrayBuffer;
 
 	return `${header}.${payload}.${b64u(sig)}`;
 }

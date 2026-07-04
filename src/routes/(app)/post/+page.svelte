@@ -2,6 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { scanTerms } from '$lib/relative-terms';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data } = $props();
 
@@ -78,26 +80,6 @@
 	const minPct = $derived(((ageMinNum - AGE_MIN) / (AGE_MAX - AGE_MIN)) * 100);
 	const maxPct = $derived(((ageMaxNum - AGE_MIN) / (AGE_MAX - AGE_MIN)) * 100);
 
-	// Relative terms vocabulary
-	const RELATIVE_TERMS = [
-		'cute', 'pretty', 'attractive', 'hot', 'fit', 'athletic', 'slim', 'thick',
-		'large', 'small', 'tall', 'short', 'average',
-		'nearby', 'close', 'local', 'far',
-		'young', 'older', 'mature', 'younger',
-		'serious', 'casual', 'laid back', 'intense', 'outgoing',
-		'soon', 'later', 'regular', 'occasional', 'often'
-	];
-
-	function scanTerms(text: string): string[] {
-		const found: string[] = [];
-		for (const term of RELATIVE_TERMS) {
-			const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			const pattern = new RegExp(`\\b${escaped}\\b`, 'i');
-			if (pattern.test(text)) found.push(term);
-		}
-		return found;
-	}
-
 	const foundTerms = $derived(scanTerms(body));
 
 	$effect(() => {
@@ -112,7 +94,7 @@
 	});
 
 	function toggleSet(s: Set<string>, value: string): Set<string> {
-		const next = new Set(s);
+		const next = new SvelteSet(s);
 		if (next.has(value)) next.delete(value);
 		else next.add(value);
 		return next;
@@ -122,7 +104,7 @@
 		if (value === 'open') {
 			nature = nature.has('open') ? new Set() : new Set(['open']);
 		} else {
-			const next = new Set(nature);
+			const next = new SvelteSet(nature);
 			next.delete('open');
 			if (next.has(value)) next.delete(value);
 			else next.add(value);
@@ -137,324 +119,381 @@
 	);
 	const step3Valid = $derived(
 		subject.trim().length >= 10 &&
-		subject.trim().length <= 120 &&
-		body.trim().length >= 50 &&
-		allTermsDefined
+			subject.trim().length <= 120 &&
+			body.trim().length >= 50 &&
+			allTermsDefined
 	);
 
 	const IDENTITY_LABELS: Record<string, string> = {
-		man: 'Men', woman: 'Women', non_binary: 'Non-binary', transgender_man: 'Trans men',
-		transgender_woman: 'Trans women', couple: 'Couples', other: 'Other'
+		man: 'Men',
+		woman: 'Women',
+		non_binary: 'Non-binary',
+		transgender_man: 'Trans men',
+		transgender_woman: 'Trans women',
+		couple: 'Couples',
+		other: 'Other'
 	};
 	const NATURE_LABELS: Record<string, string> = {
-		dating: 'Dating', fwb: 'FWB', one_time: 'NSA', platonic: 'Platonic', open: 'Open'
+		dating: 'Dating',
+		fwb: 'FWB',
+		one_time: 'NSA',
+		platonic: 'Platonic',
+		open: 'Open'
 	};
 	const MOOD_LABELS: Record<string, string> = {
-		coffee_first: 'Coffee first', dinner_date: 'Dinner date', netflix_chill: 'Netflix & chill',
-		ready_now: 'Ready now', just_browsing: 'Just browsing'
+		coffee_first: 'Coffee first',
+		dinner_date: 'Dinner date',
+		netflix_chill: 'Netflix & chill',
+		ready_now: 'Ready now',
+		just_browsing: 'Just browsing'
 	};
 </script>
 
 <div class="post-page">
 	{#if data.hasActiveListing}
-	<div class="blocked-notice">
-		<p>You already have an active listing. Remove or let it expire before posting another.</p>
-		<a href={resolve('/my-listings')}>Manage my listings →</a>
-	</div>
+		<div class="blocked-notice">
+			<p>You already have an active listing. Remove or let it expire before posting another.</p>
+			<a href={resolve('/my-listings')}>Manage my listings →</a>
+		</div>
 	{:else}
-
-	<div class="progress-bar">
-		{#each Array(STEPS) as _, i}
-			<div class="progress-step" class:done={i + 1 < step} class:active={i + 1 === step}></div>
-		{/each}
-	</div>
-
-	<!-- Step 1: Who you're looking for -->
-	{#if step === 1}
-	<div class="step">
-		<h2>Who can respond?</h2>
-		<p class="step-hint">Who you'd like to hear from. Leave all unselected to allow anyone.</p>
-
-		<div class="field">
-			<span class="field-label">Identity</span>
-			<div class="chip-group">
-				{#each identityOptions as opt}
-					<label class="chip {lookingFor.has(opt.value) ? 'selected' : ''}">
-						<input id="looking-for-{opt.value}" type="checkbox" checked={lookingFor.has(opt.value)}
-							onchange={() => (lookingFor = toggleSet(lookingFor, opt.value))} />
-						{opt.label}
-					</label>
-				{/each}
-			</div>
-		</div>
-
-		<div class="field">
-			<div class="age-toggle-row">
-				<span class="field-label">Age range</span>
-				<label class="toggle-label">
-					<input id="age-range-enabled" type="checkbox" bind:checked={ageRangeEnabled} />
-					{ageRangeEnabled ? 'Enabled' : 'No preference'}
-				</label>
-			</div>
-
-			<div class="age-display" class:muted={!ageRangeEnabled}>
-				<span>{ageRangeEnabled ? ageMinNum : '—'}</span>
-				<span class="age-sep">to</span>
-				<span>{ageRangeEnabled ? (ageMaxNum >= AGE_MAX ? `${AGE_MAX}+` : ageMaxNum) : '—'}</span>
-			</div>
-			<div class="dual-range" class:disabled={!ageRangeEnabled}>
-				<div class="range-track">
-					<div class="range-fill" style="left: {minPct}%; right: {100 - maxPct}%"></div>
-				</div>
-				<input id="age-min-range" type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMinNum}
-					oninput={() => { ageRangeEnabled = true; clampMin(); }}
-					class="range-input range-min" />
-				<input id="age-max-range" type="range" min={AGE_MIN} max={AGE_MAX} bind:value={ageMaxNum}
-					oninput={() => { ageRangeEnabled = true; clampMax(); }}
-					class="range-input range-max" />
-			</div>
-		</div>
-
-		<div class="step-nav">
-			<span></span>
-			<button onclick={() => (step = 2)}>Next →</button>
-		</div>
-	</div>
-
-	<!-- Step 2: Nature + vibe -->
-	{:else if step === 2}
-	<div class="step">
-		<h2>What are you looking for?</h2>
-
-		<div class="field">
-			<span class="field-label">Nature of connection <span class="required">*</span></span>
-			<div class="chip-group">
-				{#each natureOptions as opt}
-					<label class="chip {nature.has(opt.value) ? 'selected' : ''}">
-						<input id="nature-{opt.value}" type="checkbox" checked={nature.has(opt.value)}
-							onchange={() => toggleNature(opt.value)} />
-						{opt.label}
-					</label>
-				{/each}
-			</div>
-		</div>
-
-		<div class="field">
-			<span class="field-label">Vibe (optional)</span>
-			<div class="chip-group">
-				{#each moodOptions as opt}
-					<label class="chip {mood === opt.value ? 'selected' : ''}">
-						<input type="radio" name="mood" value={opt.value} checked={mood === opt.value}
-							onchange={() => (mood = mood === opt.value ? '' : opt.value)} />
-						{opt.label}
-					</label>
-				{/each}
-			</div>
-		</div>
-
-		<div class="step-nav">
-			<button class="secondary" onclick={() => (step = 1)}>← Back</button>
-			<button onclick={() => (step = 3)} disabled={!step2Valid}>Next →</button>
-		</div>
-	</div>
-
-	<!-- Step 3: Write -->
-	{:else if step === 3}
-	<div class="step">
-		<h2>Write your listing</h2>
-
-		<div class="field">
-			<label for="subject">Subject line</label>
-			<input
-				id="subject"
-				type="text"
-				placeholder="Your hook — what makes someone want to read more"
-				maxlength="120"
-				bind:value={subject}
-			/>
-			<small>{subject.trim().length}/120 — minimum 10 characters</small>
-		</div>
-
-		<div class="field">
-			<label for="body">Your listing</label>
-			<textarea
-				id="body"
-				rows="8"
-				placeholder="Tell people about yourself and what you're looking for. Be specific — vague listings get fewer responses."
-				bind:value={body}
-			></textarea>
-			<small>{body.trim().length} characters — minimum 50</small>
-		</div>
-
-		{#if foundTerms.length > 0}
-		<div class="terms-box">
-			<p class="terms-heading">Define your terms</p>
-			<p class="terms-desc">Help potential matches understand what you mean. All must be defined before continuing.</p>
-			{#each foundTerms as term}
-			<div class="term-row">
-				<span class="term-chip">{term}</span>
-				<input
-					id="term-{term}"
-					type="text"
-					placeholder="What do you mean by this?"
-					value={termDefinitions[term] ?? ''}
-					oninput={(e) => {
-						termDefinitions = { ...termDefinitions, [term]: (e.currentTarget as HTMLInputElement).value };
-					}}
-				/>
-			</div>
-			{/each}
-		</div>
-		{/if}
-
-		<div class="step-nav">
-			<button class="secondary" onclick={() => (step = 2)}>← Back</button>
-			<button onclick={() => (step = 4)} disabled={!step3Valid}>Next →</button>
-		</div>
-	</div>
-
-	<!-- Step 4: Requirements -->
-	{:else if step === 4}
-	<div class="step">
-		<h2>Requirements</h2>
-		<p class="step-hint">All optional. Hard requirements are checked before someone can message you.</p>
-
-		<div class="field">
-			<label for="trustTierMin">Minimum trust tier</label>
-			<select id="trustTierMin" bind:value={trustTierMin}>
-				{#each trustOptions as opt}
-					<option value={opt.value}>{opt.label}</option>
-				{/each}
-			</select>
-		</div>
-
-		<div class="field">
-			<span class="field-label">Soft requirements (optional)</span>
-			<p class="field-hint">Responders must acknowledge these before messaging you.</p>
-			{#each softRequirements as _, i}
-			<input
-				id="soft-req-{i}"
-				type="text"
-				placeholder="e.g. Must be okay with my schedule"
-				bind:value={softRequirements[i]}
-				style="margin-bottom: 0.5rem;"
-			/>
+		<div class="progress-bar">
+			{#each Array(STEPS) as _, i (i)}
+				<div class="progress-step" class:done={i + 1 < step} class:active={i + 1 === step}></div>
 			{/each}
 		</div>
 
-		<div class="step-nav">
-			<button class="secondary" onclick={() => (step = 3)}>← Back</button>
-			<button onclick={() => (step = 5)}>Review →</button>
-		</div>
-	</div>
+		<!-- Step 1: Who you're looking for -->
+		{#if step === 1}
+			<div class="step">
+				<h2>Who can respond?</h2>
+				<p class="step-hint">Who you'd like to hear from. Leave all unselected to allow anyone.</p>
 
-	<!-- Step 5: Review and post -->
-	{:else if step === 5}
-	<div class="step">
-		<h2>Review your listing</h2>
+				<div class="field">
+					<span class="field-label">Identity</span>
+					<div class="chip-group">
+						{#each identityOptions as opt (opt.value)}
+							<label class="chip {lookingFor.has(opt.value) ? 'selected' : ''}">
+								<input
+									id="looking-for-{opt.value}"
+									type="checkbox"
+									checked={lookingFor.has(opt.value)}
+									onchange={() => (lookingFor = toggleSet(lookingFor, opt.value))}
+								/>
+								{opt.label}
+							</label>
+						{/each}
+					</div>
+				</div>
 
-		<div class="review-card">
-			<div class="review-section">
-				<span class="review-label">Subject</span>
-				<p class="review-subject">{subject}</p>
-			</div>
-			<div class="review-section">
-				<span class="review-label">Body</span>
-				<p class="review-body">{body}</p>
-			</div>
-			{#if foundTerms.length > 0}
-			<div class="review-section">
-				<span class="review-label">Term definitions</span>
-				{#each foundTerms as term}
-					<p class="review-term"><strong>{term}</strong> — {termDefinitions[term]}</p>
-				{/each}
-			</div>
-			{/if}
-			<div class="review-section review-meta">
-				<div>
-					<span class="review-label">Looking for</span>
-					<p>{lookingFor.size === 0 ? 'Anyone' : [...lookingFor].map(v => IDENTITY_LABELS[v] ?? v).join(', ')}</p>
+				<div class="field">
+					<div class="age-toggle-row">
+						<span class="field-label">Age range</span>
+						<label class="toggle-label">
+							<input id="age-range-enabled" type="checkbox" bind:checked={ageRangeEnabled} />
+							{ageRangeEnabled ? 'Enabled' : 'No preference'}
+						</label>
+					</div>
+
+					<div class="age-display" class:muted={!ageRangeEnabled}>
+						<span>{ageRangeEnabled ? ageMinNum : '—'}</span>
+						<span class="age-sep">to</span>
+						<span>{ageRangeEnabled ? (ageMaxNum >= AGE_MAX ? `${AGE_MAX}+` : ageMaxNum) : '—'}</span
+						>
+					</div>
+					<div class="dual-range" class:disabled={!ageRangeEnabled}>
+						<div class="range-track">
+							<div class="range-fill" style="left: {minPct}%; right: {100 - maxPct}%"></div>
+						</div>
+						<input
+							id="age-min-range"
+							type="range"
+							min={AGE_MIN}
+							max={AGE_MAX}
+							bind:value={ageMinNum}
+							oninput={() => {
+								ageRangeEnabled = true;
+								clampMin();
+							}}
+							class="range-input range-min"
+						/>
+						<input
+							id="age-max-range"
+							type="range"
+							min={AGE_MIN}
+							max={AGE_MAX}
+							bind:value={ageMaxNum}
+							oninput={() => {
+								ageRangeEnabled = true;
+								clampMax();
+							}}
+							class="range-input range-max"
+						/>
+					</div>
 				</div>
-				{#if ageRangeEnabled}
-				<div>
-					<span class="review-label">Age range</span>
-					<p>{ageMinNum}–{ageMaxNum >= AGE_MAX ? `${AGE_MAX}+` : ageMaxNum}</p>
+
+				<div class="step-nav">
+					<span></span>
+					<button onclick={() => (step = 2)}>Next →</button>
 				</div>
+			</div>
+
+			<!-- Step 2: Nature + vibe -->
+		{:else if step === 2}
+			<div class="step">
+				<h2>What are you looking for?</h2>
+
+				<div class="field">
+					<span class="field-label">Nature of connection <span class="required">*</span></span>
+					<div class="chip-group">
+						{#each natureOptions as opt (opt.value)}
+							<label class="chip {nature.has(opt.value) ? 'selected' : ''}">
+								<input
+									id="nature-{opt.value}"
+									type="checkbox"
+									checked={nature.has(opt.value)}
+									onchange={() => toggleNature(opt.value)}
+								/>
+								{opt.label}
+							</label>
+						{/each}
+					</div>
+				</div>
+
+				<div class="field">
+					<span class="field-label">Vibe (optional)</span>
+					<div class="chip-group">
+						{#each moodOptions as opt (opt.value)}
+							<label class="chip {mood === opt.value ? 'selected' : ''}">
+								<input
+									type="radio"
+									name="mood"
+									value={opt.value}
+									checked={mood === opt.value}
+									onchange={() => (mood = mood === opt.value ? '' : opt.value)}
+								/>
+								{opt.label}
+							</label>
+						{/each}
+					</div>
+				</div>
+
+				<div class="step-nav">
+					<button class="secondary" onclick={() => (step = 1)}>← Back</button>
+					<button onclick={() => (step = 3)} disabled={!step2Valid}>Next →</button>
+				</div>
+			</div>
+
+			<!-- Step 3: Write -->
+		{:else if step === 3}
+			<div class="step">
+				<h2>Write your listing</h2>
+
+				<div class="field">
+					<label for="subject">Subject line</label>
+					<input
+						id="subject"
+						type="text"
+						placeholder="Your hook — what makes someone want to read more"
+						maxlength="120"
+						bind:value={subject}
+					/>
+					<small>{subject.trim().length}/120 — minimum 10 characters</small>
+				</div>
+
+				<div class="field">
+					<label for="body">Your listing</label>
+					<textarea
+						id="body"
+						rows="8"
+						placeholder="Tell people about yourself and what you're looking for. Be specific — vague listings get fewer responses."
+						bind:value={body}
+					></textarea>
+					<small>{body.trim().length} characters — minimum 50</small>
+				</div>
+
+				{#if foundTerms.length > 0}
+					<div class="terms-box">
+						<p class="terms-heading">Define your terms</p>
+						<p class="terms-desc">
+							Help potential matches understand what you mean. All must be defined before
+							continuing.
+						</p>
+						{#each foundTerms as term (term)}
+							<div class="term-row">
+								<span class="term-chip">{term}</span>
+								<input
+									id="term-{term}"
+									type="text"
+									placeholder="What do you mean by this?"
+									value={termDefinitions[term] ?? ''}
+									oninput={(e) => {
+										termDefinitions = {
+											...termDefinitions,
+											[term]: (e.currentTarget as HTMLInputElement).value
+										};
+									}}
+								/>
+							</div>
+						{/each}
+					</div>
 				{/if}
-				<div>
-					<span class="review-label">Nature</span>
-					<p>{[...nature].map(v => NATURE_LABELS[v] ?? v).join(', ')}</p>
+
+				<div class="step-nav">
+					<button class="secondary" onclick={() => (step = 2)}>← Back</button>
+					<button onclick={() => (step = 4)} disabled={!step3Valid}>Next →</button>
 				</div>
-				{#if mood}
-				<div>
-					<span class="review-label">Vibe</span>
-					<p>{MOOD_LABELS[mood] ?? mood}</p>
+			</div>
+
+			<!-- Step 4: Requirements -->
+		{:else if step === 4}
+			<div class="step">
+				<h2>Requirements</h2>
+				<p class="step-hint">
+					All optional. Hard requirements are checked before someone can message you.
+				</p>
+
+				<div class="field">
+					<label for="trustTierMin">Minimum trust tier</label>
+					<select id="trustTierMin" bind:value={trustTierMin}>
+						{#each trustOptions as opt (opt.value)}
+							<option value={opt.value}>{opt.label}</option>
+						{/each}
+					</select>
 				</div>
-				{/if}
-				<div>
-					<span class="review-label">Min trust tier</span>
-					<p style="text-transform: capitalize">{trustTierMin}</p>
-				</div>
-				{#if softRequirements.some(s => s.trim())}
-				<div>
-					<span class="review-label">Soft requirements</span>
-					{#each softRequirements.filter(s => s.trim()) as req}
-						<p>· {req}</p>
+
+				<div class="field">
+					<span class="field-label">Soft requirements (optional)</span>
+					<p class="field-hint">Responders must acknowledge these before messaging you.</p>
+					{#each softRequirements as _, i (i)}
+						<input
+							id="soft-req-{i}"
+							type="text"
+							placeholder="e.g. Must be okay with my schedule"
+							bind:value={softRequirements[i]}
+							style="margin-bottom: 0.5rem;"
+						/>
 					{/each}
 				</div>
+
+				<div class="step-nav">
+					<button class="secondary" onclick={() => (step = 3)}>← Back</button>
+					<button onclick={() => (step = 5)}>Review →</button>
+				</div>
+			</div>
+
+			<!-- Step 5: Review and post -->
+		{:else if step === 5}
+			<div class="step">
+				<h2>Review your listing</h2>
+
+				<div class="review-card">
+					<div class="review-section">
+						<span class="review-label">Subject</span>
+						<p class="review-subject">{subject}</p>
+					</div>
+					<div class="review-section">
+						<span class="review-label">Body</span>
+						<p class="review-body">{body}</p>
+					</div>
+					{#if foundTerms.length > 0}
+						<div class="review-section">
+							<span class="review-label">Term definitions</span>
+							{#each foundTerms as term (term)}
+								<p class="review-term"><strong>{term}</strong> — {termDefinitions[term]}</p>
+							{/each}
+						</div>
+					{/if}
+					<div class="review-section review-meta">
+						<div>
+							<span class="review-label">Looking for</span>
+							<p>
+								{lookingFor.size === 0
+									? 'Anyone'
+									: [...lookingFor].map((v) => IDENTITY_LABELS[v] ?? v).join(', ')}
+							</p>
+						</div>
+						{#if ageRangeEnabled}
+							<div>
+								<span class="review-label">Age range</span>
+								<p>{ageMinNum}–{ageMaxNum >= AGE_MAX ? `${AGE_MAX}+` : ageMaxNum}</p>
+							</div>
+						{/if}
+						<div>
+							<span class="review-label">Nature</span>
+							<p>{[...nature].map((v) => NATURE_LABELS[v] ?? v).join(', ')}</p>
+						</div>
+						{#if mood}
+							<div>
+								<span class="review-label">Vibe</span>
+								<p>{MOOD_LABELS[mood] ?? mood}</p>
+							</div>
+						{/if}
+						<div>
+							<span class="review-label">Min trust tier</span>
+							<p style="text-transform: capitalize">{trustTierMin}</p>
+						</div>
+						{#if softRequirements.some((s) => s.trim())}
+							<div>
+								<span class="review-label">Soft requirements</span>
+								{#each softRequirements.filter((s) => s.trim()) as req, i (i)}
+									<p>· {req}</p>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				{#if submitError}
+					<p class="error">{submitError}</p>
 				{/if}
-			</div>
-		</div>
 
-		{#if submitError}
-			<p class="error">{submitError}</p>
+				<form
+					method="POST"
+					action="?/post"
+					use:enhance={() => {
+						submitting = true;
+						submitError = '';
+						return async ({ result }) => {
+							submitting = false;
+							if (result.type === 'redirect') {
+								// result.location is a runtime string from the server's ActionResult, not a resolvable route literal
+								// eslint-disable-next-line svelte/no-navigation-without-resolve
+								goto(result.location);
+							} else if (result.type === 'failure') {
+								submitError = (result.data?.error as string) ?? 'Something went wrong';
+							}
+						};
+					}}
+				>
+					{#each [...lookingFor] as id (id)}
+						<input type="hidden" name="lookingFor" value={id} />
+					{/each}
+					<input type="hidden" name="ageMin" value={ageRangeEnabled ? ageMinNum : ''} />
+					<input type="hidden" name="ageMax" value={ageRangeEnabled ? ageMaxNum : ''} />
+					{#each [...nature] as n (n)}
+						<input type="hidden" name="nature" value={n} />
+					{/each}
+					<input type="hidden" name="mood" value={mood} />
+					<input type="hidden" name="subject" value={subject} />
+					<input type="hidden" name="body" value={body} />
+					{#each foundTerms as term (term)}
+						<input type="hidden" name="termKey" value={term} />
+						<input type="hidden" name="termValue" value={termDefinitions[term] ?? ''} />
+					{/each}
+					<input type="hidden" name="trustTierMin" value={trustTierMin} />
+					{#each softRequirements.filter((s) => s.trim()) as req, i (i)}
+						<input type="hidden" name="softReq" value={req} />
+					{/each}
+
+					<div class="step-nav">
+						<button type="button" class="secondary" onclick={() => (step = 4)}>← Back</button>
+						<button type="submit" aria-busy={submitting} disabled={submitting}>
+							{submitting ? '' : 'Post listing'}
+						</button>
+					</div>
+				</form>
+			</div>
 		{/if}
-
-		<form
-			method="POST"
-			action="?/post"
-			use:enhance={() => {
-				submitting = true;
-				submitError = '';
-				return async ({ result }) => {
-					submitting = false;
-					if (result.type === 'redirect') {
-						goto(result.location);
-					} else if (result.type === 'failure') {
-						submitError = (result.data?.error as string) ?? 'Something went wrong';
-					}
-				};
-			}}
-		>
-			{#each [...lookingFor] as id}
-				<input type="hidden" name="lookingFor" value={id} />
-			{/each}
-			<input type="hidden" name="ageMin" value={ageRangeEnabled ? ageMinNum : ''} />
-			<input type="hidden" name="ageMax" value={ageRangeEnabled ? ageMaxNum : ''} />
-			{#each [...nature] as n}
-				<input type="hidden" name="nature" value={n} />
-			{/each}
-			<input type="hidden" name="mood" value={mood} />
-			<input type="hidden" name="subject" value={subject} />
-			<input type="hidden" name="body" value={body} />
-			{#each foundTerms as term}
-				<input type="hidden" name="termKey" value={term} />
-				<input type="hidden" name="termValue" value={termDefinitions[term] ?? ''} />
-			{/each}
-			<input type="hidden" name="trustTierMin" value={trustTierMin} />
-			{#each softRequirements.filter(s => s.trim()) as req}
-				<input type="hidden" name="softReq" value={req} />
-			{/each}
-
-			<div class="step-nav">
-				<button type="button" class="secondary" onclick={() => (step = 4)}>← Back</button>
-				<button type="submit" aria-busy={submitting} disabled={submitting}>
-					{submitting ? '' : 'Post listing'}
-				</button>
-			</div>
-		</form>
-	</div>
-	{/if}
 	{/if}
 </div>
 
@@ -509,7 +548,8 @@
 		margin-bottom: 0.35rem;
 	}
 
-	.step-hint, .field-hint {
+	.step-hint,
+	.field-hint {
 		font-size: 0.875rem;
 		color: var(--pico-muted-color);
 		margin-bottom: 1.25rem;
@@ -524,7 +564,8 @@
 		margin-bottom: 1.25rem;
 	}
 
-	.field label, .field-label {
+	.field label,
+	.field-label {
 		display: block;
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -689,12 +730,16 @@
 		background: transparent !important;
 		box-shadow: none !important;
 		color: inherit !important;
-		transition: background 0.1s, border-color 0.1s;
+		transition:
+			background 0.1s,
+			border-color 0.1s;
 		margin: 0;
 		font-weight: normal;
 	}
 
-	.chip input { display: none; }
+	.chip input {
+		display: none;
+	}
 
 	.chip.selected {
 		background: color-mix(in srgb, var(--pico-primary) 12%, transparent);

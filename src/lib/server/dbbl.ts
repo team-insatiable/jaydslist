@@ -39,7 +39,11 @@ export async function queryDbblScore(
 		confidence: string | null;
 	}>();
 	if (data.status !== 'found') return null;
-	return { score: data.score ?? null, rating: data.rating ?? null, confidence: data.confidence ?? null };
+	return {
+		score: data.score ?? null,
+		rating: data.rating ?? null,
+		confidence: data.confidence ?? null
+	};
 }
 
 export function isBlockedByDbbl(rating: string | null | undefined): boolean {
@@ -63,7 +67,12 @@ export async function reportBanToDbbl(opts: {
 			Authorization: `Bearer ${opts.env.DBBL_API_KEY}`,
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify({ phoneHash, emailHash, violationCategory: dbblCategory, severity: 'medium' })
+		body: JSON.stringify({
+			phoneHash,
+			emailHash,
+			violationCategory: dbblCategory,
+			severity: 'medium'
+		})
 	});
 	if (!res.ok) throw new Error(`DBBL report non-OK: ${res.status}`);
 }

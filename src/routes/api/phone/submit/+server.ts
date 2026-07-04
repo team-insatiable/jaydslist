@@ -29,7 +29,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 	if (!lookup.valid) return json({ error: 'Invalid phone number' }, { status: 422 });
 	if (lookup.isVoip) {
-		return json({ error: 'VoIP numbers are not permitted. Please use a real mobile number.' }, { status: 422 });
+		return json(
+			{ error: 'VoIP numbers are not permitted. Please use a real mobile number.' },
+			{ status: 422 }
+		);
 	}
 
 	const normalizedPhone = lookup.e164 ?? phone;
@@ -43,7 +46,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		.get();
 
 	if (existing && existing.id !== locals.user.id) {
-		return json({ error: 'This phone number is already associated with another account' }, { status: 409 });
+		return json(
+			{ error: 'This phone number is already associated with another account' },
+			{ status: 409 }
+		);
 	}
 
 	// Store normalized phone in KV temporarily for OTP verification

@@ -1,0 +1,25 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "jaydslist-test",
+	"compatibility_date": "2026-05-07",
+	"compatibility_flags": ["nodejs_als"],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "jaydslist-d1-test",
+			"database_id": "test-d1",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "PHONE_VERIFICATION_KV",
+			"id": "test-kv"
+		}
+	],
+	"vars": {
+		"RESEND_API_KEY": "test-resend-key",
+		"ADMIN_EMAILS": "admin-test@example.com",
+		"ORIGIN": "http://localhost:5173"
+	}
+}

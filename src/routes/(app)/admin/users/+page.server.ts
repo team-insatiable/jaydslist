@@ -38,12 +38,7 @@ export const load: PageServerLoad = async ({ url, platform }) => {
 			})
 			.from(user)
 			.leftJoin(userProfiles, eq(user.id, userProfiles.id))
-			.where(
-				or(
-					like(user.email, `%${q}%`),
-					like(userProfiles.alias, `%${q}%`)
-				)
-			)
+			.where(or(like(user.email, `%${q}%`), like(userProfiles.alias, `%${q}%`)))
 			.orderBy(desc(user.createdAt))
 			.limit(50)
 			.all();
@@ -85,7 +80,10 @@ export const actions: Actions = {
 		const reason = (data.get('reason') as string)?.trim() || 'Admin ban';
 
 		const db = getDb(env.DB);
-		await db.update(userProfiles).set({ status: 'banned' }).where(eq(userProfiles.id, targetUserId));
+		await db
+			.update(userProfiles)
+			.set({ status: 'banned' })
+			.where(eq(userProfiles.id, targetUserId));
 		await db.update(listings).set({ status: 'removed' }).where(eq(listings.userId, targetUserId));
 		await db.insert(moderationActions).values({
 			id: crypto.randomUUID(),
@@ -108,7 +106,10 @@ export const actions: Actions = {
 		const targetUserId = data.get('targetUserId') as string;
 
 		const db = getDb(env.DB);
-		await db.update(userProfiles).set({ status: 'active' }).where(eq(userProfiles.id, targetUserId));
+		await db
+			.update(userProfiles)
+			.set({ status: 'active' })
+			.where(eq(userProfiles.id, targetUserId));
 		await db.insert(moderationActions).values({
 			id: crypto.randomUUID(),
 			actorId: locals.user.id,
