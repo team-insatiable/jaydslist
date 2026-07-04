@@ -8,6 +8,7 @@
 		<span class="admin-label">Admin</span>
 		<a href={resolve('/admin')}>Reports</a>
 		<a href={resolve('/admin/users')}>Users</a>
+		<a href={resolve('/admin/vocabulary')}>Vocabulary</a>
 	</nav>
 	<div class="admin-content">
 		{@render children()}
