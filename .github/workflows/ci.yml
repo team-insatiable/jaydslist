@@ -28,7 +28,9 @@ jobs:
         run: pnpm lint
 
       - name: Typecheck
-        run: pnpm check
+        run: |
+          cp .dev.vars.example .dev.vars
+          pnpm check
 
       - name: Unit tests
         run: pnpm test
