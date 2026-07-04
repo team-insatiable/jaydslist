@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { resolve } from '$app/paths';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import ListingCard from '$lib/components/listings/ListingCard.svelte';
 
 	let { data } = $props();
@@ -18,13 +20,13 @@
 	}
 
 	function setFilter(key: string, value: string) {
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new SvelteURLSearchParams($page.url.searchParams);
 		if (value === '' || value === 'all') {
 			params.delete(key);
 		} else {
 			params.set(key, value);
 		}
-		goto(`?${params}`, { replaceState: true, keepFocus: true });
+		goto(resolve(`/browse?${params}`), { replaceState: true, keepFocus: true });
 	}
 
 	type FeedItem =
@@ -71,14 +73,16 @@
 					<li>Set your location so we know what's nearby</li>
 				{/if}
 			</ul>
-			<a href="/profile" role="button">Go to profile settings</a>
+			<a href={resolve('/profile')} role="button">Go to profile settings</a>
 		</div>
 	</div>
 {:else}
 	<div class="browse-header">
 		<div>
 			<h2>Casual Encounters</h2>
-			<p class="subtitle">{data.listings.length} listing{data.listings.length === 1 ? '' : 's'} within {data.radius} miles</p>
+			<p class="subtitle">
+				{data.listings.length} listing{data.listings.length === 1 ? '' : 's'} within {data.radius} miles
+			</p>
 		</div>
 		<div class="browse-controls">
 			<select
@@ -114,9 +118,16 @@
 					title="Card view"
 					aria-label="Card view"
 				>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-						<rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+						<rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
 					</svg>
 				</button>
 				<button
@@ -126,8 +137,20 @@
 					title="List view"
 					aria-label="List view"
 				>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line
+							x1="3"
+							y1="18"
+							x2="21"
+							y2="18"
+						/>
 					</svg>
 				</button>
 			</div>

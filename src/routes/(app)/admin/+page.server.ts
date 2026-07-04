@@ -37,7 +37,9 @@ export const load: PageServerLoad = async ({ url, platform }) => {
 		.all();
 
 	// Fetch listing subjects for listing-targeted reports
-	const listingIds = [...new Set(rows.filter((r) => r.targetType === 'listing').map((r) => r.targetId))];
+	const listingIds = [
+		...new Set(rows.filter((r) => r.targetType === 'listing').map((r) => r.targetId))
+	];
 	const listingMap: Record<string, string> = {};
 	if (listingIds.length > 0) {
 		const ls = await db.select({ id: listings.id, subject: listings.subject }).from(listings).all();
@@ -45,10 +47,15 @@ export const load: PageServerLoad = async ({ url, platform }) => {
 	}
 
 	// Fetch aliases for user-targeted reports
-	const targetUserIds = [...new Set(rows.filter((r) => r.targetType === 'user').map((r) => r.targetId))];
+	const targetUserIds = [
+		...new Set(rows.filter((r) => r.targetType === 'user').map((r) => r.targetId))
+	];
 	const targetAliasMap: Record<string, string> = {};
 	if (targetUserIds.length > 0) {
-		const profiles = await db.select({ id: userProfiles.id, alias: userProfiles.alias }).from(userProfiles).all();
+		const profiles = await db
+			.select({ id: userProfiles.id, alias: userProfiles.alias })
+			.from(userProfiles)
+			.all();
 		for (const p of profiles) targetAliasMap[p.id] = p.alias ?? 'Unknown';
 	}
 
@@ -77,7 +84,10 @@ export const actions: Actions = {
 		const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
 		if (!report) return fail(404, { error: 'Report not found' });
 
-		await db.update(reports).set({ status: 'dismissed', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+		await db
+			.update(reports)
+			.set({ status: 'dismissed', resolvedAt: new Date(), reviewerNotes: notes })
+			.where(eq(reports.id, reportId));
 
 		await db.insert(moderationActions).values({
 			id: crypto.randomUUID(),
@@ -108,13 +118,22 @@ export const actions: Actions = {
 		if (!report) return fail(404, { error: 'Report not found' });
 
 		// Ban the user
-		await db.update(userProfiles).set({ status: 'banned' }).where(eq(userProfiles.id, targetUserId));
+		await db
+			.update(userProfiles)
+			.set({ status: 'banned' })
+			.where(eq(userProfiles.id, targetUserId));
 
 		// Remove their active listings
-		await db.update(listings).set({ status: 'removed' }).where(and(eq(listings.userId, targetUserId), eq(listings.status, 'active')));
+		await db
+			.update(listings)
+			.set({ status: 'removed' })
+			.where(and(eq(listings.userId, targetUserId), eq(listings.status, 'active')));
 
 		// Resolve the report
-		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+		await db
+			.update(reports)
+			.set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes })
+			.where(eq(reports.id, reportId));
 
 		await db.insert(moderationActions).values({
 			id: crypto.randomUUID(),
@@ -128,7 +147,11 @@ export const actions: Actions = {
 
 		// Fire-and-forget DBBL ban report
 		const [bannedProfile, bannedUser] = await Promise.all([
-			db.select({ encryptedPhone: userProfiles.encryptedPhone }).from(userProfiles).where(eq(userProfiles.id, targetUserId)).get(),
+			db
+				.select({ encryptedPhone: userProfiles.encryptedPhone })
+				.from(userProfiles)
+				.where(eq(userProfiles.id, targetUserId))
+				.get(),
 			db.select({ email: user.email }).from(user).where(eq(user.id, targetUserId)).get()
 		]);
 		if (bannedProfile?.encryptedPhone && bannedUser?.email) {
@@ -160,7 +183,10 @@ export const actions: Actions = {
 
 		await db.update(listings).set({ status: 'removed' }).where(eq(listings.id, listingId));
 
-		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+		await db
+			.update(reports)
+			.set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes })
+			.where(eq(reports.id, reportId));
 
 		await db.insert(moderationActions).values({
 			id: crypto.randomUUID(),
@@ -190,11 +216,18 @@ export const actions: Actions = {
 		const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
 		if (!report) return fail(404, { error: 'Report not found' });
 
-		const listing = await db.select({ userId: listings.userId, subject: listings.subject }).from(listings).where(eq(listings.id, listingId)).get();
+		const listing = await db
+			.select({ userId: listings.userId, subject: listings.subject })
+			.from(listings)
+			.where(eq(listings.id, listingId))
+			.get();
 		if (!listing) return fail(404, { error: 'Listing not found' });
 
 		await db.update(listings).set({ status: 'flagged' }).where(eq(listings.id, listingId));
-		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+		await db
+			.update(reports)
+			.set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes })
+			.where(eq(reports.id, reportId));
 
 		await db.insert(moderationActions).values({
 			id: crypto.randomUUID(),
@@ -207,7 +240,11 @@ export const actions: Actions = {
 		});
 
 		// Notify the listing owner
-		const owner = await db.select({ email: user.email }).from(user).where(eq(user.id, listing.userId)).get();
+		const owner = await db
+			.select({ email: user.email })
+			.from(user)
+			.where(eq(user.id, listing.userId))
+			.get();
 		if (owner?.email) {
 			sendEmail({
 				to: owner.email,
@@ -235,12 +272,25 @@ export const actions: Actions = {
 		const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
 		if (!report) return fail(404, { error: 'Report not found' });
 
-		const listing = await db.select({ userId: listings.userId }).from(listings).where(eq(listings.id, listingId)).get();
+		const listing = await db
+			.select({ userId: listings.userId })
+			.from(listings)
+			.where(eq(listings.id, listingId))
+			.get();
 		if (!listing) return fail(404, { error: 'Listing not found' });
 
-		await db.update(userProfiles).set({ status: 'banned' }).where(eq(userProfiles.id, listing.userId));
-		await db.update(listings).set({ status: 'removed' }).where(and(eq(listings.userId, listing.userId), eq(listings.status, 'active')));
-		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+		await db
+			.update(userProfiles)
+			.set({ status: 'banned' })
+			.where(eq(userProfiles.id, listing.userId));
+		await db
+			.update(listings)
+			.set({ status: 'removed' })
+			.where(and(eq(listings.userId, listing.userId), eq(listings.status, 'active')));
+		await db
+			.update(reports)
+			.set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes })
+			.where(eq(reports.id, reportId));
 
 		await db.insert(moderationActions).values({
 			id: crypto.randomUUID(),
@@ -254,7 +304,11 @@ export const actions: Actions = {
 
 		// Fire-and-forget DBBL ban report
 		const [bannedProfile, bannedUser] = await Promise.all([
-			db.select({ encryptedPhone: userProfiles.encryptedPhone }).from(userProfiles).where(eq(userProfiles.id, listing.userId)).get(),
+			db
+				.select({ encryptedPhone: userProfiles.encryptedPhone })
+				.from(userProfiles)
+				.where(eq(userProfiles.id, listing.userId))
+				.get(),
 			db.select({ email: user.email }).from(user).where(eq(user.id, listing.userId)).get()
 		]);
 		if (bannedProfile?.encryptedPhone && bannedUser?.email) {
@@ -284,11 +338,15 @@ export const actions: Actions = {
 		const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
 		if (!report) return fail(404, { error: 'Report not found' });
 
-		await db.update(userProfiles)
+		await db
+			.update(userProfiles)
 			.set({ warningIssued: true, warningIssuedAt: new Date() })
 			.where(eq(userProfiles.id, targetUserId));
 
-		await db.update(reports).set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes }).where(eq(reports.id, reportId));
+		await db
+			.update(reports)
+			.set({ status: 'actioned', resolvedAt: new Date(), reviewerNotes: notes })
+			.where(eq(reports.id, reportId));
 
 		await db.insert(moderationActions).values({
 			id: crypto.randomUUID(),
@@ -301,7 +359,11 @@ export const actions: Actions = {
 		});
 
 		// Notify the warned user
-		const warnedUser = await db.select({ email: user.email }).from(user).where(eq(user.id, targetUserId)).get();
+		const warnedUser = await db
+			.select({ email: user.email })
+			.from(user)
+			.where(eq(user.id, targetUserId))
+			.get();
 		if (warnedUser?.email) {
 			sendEmail({
 				to: warnedUser.email,

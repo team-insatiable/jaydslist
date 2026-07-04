@@ -10,7 +10,10 @@ export const load: LayoutServerLoad = async ({ locals, platform }) => {
 	const env = platform?.env;
 	if (!env) throw error(500, 'Server configuration error');
 
-	const adminEmails = (env.ADMIN_EMAILS ?? '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+	const adminEmails = (env.ADMIN_EMAILS ?? '')
+		.split(',')
+		.map((e: string) => e.trim().toLowerCase())
+		.filter(Boolean);
 	if (adminEmails.length === 0) throw error(403, 'Admin access not configured');
 
 	const currentUser = await getDb(env.DB)

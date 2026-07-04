@@ -9,7 +9,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform?.env;
 	if (!env) throw error(500, 'Server configuration error');
 
-	const body = await request.json() as { cfImageId: string; target: 'vault'; albumId?: string };
+	const body = (await request.json()) as { cfImageId: string; target: 'vault'; albumId?: string };
 	const { cfImageId, target, albumId } = body;
 
 	if (!cfImageId || typeof cfImageId !== 'string') throw error(400, 'Missing cfImageId');

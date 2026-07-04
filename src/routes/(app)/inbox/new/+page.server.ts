@@ -53,10 +53,7 @@ export const load: PageServerLoad = async ({ url, locals, platform }) => {
 		.select({ id: conversationThreads.id })
 		.from(conversationThreads)
 		.where(
-			and(
-				eq(conversationThreads.listingId, listingId),
-				eq(conversationThreads.initiatorId, userId)
-			)
+			and(eq(conversationThreads.listingId, listingId), eq(conversationThreads.initiatorId, userId))
 		)
 		.get();
 
@@ -86,14 +83,21 @@ export const actions: Actions = {
 		const db = getDb(env.DB);
 
 		const listing = await db
-			.select({ id: listings.id, userId: listings.userId, status: listings.status, subject: listings.subject })
+			.select({
+				id: listings.id,
+				userId: listings.userId,
+				status: listings.status,
+				subject: listings.subject
+			})
 			.from(listings)
 			.where(eq(listings.id, listingId))
 			.get();
 
 		if (!listing) return fail(404, { error: 'Listing not found' });
-		if (listing.userId === userId) return fail(400, { error: 'You cannot reply to your own listing' });
-		if (listing.status !== 'active') return fail(400, { error: 'This listing is no longer active' });
+		if (listing.userId === userId)
+			return fail(400, { error: 'You cannot reply to your own listing' });
+		if (listing.status !== 'active')
+			return fail(400, { error: 'This listing is no longer active' });
 
 		// Prevent duplicate threads
 		const existing = await db
@@ -125,7 +129,10 @@ export const actions: Actions = {
 
 		if (initiatorProfile?.encryptedPhone) {
 			try {
-				const phone = await decryptContact(initiatorProfile.encryptedPhone, env.CONTACT_ENCRYPTION_KEY);
+				const phone = await decryptContact(
+					initiatorProfile.encryptedPhone,
+					env.CONTACT_ENCRYPTION_KEY
+				);
 				const phoneHash = await hashPhoneForDbbl(phone);
 				const emailHash = await hashEmailForDbbl(locals.user.email);
 				const dbblResult = await queryDbblScore(phoneHash, emailHash, env);
@@ -142,7 +149,9 @@ export const actions: Actions = {
 						.where(eq(userProfiles.id, userId));
 
 					if (isBlockedByDbbl(dbblResult.rating)) {
-						return fail(403, { error: 'Your account is not permitted to send messages at this time.' });
+						return fail(403, {
+							error: 'Your account is not permitted to send messages at this time.'
+						});
 					}
 				}
 			} catch (err) {
@@ -169,23 +178,40 @@ export const actions: Actions = {
 		const recentThreads = await db
 			.select({ id: conversationThreads.id })
 			.from(conversationThreads)
-			.where(and(eq(conversationThreads.initiatorId, userId), gte(conversationThreads.createdAt, dayCutoff)))
+			.where(
+				and(
+					eq(conversationThreads.initiatorId, userId),
+					gte(conversationThreads.createdAt, dayCutoff)
+				)
+			)
 			.all();
 
 		if (recentThreads.length >= dailyLimit) {
 			if (recentThreads.length >= dailyLimit * 3 && env.RESEND_API_KEY && env.ADMIN_EMAILS) {
 				const origin = env.ORIGIN ?? 'https://jaydslist.com';
-				await db.update(userProfiles).set({ status: 'suspended' }).where(eq(userProfiles.id, userId));
-				const adminEmails = env.ADMIN_EMAILS.split(',').map((e: string) => e.trim()).filter(Boolean);
+				await db
+					.update(userProfiles)
+					.set({ status: 'suspended' })
+					.where(eq(userProfiles.id, userId));
+				const adminEmails = env.ADMIN_EMAILS.split(',')
+					.map((e: string) => e.trim())
+					.filter(Boolean);
 				sendAbuseAlertEmail(
 					adminEmails,
-					{ alias: initiatorTier?.alias ?? userId, userId, reason: 'Daily thread velocity exceeded 3x cap', count: recentThreads.length },
+					{
+						alias: initiatorTier?.alias ?? userId,
+						userId,
+						reason: 'Daily thread velocity exceeded 3x cap',
+						count: recentThreads.length
+					},
 					origin,
 					env.RESEND_API_KEY
 				).catch((err: unknown) => console.error('Abuse alert email failed:', err));
 				return fail(429, { error: 'Your account has been suspended due to unusual activity.' });
 			}
-			return fail(429, { error: `You've reached your daily limit of ${dailyLimit} new conversations. Try again tomorrow.` });
+			return fail(429, {
+				error: `You've reached your daily limit of ${dailyLimit} new conversations. Try again tomorrow.`
+			});
 		}
 
 		const data = await request.formData();
@@ -196,7 +222,10 @@ export const actions: Actions = {
 			return fail(400, { error: `Your message must be at least ${minLength} characters` });
 
 		if (CONTACT_INFO_PATTERN.test(body))
-			return fail(400, { error: 'Contact information cannot be included in your first message. Introduce yourself instead.' });
+			return fail(400, {
+				error:
+					'Contact information cannot be included in your first message. Introduce yourself instead.'
+			});
 
 		const threadId = crypto.randomUUID();
 
@@ -218,14 +247,18 @@ export const actions: Actions = {
 
 		// Increment poster's total thread count and recalculate response rate
 		const posterProfile = await db
-			.select({ totalThreads: userProfiles.totalThreads, respondedThreads: userProfiles.respondedThreads })
+			.select({
+				totalThreads: userProfiles.totalThreads,
+				respondedThreads: userProfiles.respondedThreads
+			})
 			.from(userProfiles)
 			.where(eq(userProfiles.id, listing.userId))
 			.get();
 		if (posterProfile) {
 			const newTotal = posterProfile.totalThreads + 1;
 			const rate = newTotal > 0 ? posterProfile.respondedThreads / newTotal : 0;
-			await db.update(userProfiles)
+			await db
+				.update(userProfiles)
 				.set({ totalThreads: newTotal, responseRate: rate })
 				.where(eq(userProfiles.id, listing.userId));
 		}
@@ -235,29 +268,53 @@ export const actions: Actions = {
 			const origin = env.ORIGIN ?? 'https://jaydslist.com';
 			const threadUrl = `${origin}/inbox/${threadId}`;
 			Promise.all([
-				db.select({ alias: userProfiles.alias }).from(userProfiles).where(eq(userProfiles.id, userId)).get(),
+				db
+					.select({ alias: userProfiles.alias })
+					.from(userProfiles)
+					.where(eq(userProfiles.id, userId))
+					.get(),
 				db.select({ email: user.email }).from(user).where(eq(user.id, listing.userId)).get(),
-				db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, listing.userId)).all()
-			]).then(async ([senderProfile, posterUser, subs]) => {
-				await db.update(conversationThreads).set({ lastNotifiedAt: new Date() }).where(eq(conversationThreads.id, threadId));
+				db
+					.select()
+					.from(pushSubscriptions)
+					.where(eq(pushSubscriptions.userId, listing.userId))
+					.all()
+			])
+				.then(async ([senderProfile, posterUser, subs]) => {
+					await db
+						.update(conversationThreads)
+						.set({ lastNotifiedAt: new Date() })
+						.where(eq(conversationThreads.id, threadId));
 
-				const fromAlias = senderProfile?.alias ?? 'Someone';
-				if (posterUser?.email && env.RESEND_API_KEY) {
-					await sendNewMessageEmail(posterUser.email, fromAlias, listing.subject, body, threadUrl, env.RESEND_API_KEY);
-				}
-				if (env.VAPID_PRIVATE_KEY && env.VAPID_PUBLIC_KEY && env.VAPID_CONTACT) {
-					for (const sub of subs) {
-						const result = await sendPushNotification(
-							{ endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-							{ title: `New message from ${fromAlias}`, body: body.slice(0, 100), url: threadUrl },
-							env
+					const fromAlias = senderProfile?.alias ?? 'Someone';
+					if (posterUser?.email && env.RESEND_API_KEY) {
+						await sendNewMessageEmail(
+							posterUser.email,
+							fromAlias,
+							listing.subject,
+							body,
+							threadUrl,
+							env.RESEND_API_KEY
 						);
-						if (result.stale) {
-							await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
+					}
+					if (env.VAPID_PRIVATE_KEY && env.VAPID_PUBLIC_KEY && env.VAPID_CONTACT) {
+						for (const sub of subs) {
+							const result = await sendPushNotification(
+								{ endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+								{
+									title: `New message from ${fromAlias}`,
+									body: body.slice(0, 100),
+									url: threadUrl
+								},
+								env
+							);
+							if (result.stale) {
+								await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
+							}
 						}
 					}
-				}
-			}).catch((err: unknown) => console.error('Notification failed:', err));
+				})
+				.catch((err: unknown) => console.error('Notification failed:', err));
 		}
 
 		throw redirect(303, `/inbox/${threadId}`);

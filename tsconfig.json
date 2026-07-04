@@ -12,5 +12,11 @@
 		"strict": true,
 		"moduleResolution": "bundler",
 		"types": ["./worker-configuration.d.ts"]
-	}
+	},
+	"exclude": [
+		"src/**/*.integration.test.ts",
+		"src/lib/server/test-helpers/apply-migrations.ts",
+		"vitest-integration.config.ts",
+		"wrangler.test.jsonc"
+	]
 }

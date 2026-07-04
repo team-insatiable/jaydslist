@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+
 	let { data } = $props();
 
 	function timeAgo(date: Date | string | null): string {
@@ -19,13 +21,13 @@
 	{#if data.threads.length === 0}
 		<div class="empty">
 			<p>No conversations yet.</p>
-			<a href="/browse">Browse listings</a>
+			<a href={resolve('/browse')}>Browse listings</a>
 		</div>
 	{:else}
 		<ul class="thread-list">
-			{#each data.threads as thread}
+			{#each data.threads as thread (thread.id)}
 				<li class="thread-row {thread.unreadCount > 0 ? 'unread' : ''}">
-					<a href="/inbox/{thread.id}" class="thread-link">
+					<a href={resolve(`/inbox/${thread.id}`)} class="thread-link">
 						<div class="thread-top">
 							<span class="listing-subject">{thread.listingSubject}</span>
 							<span class="thread-time">{timeAgo(thread.lastMessageAt)}</span>
@@ -84,7 +86,6 @@
 		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 		transition: border-color 0.15s;
 	}
-
 
 	.thread-row.unread {
 		border-color: var(--pico-primary);

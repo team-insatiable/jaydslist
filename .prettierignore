@@ -8,3 +8,6 @@ bun.lockb
 # Miscellaneous
 /static/
 /drizzle/
+worker-configuration.d.ts
+/.claude/
+CLAUDE.md

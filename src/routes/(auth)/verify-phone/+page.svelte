@@ -15,7 +15,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ phone })
 			});
-			const data = await res.json() as { error?: string; phone?: string };
+			const data = (await res.json()) as { error?: string; phone?: string };
 			if (!res.ok) {
 				error = data.error ?? 'Something went wrong';
 			} else {
@@ -38,7 +38,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ code })
 			});
-			const data = await res.json() as { error?: string };
+			const data = (await res.json()) as { error?: string };
 			if (!res.ok) {
 				error = data.error ?? 'Something went wrong';
 			} else {
@@ -57,7 +57,10 @@
 		{#if step === 'phone'}
 			<hgroup>
 				<h2>Verify your phone</h2>
-				<p>A real mobile number is required to post, message, and report. VoIP numbers are not accepted.</p>
+				<p>
+					A real mobile number is required to post, message, and report. VoIP numbers are not
+					accepted.
+				</p>
 			</hgroup>
 
 			{#if error}
@@ -66,13 +69,18 @@
 
 			<label for="phone">
 				Mobile number
-				<input id="phone" type="tel" placeholder="+1 555 000 0000" bind:value={phone} disabled={loading} />
+				<input
+					id="phone"
+					type="tel"
+					placeholder="+1 555 000 0000"
+					bind:value={phone}
+					disabled={loading}
+				/>
 			</label>
 
 			<button onclick={submitPhone} disabled={loading || !phone} aria-busy={loading}>
 				{loading ? '' : 'Send verification code'}
 			</button>
-
 		{:else}
 			<hgroup>
 				<h2>Enter your code</h2>
@@ -101,7 +109,14 @@
 				{loading ? '' : 'Confirm'}
 			</button>
 
-			<button class="secondary outline" onclick={() => { step = 'phone'; error = ''; }} disabled={loading}>
+			<button
+				class="secondary outline"
+				onclick={() => {
+					step = 'phone';
+					error = '';
+				}}
+				disabled={loading}
+			>
 				Use a different number
 			</button>
 		{/if}

@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform?.env;
 	if (!env) throw error(500, 'Server configuration error');
 
-	const body = await request.json() as {
+	const body = (await request.json()) as {
 		endpoint: string;
 		keys: { p256dh: string; auth: string };
 	};
@@ -30,7 +30,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		.get();
 
 	if (existing) {
-		await db.update(pushSubscriptions)
+		await db
+			.update(pushSubscriptions)
 			.set({ userId, p256dh: body.keys.p256dh, auth: body.keys.auth })
 			.where(eq(pushSubscriptions.id, existing.id));
 	} else {

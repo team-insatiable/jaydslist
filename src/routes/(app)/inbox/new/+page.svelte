@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 
 	let { data, form } = $props();
 
@@ -10,8 +11,17 @@
 </script>
 
 <div class="compose-page">
-	<a href="/listings/{data.listing.id}" class="back-link">
-		<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+	<a href={resolve(`/listings/${data.listing.id}`)} class="back-link">
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		>
 			<polyline points="15 18 9 12 15 6"></polyline>
 		</svg>
 		Back to listing
@@ -25,7 +35,10 @@
 
 	<div class="compose-card card">
 		<h2>Your message</h2>
-		<p class="hint">Introduce yourself and explain why you're reaching out. Minimum {minLength} characters. Contact information is not allowed in your first message.</p>
+		<p class="hint">
+			Introduce yourself and explain why you're reaching out. Minimum {minLength} characters. Contact
+			information is not allowed in your first message.
+		</p>
 
 		{#if form?.error}
 			<p class="error">{form.error}</p>
@@ -145,8 +158,12 @@
 		margin-bottom: 0.75rem;
 	}
 
-	.char-count.short { color: var(--pico-muted-color); }
-	.char-count.ok { color: var(--pico-ins-color); }
+	.char-count.short {
+		color: var(--pico-muted-color);
+	}
+	.char-count.ok {
+		color: var(--pico-ins-color);
+	}
 
 	button {
 		width: 100%;
