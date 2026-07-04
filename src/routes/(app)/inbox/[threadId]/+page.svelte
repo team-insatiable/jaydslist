@@ -59,11 +59,16 @@
 
 	const minLength = $derived(data.minLength);
 
+	// Cloudflare Images only accepts raster formats — SVG (a vector/XML format)
+	// passes a naive `startsWith('image/')` check but gets rejected by CF with
+	// an unfriendly 415, so it needs its own explicit allow-list.
+	const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
 	async function handleFileSelect(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (!file) return;
-		if (!file.type.startsWith('image/')) {
-			photoError = 'Only image files are supported';
+		if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
+			photoError = 'Please use a JPEG, PNG, GIF, or WebP image';
 			return;
 		}
 		if (file.size > 10 * 1024 * 1024) {
@@ -520,7 +525,7 @@
 			<div class="compose-row">
 				<input
 					type="file"
-					accept="image/*"
+					accept="image/jpeg,image/png,image/gif,image/webp"
 					class="file-input"
 					bind:this={fileInputEl as HTMLInputElement}
 					onchange={handleFileSelect}
