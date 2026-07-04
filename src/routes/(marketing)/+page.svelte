@@ -102,15 +102,13 @@
 	</section>
 
 	<footer class="site-footer">
-		<!-- eslint-disable svelte/no-navigation-without-resolve -- /about and /rules aren't routes yet; tracked separately -->
 		<small
 			>© {new Date().getFullYear()}
-			{data.instanceName} &mdash; <a href="/about">About</a> &mdash;
-			<a href="/rules">Rules</a> &mdash;
+			{data.instanceName} &mdash; <a href={resolve('/about')}>About</a> &mdash;
+			<a href={resolve('/rules')}>Rules</a> &mdash;
 			<a href={resolve('/terms')}>Terms</a> &mdash;
 			<a href={resolve('/privacy')}>Privacy</a></small
 		>
-		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 	</footer>
 </main>
 
