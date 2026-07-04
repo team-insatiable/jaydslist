@@ -9,15 +9,19 @@ import {
 	userProfiles,
 	keyExchanges,
 	reports,
+	pushSubscriptions,
 	user,
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
-import { eq, and, asc, ne, isNull, desc } from 'drizzle-orm';
+import { eq, and, asc, ne, isNull, desc, gte } from 'drizzle-orm';
 import { decryptContact } from '$lib/server/crypto';
+import { sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
+import { sendPushNotification } from '$lib/server/push';
 
 const CONTACT_INFO_PATTERN = /(\+?[\d\s\-().]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/i;
 
-export const load: PageServerLoad = async ({ params, locals, platform }) => {
+export const load: PageServerLoad = async ({ params, locals, platform, depends }) => {
+	depends('app:thread');
 	if (!locals.user) throw redirect(302, '/login');
 
 	const env = platform?.env;
@@ -155,8 +159,17 @@ export const actions: Actions = {
 		const db = getDb(env.DB);
 
 		const thread = await db
-			.select({ id: conversationThreads.id, initiatorId: conversationThreads.initiatorId, posterId: conversationThreads.posterId, status: conversationThreads.status })
+			.select({
+				id: conversationThreads.id,
+				listingId: conversationThreads.listingId,
+				listingSubject: listings.subject,
+				initiatorId: conversationThreads.initiatorId,
+				posterId: conversationThreads.posterId,
+				status: conversationThreads.status,
+				lastNotifiedAt: conversationThreads.lastNotifiedAt
+			})
 			.from(conversationThreads)
+			.innerJoin(listings, eq(conversationThreads.listingId, listings.id))
 			.where(eq(conversationThreads.id, params.threadId))
 			.get();
 
@@ -164,9 +177,33 @@ export const actions: Actions = {
 		if (thread.initiatorId !== userId && thread.posterId !== userId) return fail(403, { error: 'Forbidden' });
 		if (thread.status !== 'open') return fail(400, { error: 'This thread is closed' });
 
-		const data = await request.formData();
-		const body = (data.get('body') as string)?.trim() ?? '';
-		const cfImageId = (data.get('cfImageId') as string)?.trim() || null;
+		// Flood detection: >10 messages from sender in this thread in the last 10 minutes
+		const floodCutoff = new Date(Date.now() - 10 * 60 * 1000);
+		const recentFlood = await db
+			.select({ id: messages.id })
+			.from(messages)
+			.where(and(eq(messages.threadId, params.threadId), eq(messages.senderId, userId), gte(messages.sentAt, floodCutoff)))
+			.all();
+
+		if (recentFlood.length >= 10) {
+			const senderProfile = await db.select({ alias: userProfiles.alias }).from(userProfiles).where(eq(userProfiles.id, userId)).get();
+			await db.update(userProfiles).set({ status: 'suspended' }).where(eq(userProfiles.id, userId));
+			if (env.RESEND_API_KEY && env.ADMIN_EMAILS) {
+				const adminEmails = env.ADMIN_EMAILS.split(',').map((e: string) => e.trim()).filter(Boolean);
+				const origin = env.ORIGIN ?? 'https://jaydslist.com';
+				sendAbuseAlertEmail(
+					adminEmails,
+					{ alias: senderProfile?.alias ?? userId, userId, reason: 'Per-thread message flood', count: recentFlood.length, threadUrl: `${origin}/inbox/${params.threadId}` },
+					origin,
+					env.RESEND_API_KEY
+				).catch((err: unknown) => console.error('Abuse alert email failed:', err));
+			}
+			return fail(429, { error: 'Your account has been suspended due to unusual activity.' });
+		}
+
+		const formData = await request.formData();
+		const body = (formData.get('body') as string)?.trim() ?? '';
+		const cfImageId = (formData.get('cfImageId') as string)?.trim() || null;
 
 		if (!cfImageId && body.length < 1) return fail(400, { error: 'Message cannot be empty' });
 		if (body && CONTACT_INFO_PATTERN.test(body))
@@ -182,7 +219,6 @@ export const actions: Actions = {
 				.from(messages)
 				.where(and(eq(messages.threadId, params.threadId), eq(messages.senderId, userId)))
 				.all();
-			// priorPosterMessages now includes the one just inserted — first reply means count === 1
 			if (priorPosterMessages.length === 1) {
 				const profile = await db
 					.select({ totalThreads: userProfiles.totalThreads, respondedThreads: userProfiles.respondedThreads })
@@ -197,6 +233,43 @@ export const actions: Actions = {
 						.where(eq(userProfiles.id, userId));
 				}
 			}
+		}
+
+		// Notifications — fire-and-forget, 15-minute cooldown per thread
+		const COOLDOWN_MS = 15 * 60 * 1000;
+		const shouldNotify = !thread.lastNotifiedAt || (Date.now() - thread.lastNotifiedAt.getTime()) > COOLDOWN_MS;
+		if (shouldNotify && (env.RESEND_API_KEY || env.VAPID_PRIVATE_KEY)) {
+			const recipientId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
+			const origin = env.ORIGIN ?? 'https://jaydslist.com';
+			const threadUrl = `${origin}/inbox/${params.threadId}`;
+
+			Promise.all([
+				db.select({ alias: userProfiles.alias }).from(userProfiles).where(eq(userProfiles.id, userId)).get(),
+				db.select({ email: user.email }).from(user).where(eq(user.id, recipientId)).get(),
+				db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, recipientId)).all()
+			]).then(async ([senderProfile, recipientUser, subs]) => {
+				await db.update(conversationThreads).set({ lastNotifiedAt: new Date() }).where(eq(conversationThreads.id, params.threadId));
+
+				const fromAlias = senderProfile?.alias ?? 'Someone';
+				const preview = body;
+
+				if (recipientUser?.email && env.RESEND_API_KEY) {
+					await sendNewMessageEmail(recipientUser.email, fromAlias, thread.listingSubject, preview, threadUrl, env.RESEND_API_KEY);
+				}
+
+				if (env.VAPID_PRIVATE_KEY && env.VAPID_PUBLIC_KEY && env.VAPID_CONTACT) {
+					for (const sub of subs) {
+						const result = await sendPushNotification(
+							{ endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+							{ title: `New message from ${fromAlias}`, body: preview.slice(0, 100), url: threadUrl },
+							env
+						);
+						if (result.stale) {
+							await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
+						}
+					}
+				}
+			}).catch((err: unknown) => console.error('Notification failed:', err));
 		}
 
 		return { success: true };

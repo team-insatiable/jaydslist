@@ -3,9 +3,52 @@
 	import { authClient } from '$lib/client/auth';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { browser } from '$app/environment';
 
 	let { children, data } = $props();
 	let menuOpen = $state(false);
+
+	$effect(() => {
+		if (!browser || !data.user || !data.vapidPublicKey) return;
+
+		async function registerPush() {
+			try {
+				const reg = await navigator.serviceWorker.register('/sw.js');
+				const permission = await Notification.requestPermission();
+				if (permission !== 'granted') return;
+
+				const existing = await reg.pushManager.getSubscription();
+				const sub = existing ?? await reg.pushManager.subscribe({
+					userVisibleOnly: true,
+					applicationServerKey: urlBase64ToUint8Array(data.vapidPublicKey)
+				});
+
+				await fetch('/api/push/subscribe', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: arrayBufferToBase64url(sub.getKey('p256dh')!), auth: arrayBufferToBase64url(sub.getKey('auth')!) } })
+				});
+			} catch {
+				// Push not supported or denied — silent fail
+			}
+		}
+
+		registerPush();
+	});
+
+	function urlBase64ToUint8Array(base64String: string): Uint8Array {
+		const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+		const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+		const raw = atob(base64);
+		return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+	}
+
+	function arrayBufferToBase64url(buf: ArrayBuffer): string {
+		const bytes = new Uint8Array(buf);
+		let bin = '';
+		for (const b of bytes) bin += String.fromCharCode(b);
+		return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+	}
 
 	async function logout() {
 		menuOpen = false;

@@ -257,6 +257,14 @@
 		color: #94a3b8;
 	}
 
+	@media (prefers-color-scheme: light) {
+		.date-separator.list-sep {
+			background: #e2e8f0;
+			border-bottom-color: #cbd5e1;
+			color: #64748b;
+		}
+	}
+
 	/* View toggle */
 	.view-toggle {
 		display: flex;

@@ -2,11 +2,34 @@
 	import { enhance } from '$app/forms';
 	import { tick } from 'svelte';
 	import { browser } from '$app/environment';
+	import { invalidate } from '$app/navigation';
 
 	$effect(() => {
 		if (!browser) return;
 		document.body.style.overflow = 'hidden';
 		return () => { document.body.style.overflow = ''; };
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		let interval: ReturnType<typeof setInterval>;
+
+		const poll = () => { if (!document.hidden) invalidate('app:thread'); };
+
+		function onVisible() {
+			if (!document.hidden) {
+				poll();
+				clearInterval(interval);
+				interval = setInterval(poll, 3000);
+			}
+		}
+
+		interval = setInterval(poll, 3000);
+		document.addEventListener('visibilitychange', onVisible);
+		return () => {
+			clearInterval(interval);
+			document.removeEventListener('visibilitychange', onVisible);
+		};
 	});
 
 	let { data } = $props();

@@ -232,7 +232,8 @@ export const conversationThreads = sqliteTable(
 		initiatorResponseRate: real('initiator_response_rate'),
 		initiatorWarned: integer('initiator_warned', { mode: 'boolean' }).notNull().default(false),
 		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-		lastActivityAt: integer('last_activity_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+		lastActivityAt: integer('last_activity_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+		lastNotifiedAt: integer('last_notified_at', { mode: 'timestamp' })
 	},
 	(table) => ({
 		listingIdx: index('threads_listing_idx').on(table.listingId),
@@ -352,6 +353,21 @@ export const platformConfig = sqliteTable('platform_config', {
 	description: text('description'),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
 });
+
+export const pushSubscriptions = sqliteTable(
+	'push_subscriptions',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id').notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
+		endpoint: text('endpoint').notNull().unique(),
+		p256dh: text('p256dh').notNull(),
+		auth: text('auth').notNull(),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+	},
+	(table) => ({
+		userIdx: index('push_subs_user_idx').on(table.userId)
+	})
+);
 
 export const DEFAULT_CONFIG = {
 	LISTING_DURATION_DAYS: '14',

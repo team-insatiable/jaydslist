@@ -16,7 +16,7 @@ async function hashPassword(password: string): Promise<string> {
 		p: 1,
 		maxmem: 128 * 1024 * 1024
 	})) as Buffer;
-	return `${key.toString('hex')}:${salt}`;
+	return `${salt}:${key.toString('hex')}`;
 }
 
 function sq(s: string | null) {
@@ -426,13 +426,14 @@ async function main() {
 	for (const u of fakeUsers) lines.push(insertUser(u.id, u.name, u.email));
 	lines.push('');
 
-	// Better Auth accounts (only for real login users)
-	const insertAccount = (userId: string, email: string) =>
-		`INSERT OR IGNORE INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES (${sq(randomUUID())}, ${sq(email)}, 'credential', ${sq(userId)}, ${sq(pw)}, ${nowMs}, ${nowMs});`;
+	// For real accounts: upsert password using a subquery so it works whether or not
+	// the user was registered via the app (different user ID) or via this seed.
+	const upsertAccount = (email: string) =>
+		`INSERT OR IGNORE INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at) SELECT ${sq(randomUUID())}, ${sq(email)}, 'credential', id, ${sq(pw)}, ${nowMs}, ${nowMs} FROM user WHERE email = ${sq(email)};`;
 
 	lines.push('-- Accounts');
-	lines.push(insertAccount(KEIROCK_ID, 'keirockjd@gmail.com'));
-	lines.push(insertAccount(KIERA_ID, 'keirajd@gmail.com'));
+	lines.push(upsertAccount('keirockjd@gmail.com'));
+	lines.push(upsertAccount('keirajd@gmail.com'));
 	lines.push('');
 
 	// User profiles
@@ -449,8 +450,9 @@ async function main() {
 	lines.push('-- User profiles');
 	lines.push(insertProfile(KEIROCK_ID, 'man', 'male', 47, 38.5816, -121.4944, 'Central Sacramento', '["woman"]', 'Keirock', 'trusted'));
 	lines.push(insertProfile(KIERA_ID, 'woman', 'female', 43, 38.5816, -121.4944, 'Central Sacramento', '["man"]', 'Kiera', 'trusted'));
-	for (const u of fakeUsers) {
-		lines.push(insertProfile(u.id, u.identity, u.physical, u.age, u.lat, u.lng, u.fuzzy, u.seeking, u.name, 'established'));
+	const fakeTiers = ['new','new','new','new','new','new','new','new','established','established','established','established','established','established','trusted','trusted','trusted','trusted','new','new'] as const;
+	for (const [i, u] of fakeUsers.entries()) {
+		lines.push(insertProfile(u.id, u.identity, u.physical, u.age, u.lat, u.lng, u.fuzzy, u.seeking, u.name, fakeTiers[i]));
 	}
 	lines.push('');
 

@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# Dev seed — generates and applies local D1 seed data
+# Dev seed — wipes local D1 and re-seeds with fresh data
 set -e
+
+echo "Wiping local D1..."
+rm -rf .wrangler/state/v3/d1/miniflare-D1DatabaseObject
+
+echo "Applying migrations..."
+npx wrangler d1 migrations apply jaydslist-d1 --local
 
 echo "Generating seed SQL..."
 npx tsx scripts/seed.ts > /tmp/jdl_seed_full.sql

@@ -61,10 +61,10 @@
 		flexible: 'Flexible'
 	};
 
-	const TRUST_LABELS: Record<string, string> = {
-		new: 'New',
-		established: 'Member',
-		trusted: 'Trusted'
+	const TRUST_TITLES: Record<string, string> = {
+		new: 'New member',
+		established: 'Established member',
+		trusted: 'Trusted member'
 	};
 
 	function timeAgo(date: Date): string {
@@ -89,7 +89,15 @@
 	<div class="listing-row">
 		<div class="row-body">
 			<div class="row-top">
-				<span class="trust trust-{listing.trustTier}">{TRUST_LABELS[listing.trustTier]}</span>
+				{#if listing.trustTier !== 'new'}
+				<span class="trust trust-{listing.trustTier}" title={TRUST_TITLES[listing.trustTier]} aria-label={TRUST_TITLES[listing.trustTier]}>
+					{#if listing.trustTier === 'trusted'}
+						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="currentColor"/><path d="M6 9.5L8 11.5L12 7" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					{:else}
+						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="color-mix(in srgb, currentColor 15%, transparent)" stroke="currentColor" stroke-width="1.5"/></svg>
+					{/if}
+				</span>
+			{/if}
 				<span class="row-subject">{listing.subject}</span>
 			</div>
 			<p class="row-meta">
@@ -109,7 +117,15 @@
 <a {href} class="card-link">
 	<article class="listing-card">
 		<div class="card-top">
-			<span class="trust trust-{listing.trustTier}">{TRUST_LABELS[listing.trustTier]}</span>
+			{#if listing.trustTier !== 'new'}
+				<span class="trust trust-{listing.trustTier}" title={TRUST_TITLES[listing.trustTier]} aria-label={TRUST_TITLES[listing.trustTier]}>
+					{#if listing.trustTier === 'trusted'}
+						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="currentColor"/><path d="M6 9.5L8 11.5L12 7" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					{:else}
+						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="color-mix(in srgb, currentColor 15%, transparent)" stroke="currentColor" stroke-width="1.5"/></svg>
+					{/if}
+				</span>
+			{/if}
 			{#if listing.distance !== null}
 				<span class="distance">~{listing.distance} mi</span>
 			{/if}
@@ -161,32 +177,29 @@
 	}
 
 	.trust {
-		font-size: 0.68rem;
-		font-weight: 600;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
 	}
 
-	.trust-new {
-		background: var(--pico-muted-background-color);
-		color: var(--pico-muted-color);
+	.trust svg {
+		width: 16px;
+		height: 16px;
+		display: block;
 	}
 
 	.trust-established {
-		background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
 		color: var(--pico-primary);
 	}
 
 	.trust-trusted {
-		background: color-mix(in srgb, #16a34a 12%, transparent);
 		color: #16a34a;
 	}
 
 	.distance {
 		font-size: 0.8rem;
 		color: var(--pico-muted-color);
+		margin-left: auto;
 	}
 
 	.subject {

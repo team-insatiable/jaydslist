@@ -580,11 +580,12 @@
 		border: 1px solid var(--pico-muted-border-color);
 		font-size: 0.8rem;
 		cursor: pointer;
-		background: transparent;
-		color: var(--pico-color);
+		background: transparent !important;
+		color: inherit !important;
 		transition: background 0.1s, border-color 0.1s;
 		margin: 0;
 		font-weight: normal;
+		box-shadow: none !important;
 	}
 
 	button.chip {
@@ -593,9 +594,9 @@
 	}
 
 	.chip.selected {
-		background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+		background: color-mix(in srgb, var(--pico-primary) 12%, transparent) !important;
 		border-color: var(--pico-primary);
-		color: var(--pico-primary);
+		color: var(--pico-primary) !important;
 		font-weight: 500;
 	}
 

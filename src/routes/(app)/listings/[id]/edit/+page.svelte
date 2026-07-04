@@ -378,10 +378,11 @@
 		padding: 0.35rem 0.85rem;
 		border-radius: 999px;
 		border: 1px solid var(--pico-muted-border-color);
-		background: transparent;
+		background: transparent !important;
+		box-shadow: none !important;
 		font-size: 0.85rem;
 		cursor: pointer;
-		color: var(--pico-color);
+		color: inherit !important;
 		transition: all 0.15s;
 	}
 
