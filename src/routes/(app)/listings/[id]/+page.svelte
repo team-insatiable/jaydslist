@@ -62,10 +62,10 @@
 		just_browsing: 'Just browsing'
 	};
 
-	const TRUST_LABELS: Record<string, string> = {
-		new: 'New',
-		established: 'Member',
-		trusted: 'Trusted'
+	const TRUST_TITLES: Record<string, string> = {
+		new: 'New member',
+		established: 'Established member',
+		trusted: 'Trusted member'
 	};
 
 	const TRUST_TIER_LABELS: Record<string, string> = {
@@ -141,9 +141,15 @@
 
 		<!-- Poster meta -->
 		<div class="poster-meta">
-			<span class="trust trust-{listing.posterTrustTier}">
-				{TRUST_LABELS[listing.posterTrustTier ?? 'new'] ?? 'New'}
-			</span>
+			{#if (listing.posterTrustTier ?? 'new') !== 'new'}
+				<span class="trust trust-{listing.posterTrustTier}" title={TRUST_TITLES[listing.posterTrustTier ?? 'new']} aria-label={TRUST_TITLES[listing.posterTrustTier ?? 'new']}>
+					{#if listing.posterTrustTier === 'trusted'}
+						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="currentColor"/><path d="M6 9.5L8 11.5L12 7" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					{:else}
+						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="color-mix(in srgb, currentColor 15%, transparent)" stroke="currentColor" stroke-width="1.5"/></svg>
+					{/if}
+				</span>
+			{/if}
 			<span class="poster-id">
 				{posterLabel}
 				{#if ageLabel}&nbsp;· {ageLabel}{/if}
@@ -444,28 +450,19 @@
 	}
 
 	.trust {
-		font-size: 0.68rem;
-		font-weight: 600;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
 	}
 
-	.trust-new {
-		background: var(--pico-muted-background-color);
-		color: var(--pico-muted-color);
+	.trust svg {
+		width: 16px;
+		height: 16px;
+		display: block;
 	}
 
-	.trust-established {
-		background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
-		color: var(--pico-primary);
-	}
-
-	.trust-trusted {
-		background: color-mix(in srgb, #16a34a 12%, transparent);
-		color: #16a34a;
-	}
+	.trust-established { color: var(--pico-primary); }
+	.trust-trusted { color: #16a34a; }
 
 	.poster-id {
 		font-weight: 500;
@@ -746,8 +743,9 @@
 		line-height: 1;
 		border-radius: 8px;
 		border: 1px solid var(--pico-muted-border-color);
-		background: var(--pico-muted-background-color);
-		color: var(--pico-color);
+		background: var(--pico-muted-background-color) !important;
+		color: inherit !important;
+		box-shadow: none !important;
 		cursor: pointer;
 		font-family: inherit;
 		transition: border-color 0.15s, color 0.15s;

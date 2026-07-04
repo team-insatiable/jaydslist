@@ -44,3 +44,45 @@ export function userWarnedEmail(reason: string | null): string {
 		<p><em>If you believe this was in error, you can reply to this email.</em></p>
 	`;
 }
+
+export async function sendNewMessageEmail(
+	to: string,
+	fromAlias: string,
+	listingSubject: string,
+	preview: string,
+	threadUrl: string,
+	apiKey: string
+): Promise<void> {
+	const safePreview = preview.slice(0, 150) + (preview.length > 150 ? '…' : '');
+	await sendEmail({
+		to,
+		subject: `New message from ${fromAlias}`,
+		html: `
+			<p>You have a new message from <strong>${fromAlias}</strong> regarding <em>"${listingSubject}"</em>.</p>
+			${safePreview ? `<blockquote style="border-left:3px solid #ccc;padding-left:1em;color:#555">${safePreview}</blockquote>` : ''}
+			<p><a href="${threadUrl}">View thread →</a></p>
+			<p style="font-size:0.85em;color:#888">Do not share personal contact info by email — use the contact exchange feature inside the thread.</p>
+		`,
+		apiKey
+	});
+}
+
+export async function sendAbuseAlertEmail(
+	adminEmails: string[],
+	details: { alias: string; userId: string; reason: string; count: number; threadUrl?: string },
+	origin: string,
+	apiKey: string
+): Promise<void> {
+	const { alias, userId, reason, count, threadUrl } = details;
+	const html = `
+		<p><strong>Auto-suspension triggered</strong></p>
+		<p>User <strong>${alias}</strong> (ID: <code>${userId}</code>) was automatically suspended.</p>
+		<p><strong>Reason:</strong> ${reason}</p>
+		<p><strong>Count:</strong> ${count}</p>
+		${threadUrl ? `<p><a href="${threadUrl}">View thread</a></p>` : ''}
+		<p><a href="${origin}/admin">Open admin panel</a></p>
+	`;
+	for (const email of adminEmails) {
+		await sendEmail({ to: email, subject: `[Jaydslist] Auto-suspension: ${alias}`, html, apiKey });
+	}
+}

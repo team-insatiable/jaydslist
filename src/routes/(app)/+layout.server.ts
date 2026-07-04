@@ -69,5 +69,5 @@ export const load: LayoutServerLoad = async ({ locals, platform }) => {
 		}
 	}
 
-	return { user: locals.user, unreadCount };
+	return { user: locals.user, unreadCount, vapidPublicKey: platform?.env?.VAPID_PUBLIC_KEY ?? '' };
 };

@@ -686,8 +686,9 @@
 		border: 1px solid var(--pico-muted-border-color);
 		font-size: 0.8rem;
 		cursor: pointer;
-		background: transparent;
-		color: var(--pico-color);
+		background: transparent !important;
+		box-shadow: none !important;
+		color: inherit !important;
 		transition: background 0.1s, border-color 0.1s;
 		margin: 0;
 		font-weight: normal;
