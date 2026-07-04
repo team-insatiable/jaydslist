@@ -1,0 +1,17 @@
+# Copy to .dev.vars and fill in real values for local development.
+# In CI, this file is copied as-is to .dev.vars so `wrangler types` generates
+# the same Env interface (key names only matter for type generation, not values).
+ENVIRONMENT=development
+BETTER_AUTH_SECRET=
+ORIGIN=http://localhost:5173
+DBBL_API_KEY=
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_VERIFY_SERVICE_SID=
+PHONE_PEPPER=
+CONTACT_ENCRYPTION_KEY=
+DEV_BYPASS_OTP=
+RESEND_API_KEY=
+ADMIN_EMAILS=
+CF_IMAGES_API_TOKEN=
+VAPID_PRIVATE_KEY=
