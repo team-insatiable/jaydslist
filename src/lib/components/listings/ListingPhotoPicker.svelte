@@ -94,52 +94,71 @@
 		</p>
 	{/if}
 
-	<div class="photo-slots" class:disabled={!isSupporter}>
-		{#each Array(maxPhotos) as _, i (i)}
-			{#if photoIds[i]}
-				{@const photo = photoById(photoIds[i])}
-				<div class="photo-slot filled">
-					{#if photo}
-						<img src={photo.deliveryUrl} alt="" />
-					{/if}
+	<div class="photo-slots-wrap">
+		{#if !isSupporter}
+			<div class="supporter-badge">
+				<svg
+					width="12"
+					height="12"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+				</svg>
+				Supporter feature
+			</div>
+		{/if}
+		<div class="photo-slots" class:disabled={!isSupporter}>
+			{#each Array(maxPhotos) as _, i (i)}
+				{#if photoIds[i]}
+					{@const photo = photoById(photoIds[i])}
+					<div class="photo-slot filled">
+						{#if photo}
+							<img src={photo.deliveryUrl} alt="" />
+						{/if}
+						<button
+							type="button"
+							class="remove-btn"
+							onclick={() => removePhoto(photoIds[i])}
+							disabled={!isSupporter}
+							aria-label="Remove photo"
+						>
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="3"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+							</svg>
+						</button>
+					</div>
+				{:else}
 					<button
 						type="button"
-						class="remove-btn"
-						onclick={() => removePhoto(photoIds[i])}
-						disabled={!isSupporter}
-						aria-label="Remove photo"
+						class="photo-slot empty"
+						onclick={openPicker}
+						disabled={!isSupporter || !canAddMore || photoUploading}
+						aria-busy={photoUploading}
+						aria-label="Add photo"
 					>
-						<svg
-							width="12"
-							height="12"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="3"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-						</svg>
+						{#if photoUploading}
+							<span class="spinner"></span>
+						{:else}
+							+
+						{/if}
 					</button>
-				</div>
-			{:else}
-				<button
-					type="button"
-					class="photo-slot empty"
-					onclick={openPicker}
-					disabled={!isSupporter || !canAddMore || photoUploading}
-					aria-busy={photoUploading}
-					aria-label="Add photo"
-				>
-					{#if photoUploading}
-						<span class="spinner"></span>
-					{:else}
-						+
-					{/if}
-				</button>
-			{/if}
-		{/each}
+				{/if}
+			{/each}
+		</div>
 	</div>
 
 	{#if photoError}
@@ -196,6 +215,30 @@
 		font-size: 0.8rem;
 		color: var(--pico-muted-color);
 		margin-bottom: 0.6rem;
+	}
+
+	.photo-slots-wrap {
+		position: relative;
+	}
+
+	.supporter-badge {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 999px;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--pico-muted-color);
+		white-space: nowrap;
+		pointer-events: none;
 	}
 
 	.photo-slots {

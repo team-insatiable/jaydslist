@@ -68,46 +68,69 @@
 		<p class="form-error">{uploadError}</p>
 	{/if}
 
-	<div class="vault-controls" class:disabled={!data.isSupporter}>
-		<div class="upload-row">
-			<input
-				type="file"
-				accept={SUPPORTED_IMAGE_TYPES.join(',')}
-				bind:this={fileInputEl}
-				onchange={handleUpload}
-				disabled={uploading}
-				aria-label="Upload a new photo"
-			/>
-			{#if uploading}
-				<span class="spinner"></span>
-			{/if}
-		</div>
+	<div class="vault-controls-wrap">
+		{#if !data.isSupporter}
+			<div class="supporter-badge">
+				<svg
+					width="12"
+					height="12"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+				</svg>
+				Supporter feature
+			</div>
+		{/if}
+		<div class="vault-controls" class:disabled={!data.isSupporter}>
+			<div class="upload-row">
+				<input
+					type="file"
+					accept={SUPPORTED_IMAGE_TYPES.join(',')}
+					bind:this={fileInputEl}
+					onchange={handleUpload}
+					disabled={uploading}
+					aria-label="Upload a new photo"
+				/>
+				{#if uploading}
+					<span class="spinner"></span>
+				{/if}
+			</div>
 
-		<form
-			method="POST"
-			action="?/createAlbum"
-			class="add-form"
-			use:enhance={() => {
-				submitting = 'create';
-				return async ({ result, update }) => {
-					submitting = null;
-					if (result.type === 'success') newAlbumName = '';
-					await update();
-					await invalidateAll();
-				};
-			}}
-		>
-			<input
-				type="text"
-				name="name"
-				bind:value={newAlbumName}
-				placeholder="New album name"
-				maxlength="40"
-			/>
-			<button type="submit" disabled={submitting === 'create'} aria-busy={submitting === 'create'}>
-				+ Create album
-			</button>
-		</form>
+			<form
+				method="POST"
+				action="?/createAlbum"
+				class="add-form"
+				use:enhance={() => {
+					submitting = 'create';
+					return async ({ result, update }) => {
+						submitting = null;
+						if (result.type === 'success') newAlbumName = '';
+						await update();
+						await invalidateAll();
+					};
+				}}
+			>
+				<input
+					type="text"
+					name="name"
+					bind:value={newAlbumName}
+					placeholder="New album name"
+					maxlength="40"
+				/>
+				<button
+					type="submit"
+					disabled={submitting === 'create'}
+					aria-busy={submitting === 'create'}
+				>
+					+ Create album
+				</button>
+			</form>
+		</div>
 	</div>
 
 	{#snippet albumSection(id: string, name: string, isUncategorized: boolean)}
@@ -282,6 +305,30 @@
 	.form-error {
 		color: var(--pico-del-color);
 		font-size: 0.875rem;
+	}
+
+	.vault-controls-wrap {
+		position: relative;
+		padding-top: 2.25rem;
+	}
+
+	.supporter-badge {
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 999px;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--pico-muted-color);
+		white-space: nowrap;
+		pointer-events: none;
 	}
 
 	.vault-controls.disabled {
