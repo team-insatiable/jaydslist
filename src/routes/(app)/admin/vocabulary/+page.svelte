@@ -151,6 +151,12 @@
 		flex: 1;
 	}
 
+	.add-form select,
+	.add-form button {
+		width: auto;
+		flex-shrink: 0;
+	}
+
 	.category-group {
 		margin-bottom: 1.5rem;
 	}
