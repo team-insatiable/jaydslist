@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data } = $props();
 
@@ -64,15 +65,18 @@
 		return age >= 0 ? age : null;
 	}
 
-	const maxDob = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-	const minDob = new Date(Date.now() - 120 * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+	const maxDob = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000)
+		.toISOString()
+		.slice(0, 10);
+	const minDob = new Date(Date.now() - 120 * 365.25 * 24 * 60 * 60 * 1000)
+		.toISOString()
+		.slice(0, 10);
 	let profileSaving = $state(false);
 	let profileSaved = $state(false);
 	let profileError = $state('');
 
 	// Alias
-	let alias = $state('');
-	$effect(() => { alias = data.profile?.alias ?? ''; });
+	let alias = $derived(data.profile?.alias ?? '');
 	let aliasSaving = $state(false);
 	let aliasSaved = $state(false);
 	let aliasError = $state('');
@@ -113,7 +117,7 @@
 		form.set('radius', browseRadius.toString());
 
 		const res = await fetch('?/saveLocation', { method: 'POST', body: form });
-		const result = await res.json();
+		const result = (await res.json()) as { type: string; data?: { error?: string } };
 
 		locationSaving = false;
 
@@ -141,7 +145,7 @@
 	let prefError = $state('');
 
 	function toggleSet(s: Set<string>, value: string): Set<string> {
-		const next = new Set(s);
+		const next = new SvelteSet(s);
 		if (next.has(value)) next.delete(value);
 		else next.add(value);
 		return next;
@@ -153,15 +157,13 @@
 			seekingNature = seekingNature.has('open') ? new Set() : new Set(['open']);
 		} else {
 			// picking a specific option clears 'open'
-			const next = new Set(seekingNature);
+			const next = new SvelteSet(seekingNature);
 			next.delete('open');
 			if (next.has(value)) next.delete(value);
 			else next.add(value);
 			seekingNature = next;
 		}
 	}
-
-
 </script>
 
 <div class="profile-page">
@@ -169,7 +171,8 @@
 
 	{#if !data.isComplete}
 		<div class="notice">
-			<strong>Complete your profile</strong> to post listings and reply to others. Identity, physical type, and age are required.
+			<strong>Complete your profile</strong> to post listings and reply to others. Identity, physical
+			type, and age are required.
 		</div>
 	{/if}
 
@@ -194,7 +197,8 @@
 				return async ({ result, update }) => {
 					profileSaving = false;
 					if (result.type === 'success') profileSaved = true;
-					else if (result.type === 'failure') profileError = (result.data?.error as string) ?? 'Something went wrong';
+					else if (result.type === 'failure')
+						profileError = (result.data?.error as string) ?? 'Something went wrong';
 					await update();
 				};
 			}}
@@ -203,55 +207,67 @@
 				<label for="identity">I identify as</label>
 				<select id="identity" name="identity" bind:value={identity} required>
 					<option value="" disabled>Select…</option>
-					{#each identityOptions as opt}
+					{#each identityOptions as opt (opt.value)}
 						<option value={opt.value}>{opt.label}</option>
 					{/each}
 				</select>
 			</div>
 
 			{#if identity === 'couple'}
-			<div class="field">
-				<label for="coupleComposition">We are a</label>
-				<select id="coupleComposition" name="coupleComposition" bind:value={coupleComposition} required>
-					<option value="" disabled>Select…</option>
-					{#each coupleCompositionOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-			</div>
+				<div class="field">
+					<label for="coupleComposition">We are a</label>
+					<select
+						id="coupleComposition"
+						name="coupleComposition"
+						bind:value={coupleComposition}
+						required
+					>
+						<option value="" disabled>Select…</option>
+						{#each coupleCompositionOptions as opt (opt.value)}
+							<option value={opt.value}>{opt.label}</option>
+						{/each}
+					</select>
+				</div>
 			{/if}
 
 			{#if identity !== 'couple'}
-			<div class="field">
-				<label for="bodyType">Body type</label>
-				<select id="bodyType" name="bodyType" bind:value={bodyType}>
-					<option value="">Prefer not to say</option>
-					{#each bodyTypeOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-			</div>
+				<div class="field">
+					<label for="bodyType">Body type</label>
+					<select id="bodyType" name="bodyType" bind:value={bodyType}>
+						<option value="">Prefer not to say</option>
+						{#each bodyTypeOptions as opt (opt.value)}
+							<option value={opt.value}>{opt.label}</option>
+						{/each}
+					</select>
+				</div>
 			{/if}
 
 			<div class="field">
 				<label for="dateOfBirth">Date of birth</label>
 				<div class="date-input-wrap">
-				<input
-					id="dateOfBirth"
-					name="dateOfBirth"
-					type="date"
-					min={minDob}
-					max={maxDob}
-					bind:value={dateOfBirth}
-					required
-				/>
-			</div>
+					<input
+						id="dateOfBirth"
+						name="dateOfBirth"
+						type="date"
+						min={minDob}
+						max={maxDob}
+						bind:value={dateOfBirth}
+						required
+					/>
+				</div>
 				{#if derivedAge(dateOfBirth) !== null}
 					<small>Age: {derivedAge(dateOfBirth)}</small>
 				{/if}
 			</div>
 
-			<button type="submit" aria-busy={profileSaving} disabled={profileSaving || !identity || !dateOfBirth || (identity === "couple" && !coupleComposition)}>
+			<button
+				type="submit"
+				aria-busy={profileSaving}
+				disabled={profileSaving ||
+					!identity ||
+					!dateOfBirth ||
+					(identity === 'couple' && !coupleComposition)}
+			>
 				{profileSaving ? '' : 'Save'}
 			</button>
 		</form>
@@ -260,7 +276,10 @@
 	<!-- Alias -->
 	<section class="card">
 		<h2>Your alias</h2>
-		<p class="muted">This is how you appear to others in conversations. Optional — defaults to "Anonymous" if not set.</p>
+		<p class="muted">
+			This is how you appear to others in conversations. Optional — defaults to "Anonymous" if not
+			set.
+		</p>
 
 		{#if aliasError}
 			<p class="error">{aliasError}</p>
@@ -279,7 +298,8 @@
 				return async ({ result, update }) => {
 					aliasSaving = false;
 					if (result.type === 'success') aliasSaved = true;
-					else if (result.type === 'failure') aliasError = (result.data?.error as string) ?? 'Something went wrong';
+					else if (result.type === 'failure')
+						aliasError = (result.data?.error as string) ?? 'Something went wrong';
 					await update();
 				};
 			}}
@@ -305,7 +325,9 @@
 	<!-- Location -->
 	<section class="card">
 		<h2>Your location</h2>
-		<p class="muted">Coordinates are stored privately and never shared. Only your general area is shown publicly.</p>
+		<p class="muted">
+			Coordinates are stored privately and never shared. Only your general area is shown publicly.
+		</p>
 
 		<div class="location-status">
 			{#if locationSet}
@@ -318,7 +340,7 @@
 		<div class="field">
 			<label for="browseRadius">Browse radius</label>
 			<select id="browseRadius" bind:value={browseRadius}>
-				{#each radiusOptions as r}
+				{#each radiusOptions as r (r)}
 					<option value={r}>{r} miles</option>
 				{/each}
 			</select>
@@ -339,7 +361,10 @@
 	<!-- Looking For -->
 	<section class="card">
 		<h2>Looking for</h2>
-		<p class="muted">Your preferences for browsing. You can still view any listing, but these help filter your feed.</p>
+		<p class="muted">
+			Your preferences for browsing. You can still view any listing, but these help filter your
+			feed.
+		</p>
 
 		{#if prefError}
 			<p class="error">{prefError}</p>
@@ -358,7 +383,8 @@
 				return async ({ result, update }) => {
 					prefSaving = false;
 					if (result.type === 'success') prefSaved = true;
-					else if (result.type === 'failure') prefError = (result.data?.error as string) ?? 'Something went wrong';
+					else if (result.type === 'failure')
+						prefError = (result.data?.error as string) ?? 'Something went wrong';
 					await update();
 				};
 			}}
@@ -369,17 +395,18 @@
 					<button
 						type="button"
 						class="chip {seekingIdentity.size === 0 ? 'selected' : ''}"
-						onclick={() => (seekingIdentity = new Set())}
-					>All</button>
-					{#each identityOptions as opt}
+						onclick={() => (seekingIdentity = new Set())}>All</button
+					>
+					{#each identityOptions as opt (opt.value)}
 						<button
 							type="button"
 							class="chip {seekingIdentity.has(opt.value) ? 'selected' : ''}"
 							onclick={() => (seekingIdentity = toggleSet(seekingIdentity, opt.value))}
-						>{opt.label}</button>
+							>{opt.label}</button
+						>
 					{/each}
 				</div>
-				{#each [...seekingIdentity] as val}
+				{#each [...seekingIdentity] as val (val)}
 					<input type="hidden" name="seekingIdentity" value={val} />
 				{/each}
 			</div>
@@ -390,17 +417,18 @@
 					<button
 						type="button"
 						class="chip {seekingBodyType.size === 0 ? 'selected' : ''}"
-						onclick={() => (seekingBodyType = new Set())}
-					>All</button>
-					{#each bodyTypeOptions as opt}
+						onclick={() => (seekingBodyType = new Set())}>All</button
+					>
+					{#each bodyTypeOptions as opt (opt.value)}
 						<button
 							type="button"
 							class="chip {seekingBodyType.has(opt.value) ? 'selected' : ''}"
 							onclick={() => (seekingBodyType = toggleSet(seekingBodyType, opt.value))}
-						>{opt.label}</button>
+							>{opt.label}</button
+						>
 					{/each}
 				</div>
-				{#each [...seekingBodyType] as val}
+				{#each [...seekingBodyType] as val (val)}
 					<input type="hidden" name="seekingBodyType" value={val} />
 				{/each}
 			</div>
@@ -408,15 +436,15 @@
 			<div class="field">
 				<span class="field-label">Nature of connection</span>
 				<div class="chip-group">
-					{#each natureOptions as opt}
+					{#each natureOptions as opt (opt.value)}
 						<button
 							type="button"
 							class="chip {seekingNature.has(opt.value) ? 'selected' : ''}"
-							onclick={() => toggleNature(opt.value)}
-						>{opt.label}</button>
+							onclick={() => toggleNature(opt.value)}>{opt.label}</button
+						>
 					{/each}
 				</div>
-				{#each [...seekingNature] as val}
+				{#each [...seekingNature] as val (val)}
 					<input type="hidden" name="seekingNatureOfConnection" value={val} />
 				{/each}
 			</div>
@@ -432,9 +460,15 @@
 		<h2>Account</h2>
 		<dl>
 			<dt>Trust tier</dt>
-			<dd class="tier tier-{data.profile?.trustTier ?? 'new'}">{data.profile?.trustTier ?? 'new'}</dd>
+			<dd class="tier tier-{data.profile?.trustTier ?? 'new'}">
+				{data.profile?.trustTier ?? 'new'}
+			</dd>
 			<dt>Response rate</dt>
-			<dd>{data.profile?.responseRate != null ? Math.round(data.profile.responseRate * 100) + '%' : '—'}</dd>
+			<dd>
+				{data.profile?.responseRate != null
+					? Math.round(data.profile.responseRate * 100) + '%'
+					: '—'}
+			</dd>
 		</dl>
 	</section>
 </div>
@@ -582,7 +616,9 @@
 		cursor: pointer;
 		background: transparent !important;
 		color: inherit !important;
-		transition: background 0.1s, border-color 0.1s;
+		transition:
+			background 0.1s,
+			border-color 0.1s;
 		margin: 0;
 		font-weight: normal;
 		box-shadow: none !important;
@@ -621,7 +657,13 @@
 		text-transform: capitalize;
 	}
 
-	.tier-new { color: var(--pico-muted-color); }
-	.tier-established { color: var(--pico-primary); }
-	.tier-trusted { color: var(--pico-ins-color); }
+	.tier-new {
+		color: var(--pico-muted-color);
+	}
+	.tier-established {
+		color: var(--pico-primary);
+	}
+	.tier-trusted {
+		color: var(--pico-ins-color);
+	}
 </style>

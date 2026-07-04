@@ -25,7 +25,9 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		})
 		.from(conversationThreads)
 		.innerJoin(listings, eq(conversationThreads.listingId, listings.id))
-		.where(or(eq(conversationThreads.initiatorId, userId), eq(conversationThreads.posterId, userId)))
+		.where(
+			or(eq(conversationThreads.initiatorId, userId), eq(conversationThreads.posterId, userId))
+		)
 		.orderBy(desc(conversationThreads.lastActivityAt))
 		.all();
 

@@ -1,12 +1,13 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	let { children } = $props();
 </script>
 
 <div class="admin-wrap">
 	<nav class="admin-nav">
 		<span class="admin-label">Admin</span>
-		<a href="/admin">Reports</a>
-		<a href="/admin/users">Users</a>
+		<a href={resolve('/admin')}>Reports</a>
+		<a href={resolve('/admin/users')}>Users</a>
 	</nav>
 	<div class="admin-content">
 		{@render children()}
@@ -44,5 +45,7 @@
 		text-decoration: none;
 	}
 
-	.admin-nav a:hover { color: var(--pico-color); }
+	.admin-nav a:hover {
+		color: var(--pico-color);
+	}
 </style>

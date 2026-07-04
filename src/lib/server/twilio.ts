@@ -16,13 +16,7 @@ function isBypassActive(env: TwilioEnv): boolean {
 	return env.ENVIRONMENT === 'development' && !!env.DEV_BYPASS_OTP;
 }
 
-export type LineType =
-	| 'mobile'
-	| 'landline'
-	| 'voip'
-	| 'unknown'
-	| 'nonFixedVoip'
-	| 'fixedVoip';
+export type LineType = 'mobile' | 'landline' | 'voip' | 'unknown' | 'nonFixedVoip' | 'fixedVoip';
 
 export interface LookupResult {
 	valid: boolean;
@@ -36,8 +30,14 @@ export async function lookupPhone(phoneNumber: string, env: TwilioEnv): Promise<
 	if (isBypassActive(env)) {
 		// Normalize to E.164 in dev — require at least 10 digits
 		const digits = phoneNumber.replace(/\D/g, '');
-		if (digits.length < 10) return { valid: false, lineType: null, isVoip: false, nationalFormat: null, e164: null };
-		const e164 = digits.length === 10 ? `+1${digits}` : digits.startsWith('1') && digits.length === 11 ? `+${digits}` : `+${digits}`;
+		if (digits.length < 10)
+			return { valid: false, lineType: null, isVoip: false, nationalFormat: null, e164: null };
+		const e164 =
+			digits.length === 10
+				? `+1${digits}`
+				: digits.startsWith('1') && digits.length === 11
+					? `+${digits}`
+					: `+${digits}`;
 		return { valid: true, lineType: 'mobile', isVoip: false, nationalFormat: phoneNumber, e164 };
 	}
 
@@ -107,7 +107,11 @@ export interface CheckOtpResult {
 	status: string;
 }
 
-export async function checkOtp(phoneNumber: string, code: string, env: TwilioEnv): Promise<CheckOtpResult> {
+export async function checkOtp(
+	phoneNumber: string,
+	code: string,
+	env: TwilioEnv
+): Promise<CheckOtpResult> {
 	if (isBypassActive(env)) {
 		const valid = code === env.DEV_BYPASS_OTP;
 		return { success: valid, status: valid ? 'approved' : 'rejected' };

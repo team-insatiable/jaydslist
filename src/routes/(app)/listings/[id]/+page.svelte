@@ -96,10 +96,9 @@
 	});
 
 	const seekingLabel = $derived.by(() => {
-		if (listing.lookingForIdentity.length === 0) return 'Anyone';
-		return listing.lookingForIdentity
-			.map((id) => IDENTITY_PLURAL[id] ?? IDENTITY_LABELS[id] ?? id)
-			.join(' or ');
+		const lookingFor = listing.lookingForIdentity ?? [];
+		if (lookingFor.length === 0) return 'Anyone';
+		return lookingFor.map((id) => IDENTITY_PLURAL[id] ?? IDENTITY_LABELS[id] ?? id).join(' or ');
 	});
 
 	const ageLabel = $derived.by(() => {
@@ -110,232 +109,415 @@
 
 <div class="detail-wrap">
 	{#if unavailable}
-	<div class="detail-card unavailable-card">
-		<button class="back-link" onclick={() => history.back()}>← Back</button>
-		<div class="unavailable-body">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-				<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
-			</svg>
-			<h2>This listing is no longer active</h2>
-			<p>"{listing.subject}"</p>
-			<p class="unavailable-hint">The poster may have paused or removed it. Any existing conversations are still in your inbox.</p>
-			{#if isLoggedIn}
-				<a href="/inbox" class="inbox-link">Go to inbox</a>
-			{/if}
+		<div class="detail-card unavailable-card">
+			<button class="back-link" onclick={() => history.back()}>← Back</button>
+			<div class="unavailable-body">
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+				</svg>
+				<h2>This listing is no longer active</h2>
+				<p>"{listing.subject}"</p>
+				<p class="unavailable-hint">
+					The poster may have paused or removed it. Any existing conversations are still in your
+					inbox.
+				</p>
+				{#if isLoggedIn}
+					<a href={resolve('/inbox')} class="inbox-link">Go to inbox</a>
+				{/if}
+			</div>
 		</div>
-	</div>
 	{:else}
-	<div class="detail-card">
-		<!-- Header -->
-		<div class="detail-head">
-			<div class="head-left">
-				<button class="back-link" onclick={() => isOwner ? goto('/my-listings') : history.back()}>← Back</button>
+		<div class="detail-card">
+			<!-- Header -->
+			<div class="detail-head">
+				<div class="head-left">
+					<button
+						class="back-link"
+						onclick={() => (isOwner ? goto(resolve('/my-listings')) : history.back())}
+						>← Back</button
+					>
+				</div>
+				{#if isOwner}
+					<span class="owner-badge">Your listing</span>
+				{/if}
 			</div>
-			{#if isOwner}
-				<span class="owner-badge">Your listing</span>
-			{/if}
-		</div>
 
-		<!-- Subject -->
-		<h1 class="subject">{listing.subject}</h1>
+			<!-- Subject -->
+			<h1 class="subject">{listing.subject}</h1>
 
-		<!-- Poster meta -->
-		<div class="poster-meta">
-			{#if (listing.posterTrustTier ?? 'new') !== 'new'}
-				<span class="trust trust-{listing.posterTrustTier}" title={TRUST_TITLES[listing.posterTrustTier ?? 'new']} aria-label={TRUST_TITLES[listing.posterTrustTier ?? 'new']}>
-					{#if listing.posterTrustTier === 'trusted'}
-						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="currentColor"/><path d="M6 9.5L8 11.5L12 7" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-					{:else}
-						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="color-mix(in srgb, currentColor 15%, transparent)" stroke="currentColor" stroke-width="1.5"/></svg>
-					{/if}
+			<!-- Poster meta -->
+			<div class="poster-meta">
+				{#if (listing.posterTrustTier ?? 'new') !== 'new'}
+					<span
+						class="trust trust-{listing.posterTrustTier}"
+						title={TRUST_TITLES[listing.posterTrustTier ?? 'new']}
+						aria-label={TRUST_TITLES[listing.posterTrustTier ?? 'new']}
+					>
+						{#if listing.posterTrustTier === 'trusted'}
+							<svg viewBox="0 0 18 18" aria-hidden="true"
+								><path
+									d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z"
+									fill="currentColor"
+								/><path
+									d="M6 9.5L8 11.5L12 7"
+									fill="none"
+									stroke="white"
+									stroke-width="1.8"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/></svg
+							>
+						{:else}
+							<svg viewBox="0 0 18 18" aria-hidden="true"
+								><path
+									d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z"
+									fill="color-mix(in srgb, currentColor 15%, transparent)"
+									stroke="currentColor"
+									stroke-width="1.5"
+								/></svg
+							>
+						{/if}
+					</span>
+				{/if}
+				<span class="poster-id">
+					{posterLabel}
+					{#if ageLabel}&nbsp;· {ageLabel}{/if}
 				</span>
-			{/if}
-			<span class="poster-id">
-				{posterLabel}
-				{#if ageLabel}&nbsp;· {ageLabel}{/if}
-			</span>
-			{#if listing.fuzzyLocation}
+				{#if listing.fuzzyLocation}
+					<span class="sep">·</span>
+					<span class="location">{listing.fuzzyLocation}</span>
+				{/if}
 				<span class="sep">·</span>
-				<span class="location">{listing.fuzzyLocation}</span>
-			{/if}
-			<span class="sep">·</span>
-			<span class="time">{timeAgo(listing.lastBumpedAt)}</span>
-		</div>
+				<span class="time">{timeAgo(listing.lastBumpedAt ?? null)}</span>
+			</div>
 
-		<!-- Nature + mood + seeking chips -->
-		<div class="chips">
-			{#each listing.natureOfConnection as n}
-				<span class="chip chip-nature">{NATURE_LABELS[n] ?? n}</span>
-			{/each}
-			{#if listing.mood}
-				<span class="chip chip-mood">{MOOD_LABELS[listing.mood] ?? listing.mood}</span>
-			{/if}
-			{#if seekingLabel !== 'Anyone'}
-				<span class="chip chip-seeking">
-					Seeking {seekingLabel}{#if listing.ageRangeMin || listing.ageRangeMax}&nbsp;
-						{#if listing.ageRangeMin && listing.ageRangeMax}· {listing.ageRangeMin}–{listing.ageRangeMax}{:else if listing.ageRangeMin}· {listing.ageRangeMin}+{:else}· –{listing.ageRangeMax}{/if}
+			<!-- Nature + mood + seeking chips -->
+			<div class="chips">
+				{#each listing.natureOfConnection as n (n)}
+					<span class="chip chip-nature">{NATURE_LABELS[n] ?? n}</span>
+				{/each}
+				{#if listing.mood}
+					<span class="chip chip-mood">{MOOD_LABELS[listing.mood] ?? listing.mood}</span>
+				{/if}
+				{#if seekingLabel !== 'Anyone'}
+					<span class="chip chip-seeking">
+						Seeking {seekingLabel}{#if listing.ageRangeMin || listing.ageRangeMax}&nbsp;
+							{#if listing.ageRangeMin && listing.ageRangeMax}· {listing.ageRangeMin}–{listing.ageRangeMax}{:else if listing.ageRangeMin}·
+								{listing.ageRangeMin}+{:else}· –{listing.ageRangeMax}{/if}
+						{/if}
+					</span>
+				{/if}
+			</div>
+
+			<!-- Body -->
+			<div class="listing-body">
+				{#each (listing.body ?? '').split('\n') as line, i (i)}
+					{#if line.trim()}
+						<p>{line}</p>
+					{:else}
+						<br />
 					{/if}
-				</span>
-			{/if}
-		</div>
-
-		<!-- Body -->
-		<div class="listing-body">
-			{#each listing.body.split('\n') as line}
-				{#if line.trim()}
-					<p>{line}</p>
-				{:else}
-					<br />
-				{/if}
-			{/each}
-		</div>
-
-		<!-- Relative terms glossary -->
-		{#if termDefinitions.length > 0}
-			<div class="glossary">
-				<h3 class="glossary-title">What I mean by…</h3>
-				<dl class="term-list">
-					{#each termDefinitions as { term, definition }}
-						<div class="term-row">
-							<dt>{term}</dt>
-							<dd>{definition}</dd>
-						</div>
-					{/each}
-				</dl>
+				{/each}
 			</div>
-		{/if}
 
-		<!-- Requirements -->
-		{#if requirements.trustTierMin || requirements.softPrompts.length > 0}
-			<div class="reqs-section">
-				<h3 class="reqs-title">Requirements</h3>
-				{#if requirements.trustTierMin}
-					<p class="hard-req">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="req-icon">
-							<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-						</svg>
-						{TRUST_TIER_LABELS[requirements.trustTierMin] ?? requirements.trustTierMin}
-					</p>
-				{/if}
-				{#if requirements.softPrompts.length > 0}
-					<ul class="soft-reqs">
-						{#each requirements.softPrompts as prompt}
-							<li>{prompt}</li>
+			<!-- Relative terms glossary -->
+			{#if termDefinitions.length > 0}
+				<div class="glossary">
+					<h3 class="glossary-title">What I mean by…</h3>
+					<dl class="term-list">
+						{#each termDefinitions as { term, definition } (term)}
+							<div class="term-row">
+								<dt>{term}</dt>
+								<dd>{definition}</dd>
+							</div>
 						{/each}
-					</ul>
-				{/if}
-			</div>
-		{/if}
-
-		<!-- Footer meta -->
-		<div class="detail-footer">
-			<span>Posted {formatDate(listing.createdAt)}</span>
-			{#if listing.expiresAt}
-				<span>Expires {formatDate(listing.expiresAt)}</span>
+					</dl>
+				</div>
 			{/if}
-		</div>
 
-		<!-- CTA -->
-		<div class="cta-area">
-			{#if isOwner}
-				<div class="owner-toolbar">
-					{#if listing.status === 'active'}
-						<form id="pause-form" method="POST" action="?/pause" style="display:none" use:enhance></form>
-						<form id="bump-form" method="POST" action="?/bump" style="display:none" use:enhance></form>
-						<button class="tool-btn tool-bump" form="bump-form" type="submit"
-							disabled={!data.canBump}
-							title={data.canBump ? 'Bump to top of feed' : `Available ${data.nextBumpAt ? new Date(data.nextBumpAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'later'}`}>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
-							Bump
-						</button>
-						<a href="/listings/{listing.id}/edit" class="tool-btn tool-edit">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-							Edit
-						</a>
-						<button class="tool-btn tool-pause" form="pause-form" type="submit">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-							Pause
-						</button>
-					{:else if listing.status === 'paused'}
-						<div class="status-notice notice-paused">Paused — not visible to others</div>
-						<form id="resume-form" method="POST" action="?/resume" style="display:none" use:enhance></form>
-						<form id="delete-form" method="POST" action="?/delete" style="display:none"
-							use:enhance={() => () => goto('/my-listings')}></form>
-						<div class="paused-actions">
-							<button class="tool-btn tool-resume" form="resume-form" type="submit">
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-								Resume
-							</button>
-							{#if confirmingDelete}
-								<button class="tool-btn confirm-cancel" type="button" onclick={() => confirmingDelete = false}>Cancel</button>
-								<button class="tool-btn confirm-yes" form="delete-form" type="submit">Yes, delete</button>
-							{:else}
-								<button class="tool-btn tool-remove" type="button" onclick={() => confirmingDelete = true}>
-									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-									Delete
-								</button>
-							{/if}
-						</div>
-					{:else if listing.status === 'removed'}
-						<div class="status-notice notice-removed">This listing has been deleted — only you can see it</div>
-						<form id="restore-form" method="POST" action="?/restore" style="display:none" use:enhance></form>
-						<button class="tool-btn tool-resume" form="restore-form" type="submit" style="width:100%">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-							Restore listing
-						</button>
+			<!-- Requirements -->
+			{#if requirements.trustTierMin || requirements.softPrompts.length > 0}
+				<div class="reqs-section">
+					<h3 class="reqs-title">Requirements</h3>
+					{#if requirements.trustTierMin}
+						<p class="hard-req">
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="req-icon"
+							>
+								<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+							</svg>
+							{TRUST_TIER_LABELS[requirements.trustTierMin] ?? requirements.trustTierMin}
+						</p>
+					{/if}
+					{#if requirements.softPrompts.length > 0}
+						<ul class="soft-reqs">
+							{#each requirements.softPrompts as prompt, i (i)}
+								<li>{prompt}</li>
+							{/each}
+						</ul>
 					{/if}
 				</div>
-				{#if form?.error}
-					<p class="form-error">{form.error}</p>
-				{/if}
-			{:else if isLoggedIn}
-				{#if data.existingThreadId}
-					<a href="/inbox/{data.existingThreadId}" class="respond-btn">View conversation</a>
-				{:else}
-					<a href="/inbox/new?listing={listing.id}" class="respond-btn">Reply to this listing</a>
-				{/if}
-			{:else}
-				<a href={resolve('/register')} class="respond-btn">Sign up to respond</a>
-				<p class="login-hint">Already have an account? <a href={resolve('/login')}>Sign in</a></p>
 			{/if}
-		</div>
 
-		{#if isLoggedIn && !isOwner}
-			<div class="report-section">
-				{#if reportDone}
-					<p class="report-done">Report submitted. Our moderation team will review it.</p>
-				{:else if showReportForm}
-					<form method="POST" action="?/report" use:enhance={() => {
-						reportSubmitting = true;
-						return async ({ result, update }) => {
-							reportSubmitting = false;
-							if (result.type === 'success') { reportDone = true; showReportForm = false; }
-							await update();
-						};
-					}} class="report-form">
-						<p class="report-form-title">Report this listing</p>
-						<select name="category" bind:value={reportCategory} required>
-							<option value="" disabled>Select a reason…</option>
-							<option value="spam">Spam</option>
-							<option value="fake_profile">Fake profile</option>
-							<option value="harassment">Harassment</option>
-							<option value="explicit_content">Explicit content</option>
-							<option value="other">Other</option>
-						</select>
-						<textarea name="detail" bind:value={reportDetail} placeholder="Additional details (optional)" rows="3"></textarea>
-						<div class="report-actions">
-							<button type="button" class="report-cancel" onclick={() => showReportForm = false}>Cancel</button>
-							<button type="submit" class="report-submit" disabled={!reportCategory || reportSubmitting} aria-busy={reportSubmitting}>
-								Submit report
-							</button>
-						</div>
-					</form>
-				{:else}
-					<button type="button" class="report-link" onclick={() => showReportForm = true}>Report this listing</button>
+			<!-- Footer meta -->
+			<div class="detail-footer">
+				<span>Posted {formatDate(listing.createdAt ?? null)}</span>
+				{#if listing.expiresAt}
+					<span>Expires {formatDate(listing.expiresAt)}</span>
 				{/if}
 			</div>
-		{/if}
-	</div>
+
+			<!-- CTA -->
+			<div class="cta-area">
+				{#if isOwner}
+					<div class="owner-toolbar">
+						{#if listing.status === 'active'}
+							<form
+								id="pause-form"
+								method="POST"
+								action="?/pause"
+								style="display:none"
+								use:enhance
+							></form>
+							<form
+								id="bump-form"
+								method="POST"
+								action="?/bump"
+								style="display:none"
+								use:enhance
+							></form>
+							<button
+								class="tool-btn tool-bump"
+								form="bump-form"
+								type="submit"
+								disabled={!data.canBump}
+								title={data.canBump
+									? 'Bump to top of feed'
+									: `Available ${data.nextBumpAt ? new Date(data.nextBumpAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'later'}`}
+							>
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></svg
+								>
+								Bump
+							</button>
+							<a href={resolve(`/listings/${listing.id}/edit`)} class="tool-btn tool-edit">
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path
+										d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+									/></svg
+								>
+								Edit
+							</a>
+							<button class="tool-btn tool-pause" form="pause-form" type="submit">
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><rect x="6" y="4" width="4" height="16" /><rect
+										x="14"
+										y="4"
+										width="4"
+										height="16"
+									/></svg
+								>
+								Pause
+							</button>
+						{:else if listing.status === 'paused'}
+							<div class="status-notice notice-paused">Paused — not visible to others</div>
+							<form
+								id="resume-form"
+								method="POST"
+								action="?/resume"
+								style="display:none"
+								use:enhance
+							></form>
+							<form
+								id="delete-form"
+								method="POST"
+								action="?/delete"
+								style="display:none"
+								use:enhance={() => () => goto(resolve('/my-listings'))}
+							></form>
+							<div class="paused-actions">
+								<button class="tool-btn tool-resume" form="resume-form" type="submit">
+									<svg
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg
+									>
+									Resume
+								</button>
+								{#if confirmingDelete}
+									<button
+										class="tool-btn confirm-cancel"
+										type="button"
+										onclick={() => (confirmingDelete = false)}>Cancel</button
+									>
+									<button class="tool-btn confirm-yes" form="delete-form" type="submit"
+										>Yes, delete</button
+									>
+								{:else}
+									<button
+										class="tool-btn tool-remove"
+										type="button"
+										onclick={() => (confirmingDelete = true)}
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											><polyline points="3 6 5 6 21 6" /><path
+												d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"
+											/><path d="M10 11v6M14 11v6" /><path
+												d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+											/></svg
+										>
+										Delete
+									</button>
+								{/if}
+							</div>
+						{:else if listing.status === 'removed'}
+							<div class="status-notice notice-removed">
+								This listing has been deleted — only you can see it
+							</div>
+							<form
+								id="restore-form"
+								method="POST"
+								action="?/restore"
+								style="display:none"
+								use:enhance
+							></form>
+							<button
+								class="tool-btn tool-resume"
+								form="restore-form"
+								type="submit"
+								style="width:100%"
+							>
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
+										d="M3 3v5h5"
+									/></svg
+								>
+								Restore listing
+							</button>
+						{/if}
+					</div>
+					{#if form?.error}
+						<p class="form-error">{form.error}</p>
+					{/if}
+				{:else if isLoggedIn}
+					{#if data.existingThreadId}
+						<a href={resolve(`/inbox/${data.existingThreadId}`)} class="respond-btn"
+							>View conversation</a
+						>
+					{:else}
+						<a href={resolve(`/inbox/new?listing=${listing.id}`)} class="respond-btn"
+							>Reply to this listing</a
+						>
+					{/if}
+				{:else}
+					<a href={resolve('/register')} class="respond-btn">Sign up to respond</a>
+					<p class="login-hint">Already have an account? <a href={resolve('/login')}>Sign in</a></p>
+				{/if}
+			</div>
+
+			{#if isLoggedIn && !isOwner}
+				<div class="report-section">
+					{#if reportDone}
+						<p class="report-done">Report submitted. Our moderation team will review it.</p>
+					{:else if showReportForm}
+						<form
+							method="POST"
+							action="?/report"
+							use:enhance={() => {
+								reportSubmitting = true;
+								return async ({ result, update }) => {
+									reportSubmitting = false;
+									if (result.type === 'success') {
+										reportDone = true;
+										showReportForm = false;
+									}
+									await update();
+								};
+							}}
+							class="report-form"
+						>
+							<p class="report-form-title">Report this listing</p>
+							<select name="category" bind:value={reportCategory} required>
+								<option value="" disabled>Select a reason…</option>
+								<option value="spam">Spam</option>
+								<option value="fake_profile">Fake profile</option>
+								<option value="harassment">Harassment</option>
+								<option value="explicit_content">Explicit content</option>
+								<option value="other">Other</option>
+							</select>
+							<textarea
+								name="detail"
+								bind:value={reportDetail}
+								placeholder="Additional details (optional)"
+								rows="3"
+							></textarea>
+							<div class="report-actions">
+								<button type="button" class="report-cancel" onclick={() => (showReportForm = false)}
+									>Cancel</button
+								>
+								<button
+									type="submit"
+									class="report-submit"
+									disabled={!reportCategory || reportSubmitting}
+									aria-busy={reportSubmitting}
+								>
+									Submit report
+								</button>
+							</div>
+						</form>
+					{:else}
+						<button type="button" class="report-link" onclick={() => (showReportForm = true)}
+							>Report this listing</button
+						>
+					{/if}
+				</div>
+			{/if}
+		</div>
 	{/if}
 </div>
 
@@ -461,8 +643,12 @@
 		display: block;
 	}
 
-	.trust-established { color: var(--pico-primary); }
-	.trust-trusted { color: #16a34a; }
+	.trust-established {
+		color: var(--pico-primary);
+	}
+	.trust-trusted {
+		color: #16a34a;
+	}
 
 	.poster-id {
 		font-weight: 500;
@@ -670,7 +856,9 @@
 		text-underline-offset: 2px;
 	}
 
-	.report-link:hover { color: var(--pico-del-color); }
+	.report-link:hover {
+		color: var(--pico-del-color);
+	}
 
 	.report-form-title {
 		font-size: 0.875rem;
@@ -678,12 +866,15 @@
 		margin-bottom: 0.75rem;
 	}
 
-	.report-form select, .report-form textarea {
+	.report-form select,
+	.report-form textarea {
 		margin-bottom: 0.5rem;
 		font-size: 0.875rem;
 	}
 
-	.report-form textarea { resize: vertical; }
+	.report-form textarea {
+		resize: vertical;
+	}
 
 	.report-actions {
 		display: flex;
@@ -748,7 +939,9 @@
 		box-shadow: none !important;
 		cursor: pointer;
 		font-family: inherit;
-		transition: border-color 0.15s, color 0.15s;
+		transition:
+			border-color 0.15s,
+			color 0.15s;
 		min-width: 0;
 		box-sizing: border-box;
 	}
@@ -845,7 +1038,8 @@
 		width: 100%;
 	}
 
-	.confirm-cancel, .confirm-yes {
+	.confirm-cancel,
+	.confirm-yes {
 		flex: 1;
 		padding: 0.5rem;
 		border-radius: 6px;

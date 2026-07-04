@@ -10,13 +10,13 @@ import {
 	keyExchanges,
 	reports,
 	pushSubscriptions,
-	user,
-	DEFAULT_CONFIG
+	user
 } from '$lib/server/db/schema';
 import { eq, and, asc, ne, isNull, desc, gte } from 'drizzle-orm';
 import { decryptContact } from '$lib/server/crypto';
 import { sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
 import { sendPushNotification } from '$lib/server/push';
+import { isKeyExchangeEligible } from '$lib/server/key-exchange';
 
 const CONTACT_INFO_PATTERN = /(\+?[\d\s\-().]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/i;
 
@@ -51,10 +51,25 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 	const role = thread.posterId === userId ? 'poster' : 'responder';
 
 	const [otherProfile, currentProfile, threadMessages, latestExchange] = await Promise.all([
-		db.select({ alias: userProfiles.alias }).from(userProfiles).where(eq(userProfiles.id, otherUserId)).get(),
-		db.select({ isSupporter: userProfiles.isSupporter }).from(userProfiles).where(eq(userProfiles.id, userId)).get(),
 		db
-			.select({ id: messages.id, senderId: messages.senderId, body: messages.body, cfImageId: messages.cfImageId, sentAt: messages.sentAt, readAt: messages.readAt })
+			.select({ alias: userProfiles.alias })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, otherUserId))
+			.get(),
+		db
+			.select({ isSupporter: userProfiles.isSupporter })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, userId))
+			.get(),
+		db
+			.select({
+				id: messages.id,
+				senderId: messages.senderId,
+				body: messages.body,
+				cfImageId: messages.cfImageId,
+				sentAt: messages.sentAt,
+				readAt: messages.readAt
+			})
 			.from(messages)
 			.where(eq(messages.threadId, params.threadId))
 			.orderBy(asc(messages.sentAt))
@@ -73,14 +88,19 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		await db
 			.update(messages)
 			.set({ readAt: new Date() })
-			.where(and(eq(messages.threadId, params.threadId), ne(messages.senderId, userId), isNull(messages.readAt)));
+			.where(
+				and(
+					eq(messages.threadId, params.threadId),
+					ne(messages.senderId, userId),
+					isNull(messages.readAt)
+				)
+			);
 	}
 
 	// Eligibility: poster after first message received; responder after sending AND receiving a reply
 	const myMessages = threadMessages.filter((m) => m.senderId === userId);
 	const theirMessages = threadMessages.filter((m) => m.senderId !== userId);
-	const eligible =
-		role === 'poster' ? theirMessages.length > 0 : myMessages.length > 0 && theirMessages.length > 0;
+	const eligible = isKeyExchangeEligible(role, myMessages.length, theirMessages.length);
 
 	// Only show active exchanges (offered or accepted)
 	const activeExchange =
@@ -94,8 +114,16 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 
 	if (activeExchange?.status === 'accepted' && env.CONTACT_ENCRYPTION_KEY) {
 		const [myProfileData, theirProfileData, myUserData, theirUserData] = await Promise.all([
-			db.select({ encryptedPhone: userProfiles.encryptedPhone }).from(userProfiles).where(eq(userProfiles.id, userId)).get(),
-			db.select({ encryptedPhone: userProfiles.encryptedPhone }).from(userProfiles).where(eq(userProfiles.id, otherUserId)).get(),
+			db
+				.select({ encryptedPhone: userProfiles.encryptedPhone })
+				.from(userProfiles)
+				.where(eq(userProfiles.id, userId))
+				.get(),
+			db
+				.select({ encryptedPhone: userProfiles.encryptedPhone })
+				.from(userProfiles)
+				.where(eq(userProfiles.id, otherUserId))
+				.get(),
 			db.select({ email: user.email }).from(user).where(eq(user.id, userId)).get(),
 			db.select({ email: user.email }).from(user).where(eq(user.id, otherUserId)).get()
 		]);
@@ -107,7 +135,9 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 				// Ensure E.164 format with leading +
 				if (raw && !raw.startsWith('+')) return `+${raw}`;
 				return raw;
-			} catch { return null; }
+			} catch {
+				return null;
+			}
 		};
 
 		myContact = {
@@ -141,7 +171,11 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		})),
 		minLength: 1,
 		exchange: activeExchange
-			? { id: activeExchange.id, status: activeExchange.status, iAmOffering: activeExchange.offeringUserId === userId }
+			? {
+					id: activeExchange.id,
+					status: activeExchange.status,
+					iAmOffering: activeExchange.offeringUserId === userId
+				}
 			: null,
 		eligible,
 		myContact,
@@ -174,7 +208,8 @@ export const actions: Actions = {
 			.get();
 
 		if (!thread) return fail(404, { error: 'Thread not found' });
-		if (thread.initiatorId !== userId && thread.posterId !== userId) return fail(403, { error: 'Forbidden' });
+		if (thread.initiatorId !== userId && thread.posterId !== userId)
+			return fail(403, { error: 'Forbidden' });
 		if (thread.status !== 'open') return fail(400, { error: 'This thread is closed' });
 
 		// Flood detection: >10 messages from sender in this thread in the last 10 minutes
@@ -182,18 +217,36 @@ export const actions: Actions = {
 		const recentFlood = await db
 			.select({ id: messages.id })
 			.from(messages)
-			.where(and(eq(messages.threadId, params.threadId), eq(messages.senderId, userId), gte(messages.sentAt, floodCutoff)))
+			.where(
+				and(
+					eq(messages.threadId, params.threadId),
+					eq(messages.senderId, userId),
+					gte(messages.sentAt, floodCutoff)
+				)
+			)
 			.all();
 
 		if (recentFlood.length >= 10) {
-			const senderProfile = await db.select({ alias: userProfiles.alias }).from(userProfiles).where(eq(userProfiles.id, userId)).get();
+			const senderProfile = await db
+				.select({ alias: userProfiles.alias })
+				.from(userProfiles)
+				.where(eq(userProfiles.id, userId))
+				.get();
 			await db.update(userProfiles).set({ status: 'suspended' }).where(eq(userProfiles.id, userId));
 			if (env.RESEND_API_KEY && env.ADMIN_EMAILS) {
-				const adminEmails = env.ADMIN_EMAILS.split(',').map((e: string) => e.trim()).filter(Boolean);
+				const adminEmails = env.ADMIN_EMAILS.split(',')
+					.map((e: string) => e.trim())
+					.filter(Boolean);
 				const origin = env.ORIGIN ?? 'https://jaydslist.com';
 				sendAbuseAlertEmail(
 					adminEmails,
-					{ alias: senderProfile?.alias ?? userId, userId, reason: 'Per-thread message flood', count: recentFlood.length, threadUrl: `${origin}/inbox/${params.threadId}` },
+					{
+						alias: senderProfile?.alias ?? userId,
+						userId,
+						reason: 'Per-thread message flood',
+						count: recentFlood.length,
+						threadUrl: `${origin}/inbox/${params.threadId}`
+					},
 					origin,
 					env.RESEND_API_KEY
 				).catch((err: unknown) => console.error('Abuse alert email failed:', err));
@@ -207,10 +260,23 @@ export const actions: Actions = {
 
 		if (!cfImageId && body.length < 1) return fail(400, { error: 'Message cannot be empty' });
 		if (body && CONTACT_INFO_PATTERN.test(body))
-			return fail(400, { error: 'Contact information cannot be shared in messages. Use the contact exchange feature instead.' });
+			return fail(400, {
+				error:
+					'Contact information cannot be shared in messages. Use the contact exchange feature instead.'
+			});
 
-		await db.insert(messages).values({ id: crypto.randomUUID(), threadId: params.threadId, senderId: userId, body, cfImageId, sentAt: new Date() });
-		await db.update(conversationThreads).set({ lastActivityAt: new Date() }).where(eq(conversationThreads.id, params.threadId));
+		await db.insert(messages).values({
+			id: crypto.randomUUID(),
+			threadId: params.threadId,
+			senderId: userId,
+			body,
+			cfImageId,
+			sentAt: new Date()
+		});
+		await db
+			.update(conversationThreads)
+			.set({ lastActivityAt: new Date() })
+			.where(eq(conversationThreads.id, params.threadId));
 
 		// If the poster is sending their first reply, increment respondedThreads
 		if (userId === thread.posterId) {
@@ -221,14 +287,18 @@ export const actions: Actions = {
 				.all();
 			if (priorPosterMessages.length === 1) {
 				const profile = await db
-					.select({ totalThreads: userProfiles.totalThreads, respondedThreads: userProfiles.respondedThreads })
+					.select({
+						totalThreads: userProfiles.totalThreads,
+						respondedThreads: userProfiles.respondedThreads
+					})
 					.from(userProfiles)
 					.where(eq(userProfiles.id, userId))
 					.get();
 				if (profile) {
 					const newResponded = profile.respondedThreads + 1;
 					const rate = profile.totalThreads > 0 ? newResponded / profile.totalThreads : 0;
-					await db.update(userProfiles)
+					await db
+						.update(userProfiles)
 						.set({ respondedThreads: newResponded, responseRate: rate })
 						.where(eq(userProfiles.id, userId));
 				}
@@ -237,39 +307,60 @@ export const actions: Actions = {
 
 		// Notifications — fire-and-forget, 15-minute cooldown per thread
 		const COOLDOWN_MS = 15 * 60 * 1000;
-		const shouldNotify = !thread.lastNotifiedAt || (Date.now() - thread.lastNotifiedAt.getTime()) > COOLDOWN_MS;
+		const shouldNotify =
+			!thread.lastNotifiedAt || Date.now() - thread.lastNotifiedAt.getTime() > COOLDOWN_MS;
 		if (shouldNotify && (env.RESEND_API_KEY || env.VAPID_PRIVATE_KEY)) {
 			const recipientId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
 			const origin = env.ORIGIN ?? 'https://jaydslist.com';
 			const threadUrl = `${origin}/inbox/${params.threadId}`;
 
 			Promise.all([
-				db.select({ alias: userProfiles.alias }).from(userProfiles).where(eq(userProfiles.id, userId)).get(),
+				db
+					.select({ alias: userProfiles.alias })
+					.from(userProfiles)
+					.where(eq(userProfiles.id, userId))
+					.get(),
 				db.select({ email: user.email }).from(user).where(eq(user.id, recipientId)).get(),
 				db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, recipientId)).all()
-			]).then(async ([senderProfile, recipientUser, subs]) => {
-				await db.update(conversationThreads).set({ lastNotifiedAt: new Date() }).where(eq(conversationThreads.id, params.threadId));
+			])
+				.then(async ([senderProfile, recipientUser, subs]) => {
+					await db
+						.update(conversationThreads)
+						.set({ lastNotifiedAt: new Date() })
+						.where(eq(conversationThreads.id, params.threadId));
 
-				const fromAlias = senderProfile?.alias ?? 'Someone';
-				const preview = body;
+					const fromAlias = senderProfile?.alias ?? 'Someone';
+					const preview = body;
 
-				if (recipientUser?.email && env.RESEND_API_KEY) {
-					await sendNewMessageEmail(recipientUser.email, fromAlias, thread.listingSubject, preview, threadUrl, env.RESEND_API_KEY);
-				}
-
-				if (env.VAPID_PRIVATE_KEY && env.VAPID_PUBLIC_KEY && env.VAPID_CONTACT) {
-					for (const sub of subs) {
-						const result = await sendPushNotification(
-							{ endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-							{ title: `New message from ${fromAlias}`, body: preview.slice(0, 100), url: threadUrl },
-							env
+					if (recipientUser?.email && env.RESEND_API_KEY) {
+						await sendNewMessageEmail(
+							recipientUser.email,
+							fromAlias,
+							thread.listingSubject,
+							preview,
+							threadUrl,
+							env.RESEND_API_KEY
 						);
-						if (result.stale) {
-							await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
+					}
+
+					if (env.VAPID_PRIVATE_KEY && env.VAPID_PUBLIC_KEY && env.VAPID_CONTACT) {
+						for (const sub of subs) {
+							const result = await sendPushNotification(
+								{ endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+								{
+									title: `New message from ${fromAlias}`,
+									body: preview.slice(0, 100),
+									url: threadUrl
+								},
+								env
+							);
+							if (result.stale) {
+								await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
+							}
 						}
 					}
-				}
-			}).catch((err: unknown) => console.error('Notification failed:', err));
+				})
+				.catch((err: unknown) => console.error('Notification failed:', err));
 		}
 
 		return { success: true };
@@ -284,13 +375,18 @@ export const actions: Actions = {
 		const db = getDb(env.DB);
 
 		const thread = await db
-			.select({ initiatorId: conversationThreads.initiatorId, posterId: conversationThreads.posterId, status: conversationThreads.status })
+			.select({
+				initiatorId: conversationThreads.initiatorId,
+				posterId: conversationThreads.posterId,
+				status: conversationThreads.status
+			})
 			.from(conversationThreads)
 			.where(eq(conversationThreads.id, params.threadId))
 			.get();
 
 		if (!thread) return fail(404, { error: 'Thread not found' });
-		if (thread.initiatorId !== userId && thread.posterId !== userId) return fail(403, { error: 'Forbidden' });
+		if (thread.initiatorId !== userId && thread.posterId !== userId)
+			return fail(403, { error: 'Forbidden' });
 		if (thread.status !== 'open') return fail(400, { error: 'Thread is closed' });
 
 		const otherUserId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
@@ -305,9 +401,10 @@ export const actions: Actions = {
 
 		const myMsgs = threadMessages.filter((m) => m.senderId === userId).length;
 		const theirMsgs = threadMessages.filter((m) => m.senderId !== userId).length;
-		const eligible = role === 'poster' ? theirMsgs > 0 : myMsgs > 0 && theirMsgs > 0;
+		const eligible = isKeyExchangeEligible(role, myMsgs, theirMsgs);
 
-		if (!eligible) return fail(400, { error: 'You are not yet eligible to share contact info in this thread' });
+		if (!eligible)
+			return fail(400, { error: 'You are not yet eligible to share contact info in this thread' });
 
 		// Check no active offer/accepted exchange exists
 		const existing = await db
@@ -348,10 +445,14 @@ export const actions: Actions = {
 			.orderBy(desc(keyExchanges.offeredAt))
 			.get();
 
-		if (!exchange || exchange.status !== 'offered') return fail(400, { error: 'No pending offer to accept' });
+		if (!exchange || exchange.status !== 'offered')
+			return fail(400, { error: 'No pending offer to accept' });
 		if (exchange.receivingUserId !== userId) return fail(403, { error: 'Forbidden' });
 
-		await db.update(keyExchanges).set({ status: 'accepted', resolvedAt: new Date() }).where(eq(keyExchanges.id, exchange.id));
+		await db
+			.update(keyExchanges)
+			.set({ status: 'accepted', resolvedAt: new Date() })
+			.where(eq(keyExchanges.id, exchange.id));
 
 		return { success: true };
 	},
@@ -371,10 +472,14 @@ export const actions: Actions = {
 			.orderBy(desc(keyExchanges.offeredAt))
 			.get();
 
-		if (!exchange || exchange.status !== 'offered') return fail(400, { error: 'No pending offer to decline' });
+		if (!exchange || exchange.status !== 'offered')
+			return fail(400, { error: 'No pending offer to decline' });
 		if (exchange.receivingUserId !== userId) return fail(403, { error: 'Forbidden' });
 
-		await db.update(keyExchanges).set({ status: 'declined', resolvedAt: new Date() }).where(eq(keyExchanges.id, exchange.id));
+		await db
+			.update(keyExchanges)
+			.set({ status: 'declined', resolvedAt: new Date() })
+			.where(eq(keyExchanges.id, exchange.id));
 
 		return { success: true };
 	},
@@ -399,7 +504,10 @@ export const actions: Actions = {
 		if (exchange.offeringUserId !== userId && exchange.receivingUserId !== userId)
 			return fail(403, { error: 'Forbidden' });
 
-		await db.update(keyExchanges).set({ status: 'revoked', resolvedAt: new Date() }).where(eq(keyExchanges.id, exchange.id));
+		await db
+			.update(keyExchanges)
+			.set({ status: 'revoked', resolvedAt: new Date() })
+			.where(eq(keyExchanges.id, exchange.id));
 
 		return { success: true };
 	},
@@ -413,24 +521,39 @@ export const actions: Actions = {
 		const db = getDb(env.DB);
 
 		const thread = await db
-			.select({ initiatorId: conversationThreads.initiatorId, posterId: conversationThreads.posterId })
+			.select({
+				initiatorId: conversationThreads.initiatorId,
+				posterId: conversationThreads.posterId
+			})
 			.from(conversationThreads)
 			.where(eq(conversationThreads.id, params.threadId))
 			.get();
 
 		if (!thread) return fail(404, { error: 'Thread not found' });
-		if (thread.initiatorId !== userId && thread.posterId !== userId) return fail(403, { error: 'Forbidden' });
+		if (thread.initiatorId !== userId && thread.posterId !== userId)
+			return fail(403, { error: 'Forbidden' });
 
 		const data = await request.formData();
 		const category = data.get('category') as string;
 		const detail = (data.get('detail') as string)?.trim() || null;
 		const targetUserId = data.get('targetUserId') as string;
 
-		const VALID_CATEGORIES = ['harassment', 'spam', 'fake_profile', 'explicit_content', 'unsolicited_dm', 'other'];
+		const VALID_CATEGORIES = [
+			'harassment',
+			'spam',
+			'fake_profile',
+			'explicit_content',
+			'unsolicited_dm',
+			'other'
+		];
 		if (!VALID_CATEGORIES.includes(category)) return fail(400, { error: 'Invalid category' });
 		if (targetUserId === userId) return fail(400, { error: 'Cannot report yourself' });
 
-		const reporter = await db.select({ reporterTrustScore: userProfiles.reporterTrustScore }).from(userProfiles).where(eq(userProfiles.id, userId)).get();
+		const reporter = await db
+			.select({ reporterTrustScore: userProfiles.reporterTrustScore })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, userId))
+			.get();
 
 		await db.insert(reports).values({
 			id: crypto.randomUUID(),

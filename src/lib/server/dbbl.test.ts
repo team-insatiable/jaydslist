@@ -49,7 +49,10 @@ describe('isBlockedByDbbl', () => {
 describe('queryDbblScore', () => {
 	it('returns null for no_data response', async () => {
 		vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-			new Response(JSON.stringify({ status: 'no_data', score: null, rating: null, confidence: null }), { status: 200 })
+			new Response(
+				JSON.stringify({ status: 'no_data', score: null, rating: null, confidence: null }),
+				{ status: 200 }
+			)
 		);
 
 		const result = await queryDbblScore('phonehash', 'emailhash', TEST_ENV);
@@ -69,9 +72,14 @@ describe('queryDbblScore', () => {
 	});
 
 	it('sends correct auth header and signals', async () => {
-		const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-			new Response(JSON.stringify({ status: 'no_data', score: null, rating: null, confidence: null }), { status: 200 })
-		);
+		const spy = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({ status: 'no_data', score: null, rating: null, confidence: null }),
+					{ status: 200 }
+				)
+			);
 
 		await queryDbblScore('myphonehash', 'myemailhash', TEST_ENV);
 
@@ -82,11 +90,11 @@ describe('queryDbblScore', () => {
 	});
 
 	it('throws on non-OK response', async () => {
-		vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-			new Response('', { status: 503 })
-		);
+		vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 503 }));
 
-		await expect(queryDbblScore('phonehash', 'emailhash', TEST_ENV)).rejects.toThrow('DBBL non-OK: 503');
+		await expect(queryDbblScore('phonehash', 'emailhash', TEST_ENV)).rejects.toThrow(
+			'DBBL non-OK: 503'
+		);
 	});
 });
 
@@ -94,9 +102,9 @@ describe('queryDbblScore', () => {
 
 describe('reportBanToDbbl', () => {
 	it('sends violationCategory and severity in request body', async () => {
-		const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-			new Response(JSON.stringify({ success: true }), { status: 201 })
-		);
+		const spy = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 201 }));
 
 		const encryptedPhone = await encryptContact('+15550001234', TEST_ENV.CONTACT_ENCRYPTION_KEY);
 
@@ -132,9 +140,9 @@ describe('reportBanToDbbl', () => {
 	});
 
 	it('falls back to "other" for unknown category', async () => {
-		const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-			new Response(JSON.stringify({ success: true }), { status: 201 })
-		);
+		const spy = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 201 }));
 
 		const encryptedPhone = await encryptContact('+15550001234', TEST_ENV.CONTACT_ENCRYPTION_KEY);
 
@@ -150,9 +158,7 @@ describe('reportBanToDbbl', () => {
 	});
 
 	it('throws on non-OK response', async () => {
-		vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-			new Response('', { status: 500 })
-		);
+		vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 500 }));
 
 		const encryptedPhone = await encryptContact('+15550001234', TEST_ENV.CONTACT_ENCRYPTION_KEY);
 
@@ -162,9 +168,9 @@ describe('reportBanToDbbl', () => {
 	});
 
 	it('sends correct auth header', async () => {
-		const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-			new Response(JSON.stringify({ success: true }), { status: 201 })
-		);
+		const spy = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 201 }));
 
 		const encryptedPhone = await encryptContact('+15550001234', TEST_ENV.CONTACT_ENCRYPTION_KEY);
 

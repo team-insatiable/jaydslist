@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 
 	export type Listing = {
 		id: string;
@@ -81,74 +81,127 @@
 		return labels.join(' / ');
 	}
 
-	const href = $derived(`${base}/listings/${listing.id}`);
+	const href = $derived(resolve(`/listings/${listing.id}`));
 </script>
 
 {#if compact}
-<a {href} class="row-link">
-	<div class="listing-row">
-		<div class="row-body">
-			<div class="row-top">
-				{#if listing.trustTier !== 'new'}
-				<span class="trust trust-{listing.trustTier}" title={TRUST_TITLES[listing.trustTier]} aria-label={TRUST_TITLES[listing.trustTier]}>
-					{#if listing.trustTier === 'trusted'}
-						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="currentColor"/><path d="M6 9.5L8 11.5L12 7" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-					{:else}
-						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="color-mix(in srgb, currentColor 15%, transparent)" stroke="currentColor" stroke-width="1.5"/></svg>
+	<a {href} class="row-link">
+		<div class="listing-row">
+			<div class="row-body">
+				<div class="row-top">
+					{#if listing.trustTier !== 'new'}
+						<span
+							class="trust trust-{listing.trustTier}"
+							title={TRUST_TITLES[listing.trustTier]}
+							aria-label={TRUST_TITLES[listing.trustTier]}
+						>
+							{#if listing.trustTier === 'trusted'}
+								<svg viewBox="0 0 18 18" aria-hidden="true"
+									><path
+										d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z"
+										fill="currentColor"
+									/><path
+										d="M6 9.5L8 11.5L12 7"
+										fill="none"
+										stroke="white"
+										stroke-width="1.8"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/></svg
+								>
+							{:else}
+								<svg viewBox="0 0 18 18" aria-hidden="true"
+									><path
+										d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z"
+										fill="color-mix(in srgb, currentColor 15%, transparent)"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/></svg
+								>
+							{/if}
+						</span>
 					{/if}
-				</span>
-			{/if}
-				<span class="row-subject">{listing.subject}</span>
+					<span class="row-subject">{listing.subject}</span>
+				</div>
+				<p class="row-meta">
+					{IDENTITY_LABELS[listing.identity]} · {listing.age} · Seeking {seekingLabel(
+						listing.lookingFor
+					)}
+					· {listing.nature.map((n) => NATURE_LABELS[n] ?? n).join(', ')}
+					{#if listing.mood}
+						· {MOOD_LABELS[listing.mood] ?? listing.mood}{/if}
+					· {listing.fuzzyLocation}
+				</p>
 			</div>
-			<p class="row-meta">
-				{IDENTITY_LABELS[listing.identity]} · {listing.age} · Seeking {seekingLabel(listing.lookingFor)}
-				· {listing.nature.map((n) => NATURE_LABELS[n] ?? n).join(', ')}
-				{#if listing.mood} · {MOOD_LABELS[listing.mood] ?? listing.mood}{/if}
-				· {listing.fuzzyLocation}
-			</p>
+			<div class="row-aside">
+				{#if listing.distance !== null}<span>~{listing.distance} mi</span>{/if}
+				<span>{timeAgo(listing.postedAt)}</span>
+			</div>
 		</div>
-		<div class="row-aside">
-			{#if listing.distance !== null}<span>~{listing.distance} mi</span>{/if}
-			<span>{timeAgo(listing.postedAt)}</span>
-		</div>
-	</div>
-</a>
+	</a>
 {:else}
-<a {href} class="card-link">
-	<article class="listing-card">
-		<div class="card-top">
-			{#if listing.trustTier !== 'new'}
-				<span class="trust trust-{listing.trustTier}" title={TRUST_TITLES[listing.trustTier]} aria-label={TRUST_TITLES[listing.trustTier]}>
-					{#if listing.trustTier === 'trusted'}
-						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="currentColor"/><path d="M6 9.5L8 11.5L12 7" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-					{:else}
-						<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z" fill="color-mix(in srgb, currentColor 15%, transparent)" stroke="currentColor" stroke-width="1.5"/></svg>
-					{/if}
-				</span>
-			{/if}
-			{#if listing.distance !== null}
-				<span class="distance">~{listing.distance} mi</span>
-			{/if}
-		</div>
+	<a {href} class="card-link">
+		<article class="listing-card">
+			<div class="card-top">
+				{#if listing.trustTier !== 'new'}
+					<span
+						class="trust trust-{listing.trustTier}"
+						title={TRUST_TITLES[listing.trustTier]}
+						aria-label={TRUST_TITLES[listing.trustTier]}
+					>
+						{#if listing.trustTier === 'trusted'}
+							<svg viewBox="0 0 18 18" aria-hidden="true"
+								><path
+									d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z"
+									fill="currentColor"
+								/><path
+									d="M6 9.5L8 11.5L12 7"
+									fill="none"
+									stroke="white"
+									stroke-width="1.8"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/></svg
+							>
+						{:else}
+							<svg viewBox="0 0 18 18" aria-hidden="true"
+								><path
+									d="M9 2L15 4.5V9C15 12.8 12.2 15.2 9 16.5C5.8 15.2 3 12.8 3 9V4.5L9 2Z"
+									fill="color-mix(in srgb, currentColor 15%, transparent)"
+									stroke="currentColor"
+									stroke-width="1.5"
+								/></svg
+							>
+						{/if}
+					</span>
+				{/if}
+				{#if listing.distance !== null}
+					<span class="distance">~{listing.distance} mi</span>
+				{/if}
+			</div>
 
-		<p class="subject">{listing.subject}</p>
+			<p class="subject">{listing.subject}</p>
 
-		<p class="meta-primary">
-			{IDENTITY_LABELS[listing.identity]} · {listing.age} · Seeking {seekingLabel(listing.lookingFor)}
-		</p>
+			<p class="meta-primary">
+				{IDENTITY_LABELS[listing.identity]} · {listing.age} · Seeking {seekingLabel(
+					listing.lookingFor
+				)}
+			</p>
 
-		<p class="meta-secondary">
-			{listing.nature.map((n) => NATURE_LABELS[n] ?? n).join(' · ')}
-			{#if listing.mood} · {MOOD_LABELS[listing.mood] ?? listing.mood}{/if}
-			{#if listing.availability} · {AVAIL_LABELS[listing.availability] ?? listing.availability}{/if}
-		</p>
+			<p class="meta-secondary">
+				{listing.nature.map((n) => NATURE_LABELS[n] ?? n).join(' · ')}
+				{#if listing.mood}
+					· {MOOD_LABELS[listing.mood] ?? listing.mood}{/if}
+				{#if listing.availability}
+					· {AVAIL_LABELS[listing.availability] ?? listing.availability}{/if}
+			</p>
 
-		<div class="card-footer">
-			<span>{listing.fuzzyLocation}</span>
-			<span>{timeAgo(listing.postedAt)}</span>
-		</div>
-	</article>
-</a>
+			<div class="card-footer">
+				<span>{listing.fuzzyLocation}</span>
+				<span>{timeAgo(listing.postedAt)}</span>
+			</div>
+		</article>
+	</a>
 {/if}
 
 <style>

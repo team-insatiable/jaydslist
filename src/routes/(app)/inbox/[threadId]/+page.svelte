@@ -3,18 +3,23 @@
 	import { tick } from 'svelte';
 	import { browser } from '$app/environment';
 	import { invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	$effect(() => {
 		if (!browser) return;
 		document.body.style.overflow = 'hidden';
-		return () => { document.body.style.overflow = ''; };
+		return () => {
+			document.body.style.overflow = '';
+		};
 	});
 
 	$effect(() => {
 		if (!browser) return;
 		let interval: ReturnType<typeof setInterval>;
 
-		const poll = () => { if (!document.hidden) invalidate('app:thread'); };
+		const poll = () => {
+			if (!document.hidden) invalidate('app:thread');
+		};
 
 		function onVisible() {
 			if (!document.hidden) {
@@ -57,15 +62,25 @@
 	async function handleFileSelect(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (!file) return;
-		if (!file.type.startsWith('image/')) { photoError = 'Only image files are supported'; return; }
-		if (file.size > 10 * 1024 * 1024) { photoError = 'Image must be under 10MB'; return; }
+		if (!file.type.startsWith('image/')) {
+			photoError = 'Only image files are supported';
+			return;
+		}
+		if (file.size > 10 * 1024 * 1024) {
+			photoError = 'Image must be under 10MB';
+			return;
+		}
 
 		photoError = '';
 		photoUploading = true;
 		try {
 			const urlRes = await fetch('/api/photos/upload-url', { method: 'POST' });
 			if (!urlRes.ok) throw new Error('Failed to get upload URL');
-			const { uploadUrl, id, deliveryUrl } = await urlRes.json() as { uploadUrl: string; id: string; deliveryUrl: string };
+			const { uploadUrl, id, deliveryUrl } = (await urlRes.json()) as {
+				uploadUrl: string;
+				id: string;
+				deliveryUrl: string;
+			};
 
 			const form = new FormData();
 			form.append('file', file);
@@ -99,7 +114,12 @@
 		if (diff < 60) return 'just now';
 		if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
 		if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-		return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+		return d.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
+		});
 	}
 
 	let messagesEl: HTMLElement;
@@ -110,24 +130,55 @@
 	}
 
 	$effect(() => {
-		data.messages;
+		const _ = data.messages;
 		scrollToBottom();
 	});
 </script>
 
 <div class="thread-page">
 	<header class="thread-header">
-		<a href="/inbox" class="back-link" aria-label="Back to inbox">
-			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		<a href={resolve('/inbox')} class="back-link" aria-label="Back to inbox">
+			<svg
+				width="20"
+				height="20"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
 				<polyline points="15 18 9 12 15 6"></polyline>
 			</svg>
 		</a>
 		<div class="thread-header-info">
-			<a href="/listings/{data.thread.listingId}" class="listing-link">{data.thread.listingSubject}</a>
+			<a href={resolve(`/listings/${data.thread.listingId}`)} class="listing-link"
+				>{data.thread.listingSubject}</a
+			>
 			<span class="other-alias">{data.otherAlias}</span>
 		</div>
-		<button class="more-btn" onclick={() => showReportMenu = !showReportMenu} type="button" aria-label="Report user">
-			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+		<button
+			class="more-btn"
+			onclick={() => (showReportMenu = !showReportMenu)}
+			type="button"
+			aria-label="Report user"
+		>
+			<svg
+				width="17"
+				height="17"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line
+					x1="4"
+					y1="22"
+					x2="4"
+					y2="15"
+				/></svg
+			>
 		</button>
 	</header>
 
@@ -137,14 +188,20 @@
 				<p class="report-done">Report submitted. Our moderation team will review it.</p>
 			{:else}
 				<p class="report-panel-title">Report {data.otherAlias}</p>
-				<form method="POST" action="?/report" use:enhance={() => {
-					reportSubmitting = true;
-					return async ({ result, update }) => {
-						reportSubmitting = false;
-						if (result.type === 'success') { reportDone = true; }
-						await update();
-					};
-				}}>
+				<form
+					method="POST"
+					action="?/report"
+					use:enhance={() => {
+						reportSubmitting = true;
+						return async ({ result, update }) => {
+							reportSubmitting = false;
+							if (result.type === 'success') {
+								reportDone = true;
+							}
+							await update();
+						};
+					}}
+				>
 					<input type="hidden" name="targetUserId" value={data.otherUserId} />
 					<select name="category" bind:value={reportCategory} required>
 						<option value="" disabled>Select a reason…</option>
@@ -155,10 +212,22 @@
 						<option value="unsolicited_dm">Unsolicited DM pattern</option>
 						<option value="other">Other</option>
 					</select>
-					<textarea name="detail" bind:value={reportDetail} placeholder="Additional details (optional)" rows="2"></textarea>
+					<textarea
+						name="detail"
+						bind:value={reportDetail}
+						placeholder="Additional details (optional)"
+						rows="2"
+					></textarea>
 					<div class="report-actions">
-						<button type="button" class="report-cancel" onclick={() => showReportMenu = false}>Cancel</button>
-						<button type="submit" class="report-submit" disabled={!reportCategory || reportSubmitting} aria-busy={reportSubmitting}>
+						<button type="button" class="report-cancel" onclick={() => (showReportMenu = false)}
+							>Cancel</button
+						>
+						<button
+							type="submit"
+							class="report-submit"
+							disabled={!reportCategory || reportSubmitting}
+							aria-busy={reportSubmitting}
+						>
 							Submit report
 						</button>
 					</div>
@@ -175,7 +244,12 @@
 				<div class="bubble-wrap {msg.isMine ? 'mine' : 'theirs'}">
 					<div class="bubble" class:bubble-photo={msg.cfImageUrl}>
 						{#if msg.cfImageUrl}
-							<button class="msg-photo-btn" onclick={() => lightboxUrl = msg.cfImageUrl} type="button" aria-label="View photo">
+							<button
+								class="msg-photo-btn"
+								onclick={() => (lightboxUrl = msg.cfImageUrl)}
+								type="button"
+								aria-label="View photo"
+							>
 								<img class="msg-photo" src={msg.cfImageUrl} alt="" loading="lazy" />
 							</button>
 						{/if}
@@ -200,7 +274,17 @@
 			<div class="exchange-card accepted">
 				<div class="exchange-card-head">
 					<span class="exchange-label">{data.otherAlias}'s contact info</span>
-					<form method="POST" action="?/revokeExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+					<form
+						method="POST"
+						action="?/revokeExchange"
+						use:enhance={() => {
+							exchangeWorking = true;
+							return async ({ update }) => {
+								exchangeWorking = false;
+								await update();
+							};
+						}}
+					>
 						<button type="submit" class="revoke-btn" disabled={exchangeWorking}>Revoke</button>
 					</form>
 				</div>
@@ -208,13 +292,33 @@
 					<div class="contact-list">
 						{#if data.theirContact.phone}
 							<a class="contact-row" href="tel:{data.theirContact.phone}">
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><path
+										d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+									/></svg
+								>
 								<span>{data.theirContact.phone}</span>
 							</a>
 						{/if}
 						{#if data.theirContact.email}
 							<a class="contact-row" href="mailto:{data.theirContact.email}">
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><rect width="20" height="16" x="2" y="4" rx="2" /><path
+										d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+									/></svg
+								>
 								<span>{data.theirContact.email}</span>
 							</a>
 						{/if}
@@ -223,44 +327,108 @@
 			</div>
 		{:else if data.exchange?.status === 'offered' && data.exchange.iAmOffering}
 			<div class="exchange-card pending">
-				<span class="exchange-label">Waiting for {data.otherAlias} to accept your contact request</span>
-				<form method="POST" action="?/revokeExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+				<span class="exchange-label"
+					>Waiting for {data.otherAlias} to accept your contact request</span
+				>
+				<form
+					method="POST"
+					action="?/revokeExchange"
+					use:enhance={() => {
+						exchangeWorking = true;
+						return async ({ update }) => {
+							exchangeWorking = false;
+							await update();
+						};
+					}}
+				>
 					<button type="submit" class="revoke-btn" disabled={exchangeWorking}>Cancel</button>
 				</form>
 			</div>
 		{:else if data.exchange?.status === 'offered' && !data.exchange.iAmOffering}
 			<div class="exchange-card incoming">
 				<div class="exchange-incoming-head">
-					<svg class="exchange-incoming-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+					<svg
+						class="exchange-incoming-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path
+							d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
+						/>
 					</svg>
 					<div>
-						<p class="exchange-label"><strong>{data.otherAlias}</strong> wants to share contact info</p>
+						<p class="exchange-label">
+							<strong>{data.otherAlias}</strong> wants to share contact info
+						</p>
 						<p class="exchange-hint">Accept to reveal each other's verified phone &amp; email.</p>
 					</div>
 				</div>
 				<div class="exchange-actions">
-					<form method="POST" action="?/acceptExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+					<form
+						method="POST"
+						action="?/acceptExchange"
+						use:enhance={() => {
+							exchangeWorking = true;
+							return async ({ update }) => {
+								exchangeWorking = false;
+								await update();
+							};
+						}}
+					>
 						<button type="submit" class="accept-btn" disabled={exchangeWorking}>Accept</button>
 					</form>
-					<form method="POST" action="?/declineExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
+					<form
+						method="POST"
+						action="?/declineExchange"
+						use:enhance={() => {
+							exchangeWorking = true;
+							return async ({ update }) => {
+								exchangeWorking = false;
+								await update();
+							};
+						}}
+					>
 						<button type="submit" class="decline-btn" disabled={exchangeWorking}>Decline</button>
 					</form>
 				</div>
 			</div>
 		{:else if data.eligible}
 			<div class="exchange-offer">
-				<svg class="exchange-offer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+				<svg
+					class="exchange-offer-icon"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path
+						d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
+					/>
 				</svg>
 				<div class="exchange-offer-body">
 					<span class="exchange-offer-title">Ready to connect?</span>
-					<span class="exchange-offer-hint">Share verified phone &amp; email — both parties must accept</span>
+					<span class="exchange-offer-hint"
+						>Share verified phone &amp; email — both parties must accept</span
+					>
 				</div>
-				<form method="POST" action="?/offerExchange" use:enhance={() => { exchangeWorking = true; return async ({ update }) => { exchangeWorking = false; await update(); }; }}>
-					<button type="submit" class="offer-btn" disabled={exchangeWorking}>
-						Share info
-					</button>
+				<form
+					method="POST"
+					action="?/offerExchange"
+					use:enhance={() => {
+						exchangeWorking = true;
+						return async ({ update }) => {
+							exchangeWorking = false;
+							await update();
+						};
+					}}
+				>
+					<button type="submit" class="offer-btn" disabled={exchangeWorking}> Share info </button>
 				</form>
 			</div>
 		{/if}
@@ -273,12 +441,28 @@
 			aria-label="Photo viewer"
 			aria-modal="true"
 			tabindex="-1"
-			onclick={() => lightboxUrl = null}
-			onkeydown={(e) => { if (e.key === 'Escape') lightboxUrl = null; }}
+			onclick={() => (lightboxUrl = null)}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') lightboxUrl = null;
+			}}
 		>
-			<button class="lightbox-close" type="button" aria-label="Close" onclick={() => lightboxUrl = null}>
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-					<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+			<button
+				class="lightbox-close"
+				type="button"
+				aria-label="Close"
+				onclick={() => (lightboxUrl = null)}
+			>
+				<svg
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
 				</svg>
 			</button>
 			<img src={lightboxUrl} alt="" />
@@ -315,8 +499,17 @@
 				<div class="photo-preview">
 					<img src={photoPreviewUrl} alt="" />
 					<button type="button" class="photo-remove" onclick={clearPhoto} aria-label="Remove photo">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-							<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
 						</svg>
 					</button>
 				</div>
@@ -345,9 +538,18 @@
 					{#if photoUploading}
 						<span class="spinner"></span>
 					{:else}
-						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-							<polyline points="21 15 16 10 5 21"/>
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" />
+							<polyline points="21 15 16 10 5 21" />
 						</svg>
 					{/if}
 				</button>
@@ -364,7 +566,16 @@
 					disabled={sending || photoUploading || (!photoId && body.trim().length < minLength)}
 				>
 					{#if !sending}
-						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
 							<line x1="22" y1="2" x2="11" y2="13"></line>
 							<polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
 						</svg>
@@ -427,7 +638,9 @@
 		margin-left: auto;
 	}
 
-	.more-btn:hover { color: var(--pico-color); }
+	.more-btn:hover {
+		color: var(--pico-color);
+	}
 
 	.report-panel {
 		background: var(--pico-card-background-color);
@@ -444,12 +657,15 @@
 		margin-bottom: 0.75rem;
 	}
 
-	.report-panel select, .report-panel textarea {
+	.report-panel select,
+	.report-panel textarea {
 		margin-bottom: 0.5rem;
 		font-size: 0.875rem;
 	}
 
-	.report-panel textarea { resize: vertical; }
+	.report-panel textarea {
+		resize: vertical;
+	}
 
 	.report-actions {
 		display: flex;
@@ -550,7 +766,6 @@
 		border-bottom-right-radius: 4px;
 	}
 
-
 	.bubble-wrap.theirs .bubble {
 		background: var(--pico-card-background-color);
 		border: 1px solid var(--pico-muted-border-color);
@@ -599,7 +814,7 @@
 	.lightbox {
 		position: fixed;
 		inset: 0;
-		background: rgba(0,0,0,0.85);
+		background: rgba(0, 0, 0, 0.85);
 		z-index: 1000;
 		display: flex;
 		align-items: center;
@@ -618,7 +833,7 @@
 		position: absolute;
 		top: 1rem;
 		right: 1rem;
-		background: rgba(0,0,0,0.5);
+		background: rgba(0, 0, 0, 0.5);
 		border: none;
 		border-radius: 50%;
 		width: 36px;
@@ -730,7 +945,11 @@
 		display: block;
 	}
 
-	@keyframes spin { to { transform: rotate(360deg); } }
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 
 	.compose-row {
 		display: flex;
@@ -745,7 +964,7 @@
 		font-size: 0.9rem;
 	}
 
-	.compose-row > button[type="submit"] {
+	.compose-row > button[type='submit'] {
 		flex-shrink: 0;
 		width: 2.75rem;
 		height: 2.75rem;
@@ -878,7 +1097,9 @@
 		margin-top: 0.5rem;
 	}
 
-	.exchange-actions form { margin: 0; }
+	.exchange-actions form {
+		margin: 0;
+	}
 
 	.accept-btn {
 		background: var(--pico-primary);
@@ -956,7 +1177,10 @@
 		color: var(--pico-color);
 	}
 
-	.exchange-offer form { margin: 0; flex-shrink: 0; }
+	.exchange-offer form {
+		margin: 0;
+		flex-shrink: 0;
+	}
 
 	.offer-btn {
 		background: var(--pico-primary);

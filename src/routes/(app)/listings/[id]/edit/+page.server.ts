@@ -6,12 +6,19 @@ import {
 	listingRequirements,
 	relativeTermDefinitions,
 	listingEvents,
-	userProfiles,
 	moderationActions
 } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
-const VALID_IDENTITIES = ['man', 'woman', 'non_binary', 'transgender_man', 'transgender_woman', 'other', 'couple'];
+const VALID_IDENTITIES = [
+	'man',
+	'woman',
+	'non_binary',
+	'transgender_man',
+	'transgender_woman',
+	'other',
+	'couple'
+];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
 const VALID_MOODS = ['coffee_first', 'dinner_date', 'netflix_chill', 'ready_now', 'just_browsing'];
 const VALID_AVAILABILITY = ['available_now', 'available_today', 'available_weekend', 'flexible'];
@@ -49,7 +56,11 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 
 	const [reqs, termDefs] = await Promise.all([
 		db.select().from(listingRequirements).where(eq(listingRequirements.listingId, params.id)).all(),
-		db.select().from(relativeTermDefinitions).where(eq(relativeTermDefinitions.listingId, params.id)).all()
+		db
+			.select()
+			.from(relativeTermDefinitions)
+			.where(eq(relativeTermDefinitions.listingId, params.id))
+			.all()
 	]);
 
 	let suspensionReason: string | null = null;
@@ -57,7 +68,9 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		const action = await db
 			.select({ reason: moderationActions.reason })
 			.from(moderationActions)
-			.where(and(eq(moderationActions.targetId, params.id), eq(moderationActions.actionType, 'restrict')))
+			.where(
+				and(eq(moderationActions.targetId, params.id), eq(moderationActions.actionType, 'restrict'))
+			)
 			.orderBy(desc(moderationActions.createdAt))
 			.get();
 		suspensionReason = action?.reason ?? null;
@@ -111,7 +124,9 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 
-		const lookingFor = (data.getAll('lookingFor') as string[]).filter((v) => VALID_IDENTITIES.includes(v));
+		const lookingFor = (data.getAll('lookingFor') as string[]).filter((v) =>
+			VALID_IDENTITIES.includes(v)
+		);
 		const nature = (data.getAll('nature') as string[]).filter((v) => VALID_NATURE.includes(v));
 		const mood = (data.get('mood') as string) || null;
 		const availability = (data.get('availability') as string) || null;
@@ -124,19 +139,27 @@ export const actions: Actions = {
 		const ageMinRaw = (data.get('ageMin') as string) || '';
 		const ageMaxRaw = (data.get('ageMax') as string) || '';
 
-		if (nature.length === 0) return fail(400, { error: 'Select at least one nature of connection' });
+		if (nature.length === 0)
+			return fail(400, { error: 'Select at least one nature of connection' });
 		if (mood && !VALID_MOODS.includes(mood)) return fail(400, { error: 'Invalid mood' });
-		if (availability && !VALID_AVAILABILITY.includes(availability)) return fail(400, { error: 'Invalid availability' });
-		if (!subject || subject.length < 10) return fail(400, { error: 'Subject must be at least 10 characters' });
+		if (availability && !VALID_AVAILABILITY.includes(availability))
+			return fail(400, { error: 'Invalid availability' });
+		if (!subject || subject.length < 10)
+			return fail(400, { error: 'Subject must be at least 10 characters' });
 		if (subject.length > 120) return fail(400, { error: 'Subject must be 120 characters or less' });
-		if (!body || body.length < 50) return fail(400, { error: 'Body must be at least 50 characters' });
-		if (!VALID_TRUST_TIERS.includes(trustTierMin)) return fail(400, { error: 'Invalid trust tier' });
+		if (!body || body.length < 50)
+			return fail(400, { error: 'Body must be at least 50 characters' });
+		if (!VALID_TRUST_TIERS.includes(trustTierMin))
+			return fail(400, { error: 'Invalid trust tier' });
 
 		const ageMin = ageMinRaw ? parseInt(ageMinRaw) : null;
 		const ageMax = ageMaxRaw ? parseInt(ageMaxRaw) : null;
-		if (ageMin !== null && (isNaN(ageMin) || ageMin < 18 || ageMin > 99)) return fail(400, { error: 'Invalid minimum age' });
-		if (ageMax !== null && (isNaN(ageMax) || ageMax < 18 || ageMax > 99)) return fail(400, { error: 'Invalid maximum age' });
-		if (ageMin !== null && ageMax !== null && ageMin > ageMax) return fail(400, { error: 'Minimum age cannot exceed maximum age' });
+		if (ageMin !== null && (isNaN(ageMin) || ageMin < 18 || ageMin > 99))
+			return fail(400, { error: 'Invalid minimum age' });
+		if (ageMax !== null && (isNaN(ageMax) || ageMax < 18 || ageMax > 99))
+			return fail(400, { error: 'Invalid maximum age' });
+		if (ageMin !== null && ageMax !== null && ageMin > ageMax)
+			return fail(400, { error: 'Minimum age cannot exceed maximum age' });
 
 		const statusUpdate = listing.status === 'flagged' ? { status: 'active' as const } : {};
 
@@ -158,24 +181,67 @@ export const actions: Actions = {
 		// Replace requirements
 		await db.delete(listingRequirements).where(eq(listingRequirements.listingId, params.id));
 
-		const reqs: { id: string; listingId: string; type: string; field: string; value: string; promptText?: string }[] = [];
-		if (ageMin !== null) reqs.push({ id: crypto.randomUUID(), listingId: params.id, type: 'hard', field: 'age_min', value: String(ageMin) });
-		if (ageMax !== null) reqs.push({ id: crypto.randomUUID(), listingId: params.id, type: 'hard', field: 'age_max', value: String(ageMax) });
-		if (trustTierMin !== 'new') reqs.push({ id: crypto.randomUUID(), listingId: params.id, type: 'hard', field: 'trust_tier', value: trustTierMin });
+		const reqs: {
+			id: string;
+			listingId: string;
+			type: string;
+			field: string;
+			value: string;
+			promptText?: string;
+		}[] = [];
+		if (ageMin !== null)
+			reqs.push({
+				id: crypto.randomUUID(),
+				listingId: params.id,
+				type: 'hard',
+				field: 'age_min',
+				value: String(ageMin)
+			});
+		if (ageMax !== null)
+			reqs.push({
+				id: crypto.randomUUID(),
+				listingId: params.id,
+				type: 'hard',
+				field: 'age_max',
+				value: String(ageMax)
+			});
+		if (trustTierMin !== 'new')
+			reqs.push({
+				id: crypto.randomUUID(),
+				listingId: params.id,
+				type: 'hard',
+				field: 'trust_tier',
+				value: trustTierMin
+			});
 		for (const prompt of softReqsRaw) {
 			const trimmed = prompt.trim();
-			if (trimmed) reqs.push({ id: crypto.randomUUID(), listingId: params.id, type: 'soft', field: 'prompt', value: 'acknowledged', promptText: trimmed });
+			if (trimmed)
+				reqs.push({
+					id: crypto.randomUUID(),
+					listingId: params.id,
+					type: 'soft',
+					field: 'prompt',
+					value: 'acknowledged',
+					promptText: trimmed
+				});
 		}
 		if (reqs.length > 0) await db.insert(listingRequirements).values(reqs);
 
 		// Replace term definitions
-		await db.delete(relativeTermDefinitions).where(eq(relativeTermDefinitions.listingId, params.id));
+		await db
+			.delete(relativeTermDefinitions)
+			.where(eq(relativeTermDefinitions.listingId, params.id));
 		const termDefs = termKeys
 			.map((k, i) => ({ term: k.trim().toLowerCase(), definition: (termValues[i] ?? '').trim() }))
 			.filter((t) => t.term && t.definition);
 		if (termDefs.length > 0) {
 			await db.insert(relativeTermDefinitions).values(
-				termDefs.map((t) => ({ id: crypto.randomUUID(), listingId: params.id, term: t.term, definition: t.definition }))
+				termDefs.map((t) => ({
+					id: crypto.randomUUID(),
+					listingId: params.id,
+					term: t.term,
+					definition: t.definition
+				}))
 			);
 		}
 

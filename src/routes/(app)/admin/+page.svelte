@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	let { data, form } = $props();
 
@@ -41,9 +42,14 @@
 	<div class="queue-header">
 		<h1>Report Queue</h1>
 		<div class="filter-tabs">
-			<a href="/admin?status=pending" class:active={data.status === 'pending'}>Pending</a>
-			<a href="/admin?status=actioned" class:active={data.status === 'actioned'}>Actioned</a>
-			<a href="/admin?status=dismissed" class:active={data.status === 'dismissed'}>Dismissed</a>
+			<a href={resolve('/admin?status=pending')} class:active={data.status === 'pending'}>Pending</a
+			>
+			<a href={resolve('/admin?status=actioned')} class:active={data.status === 'actioned'}
+				>Actioned</a
+			>
+			<a href={resolve('/admin?status=dismissed')} class:active={data.status === 'dismissed'}
+				>Dismissed</a
+			>
 		</div>
 	</div>
 
@@ -62,10 +68,12 @@
 		<div class="empty">No {data.status} reports.</div>
 	{:else}
 		<ul class="report-list">
-			{#each data.reports as report}
+			{#each data.reports as report (report.id)}
 				<li class="report-card" class:open={expandedReport === report.id}>
 					<button class="report-summary" onclick={() => toggle(report.id)} type="button">
-						<span class="category-tag cat-{report.category}">{CATEGORY_LABELS[report.category] ?? report.category}</span>
+						<span class="category-tag cat-{report.category}"
+							>{CATEGORY_LABELS[report.category] ?? report.category}</span
+						>
 						<span class="target-type">{TARGET_LABELS[report.targetType] ?? report.targetType}</span>
 						{#if report.listingSubject}
 							<span class="target-subject">{report.listingSubject}</span>
@@ -75,8 +83,16 @@
 							<span class="target-id">{report.targetId.slice(0, 8)}…</span>
 						{/if}
 						<span class="report-age">{timeAgo(report.createdAt)}</span>
-						<span class="trust-score" title="Reporter trust score">{Math.round((report.reporterTrustScoreSnapshot ?? 0.5) * 100)}%</span>
-						<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<span class="trust-score" title="Reporter trust score"
+							>{Math.round((report.reporterTrustScoreSnapshot ?? 0.5) * 100)}%</span
+						>
+						<svg
+							class="chevron"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
 							<polyline points="6 9 12 15 18 9"></polyline>
 						</svg>
 					</button>
@@ -85,14 +101,20 @@
 						<div class="report-detail">
 							<div class="detail-row">
 								<span class="detail-label">Reporter</span>
-								<span>{report.reporterAlias ?? 'Unknown'} · {report.reporterTier ?? 'new'} · score {Math.round((report.reporterTrustScoreSnapshot ?? 0.5) * 100)}%</span>
+								<span
+									>{report.reporterAlias ?? 'Unknown'} · {report.reporterTier ?? 'new'} · score {Math.round(
+										(report.reporterTrustScoreSnapshot ?? 0.5) * 100
+									)}%</span
+								>
 							</div>
 							<div class="detail-row">
 								<span class="detail-label">Target</span>
 								<span>
 									{TARGET_LABELS[report.targetType] ?? report.targetType}
 									{#if report.targetType === 'listing'}
-										— <a href="/listings/{report.targetId}" target="_blank">{report.listingSubject ?? report.targetId}</a>
+										— <a href={resolve(`/listings/${report.targetId}`)} target="_blank"
+											>{report.listingSubject ?? report.targetId}</a
+										>
 									{:else if report.targetType === 'user'}
 										— {report.targetAlias ?? report.targetId}
 									{:else}
@@ -125,71 +147,149 @@
 
 								<div class="action-row">
 									<!-- Dismiss (always available) -->
-									<form method="POST" action="?/dismiss" use:enhance={() => {
-										submitting = report.id + '_dismiss';
-										return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
-									}}>
+									<form
+										method="POST"
+										action="?/dismiss"
+										use:enhance={() => {
+											submitting = report.id + '_dismiss';
+											return async ({ update }) => {
+												submitting = null;
+												await update();
+												await invalidateAll();
+											};
+										}}
+									>
 										<input type="hidden" name="reportId" value={report.id} />
 										<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-										<button type="submit" class="btn-dismiss" disabled={submitting !== null} aria-busy={submitting === report.id + '_dismiss'}>Dismiss</button>
+										<button
+											type="submit"
+											class="btn-dismiss"
+											disabled={submitting !== null}
+											aria-busy={submitting === report.id + '_dismiss'}>Dismiss</button
+										>
 									</form>
 
 									{#if report.targetType === 'listing'}
 										<!-- Flag listing (suspend, user must edit to reactivate) -->
-										<form method="POST" action="?/flagListing" use:enhance={() => {
-											submitting = report.id + '_flag';
-											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
-										}}>
+										<form
+											method="POST"
+											action="?/flagListing"
+											use:enhance={() => {
+												submitting = report.id + '_flag';
+												return async ({ update }) => {
+													submitting = null;
+													await update();
+													await invalidateAll();
+												};
+											}}
+										>
 											<input type="hidden" name="reportId" value={report.id} />
 											<input type="hidden" name="listingId" value={report.targetId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-											<button type="submit" class="btn-warn" disabled={submitting !== null} aria-busy={submitting === report.id + '_flag'}>Suspend Listing</button>
+											<button
+												type="submit"
+												class="btn-warn"
+												disabled={submitting !== null}
+												aria-busy={submitting === report.id + '_flag'}>Suspend Listing</button
+											>
 										</form>
 
 										<!-- Remove listing (permanent) -->
-										<form method="POST" action="?/removeListing" use:enhance={() => {
-											submitting = report.id + '_remove';
-											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
-										}}>
+										<form
+											method="POST"
+											action="?/removeListing"
+											use:enhance={() => {
+												submitting = report.id + '_remove';
+												return async ({ update }) => {
+													submitting = null;
+													await update();
+													await invalidateAll();
+												};
+											}}
+										>
 											<input type="hidden" name="reportId" value={report.id} />
 											<input type="hidden" name="listingId" value={report.targetId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-											<button type="submit" class="btn-ban" disabled={submitting !== null} aria-busy={submitting === report.id + '_remove'}>Remove Listing</button>
+											<button
+												type="submit"
+												class="btn-ban"
+												disabled={submitting !== null}
+												aria-busy={submitting === report.id + '_remove'}>Remove Listing</button
+											>
 										</form>
 
 										<!-- Ban the listing's author -->
-										<form method="POST" action="?/banUserFromListing" use:enhance={() => {
-											submitting = report.id + '_banauthor';
-											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
-										}}>
+										<form
+											method="POST"
+											action="?/banUserFromListing"
+											use:enhance={() => {
+												submitting = report.id + '_banauthor';
+												return async ({ update }) => {
+													submitting = null;
+													await update();
+													await invalidateAll();
+												};
+											}}
+										>
 											<input type="hidden" name="reportId" value={report.id} />
 											<input type="hidden" name="listingId" value={report.targetId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-											<button type="submit" class="btn-ban" disabled={submitting !== null} aria-busy={submitting === report.id + '_banauthor'}>Ban Author</button>
+											<button
+												type="submit"
+												class="btn-ban"
+												disabled={submitting !== null}
+												aria-busy={submitting === report.id + '_banauthor'}>Ban Author</button
+											>
 										</form>
 									{/if}
 
 									{#if report.targetType === 'user'}
 										<!-- Warn user -->
-										<form method="POST" action="?/warn" use:enhance={() => {
-											submitting = report.id + '_warn';
-											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
-										}}>
+										<form
+											method="POST"
+											action="?/warn"
+											use:enhance={() => {
+												submitting = report.id + '_warn';
+												return async ({ update }) => {
+													submitting = null;
+													await update();
+													await invalidateAll();
+												};
+											}}
+										>
 											<input type="hidden" name="reportId" value={report.id} />
 											<input type="hidden" name="targetUserId" value={report.targetId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-											<button type="submit" class="btn-warn" disabled={submitting !== null} aria-busy={submitting === report.id + '_warn'}>Warn User</button>
+											<button
+												type="submit"
+												class="btn-warn"
+												disabled={submitting !== null}
+												aria-busy={submitting === report.id + '_warn'}>Warn User</button
+											>
 										</form>
 
 										<!-- Ban user -->
-										<form method="POST" action="?/ban" use:enhance={() => {
-											submitting = report.id + '_ban';
-											return async ({ result, update }) => { submitting = null; await update(); await invalidateAll(); };
-										}}>
+										<form
+											method="POST"
+											action="?/ban"
+											use:enhance={() => {
+												submitting = report.id + '_ban';
+												return async ({ update }) => {
+													submitting = null;
+													await update();
+													await invalidateAll();
+												};
+											}}
+										>
 											<input type="hidden" name="reportId" value={report.id} />
 											<input type="hidden" name="targetUserId" value={report.targetId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
-											<button type="submit" class="btn-ban" disabled={submitting !== null} aria-busy={submitting === report.id + '_ban'}>Ban User</button>
+											<button
+												type="submit"
+												class="btn-ban"
+												disabled={submitting !== null}
+												aria-busy={submitting === report.id + '_ban'}>Ban User</button
+											>
 										</form>
 									{/if}
 								</div>
@@ -233,7 +333,9 @@
 		border: 1px solid transparent;
 	}
 
-	.filter-tabs a:hover { color: var(--pico-color); }
+	.filter-tabs a:hover {
+		color: var(--pico-color);
+	}
 	.filter-tabs a.active {
 		color: var(--pico-primary);
 		border-color: var(--pico-primary);
@@ -293,7 +395,9 @@
 		flex-wrap: wrap;
 	}
 
-	.report-summary:hover { background: color-mix(in srgb, var(--pico-primary) 4%, transparent); }
+	.report-summary:hover {
+		background: color-mix(in srgb, var(--pico-primary) 4%, transparent);
+	}
 
 	.category-tag {
 		font-size: 0.68rem;
@@ -305,12 +409,30 @@
 		flex-shrink: 0;
 	}
 
-	.cat-harassment { background: color-mix(in srgb, var(--pico-del-color) 15%, transparent); color: var(--pico-del-color); }
-	.cat-spam { background: color-mix(in srgb, #d97706 15%, transparent); color: #d97706; }
-	.cat-fake_profile { background: color-mix(in srgb, #7c3aed 15%, transparent); color: #7c3aed; }
-	.cat-explicit_content { background: color-mix(in srgb, #db2777 15%, transparent); color: #db2777; }
-	.cat-unsolicited_dm { background: color-mix(in srgb, #0891b2 15%, transparent); color: #0891b2; }
-	.cat-other { background: var(--pico-muted-background-color); color: var(--pico-muted-color); }
+	.cat-harassment {
+		background: color-mix(in srgb, var(--pico-del-color) 15%, transparent);
+		color: var(--pico-del-color);
+	}
+	.cat-spam {
+		background: color-mix(in srgb, #d97706 15%, transparent);
+		color: #d97706;
+	}
+	.cat-fake_profile {
+		background: color-mix(in srgb, #7c3aed 15%, transparent);
+		color: #7c3aed;
+	}
+	.cat-explicit_content {
+		background: color-mix(in srgb, #db2777 15%, transparent);
+		color: #db2777;
+	}
+	.cat-unsolicited_dm {
+		background: color-mix(in srgb, #0891b2 15%, transparent);
+		color: #0891b2;
+	}
+	.cat-other {
+		background: var(--pico-muted-background-color);
+		color: var(--pico-muted-color);
+	}
 
 	.target-type {
 		font-size: 0.75rem;
@@ -355,7 +477,9 @@
 		transition: transform 0.15s;
 	}
 
-	.open .chevron { transform: rotate(180deg); }
+	.open .chevron {
+		transform: rotate(180deg);
+	}
 
 	.report-detail {
 		padding: 0 1rem 1rem;
@@ -410,7 +534,9 @@
 		flex-wrap: wrap;
 	}
 
-	.action-row form { margin: 0; }
+	.action-row form {
+		margin: 0;
+	}
 
 	.action-row button {
 		font-size: 0.8rem;
@@ -442,5 +568,8 @@
 		border: 1px solid color-mix(in srgb, var(--pico-del-color) 30%, transparent);
 	}
 
-	.btn-dismiss:hover { color: var(--pico-color); border-color: var(--pico-color); }
+	.btn-dismiss:hover {
+		color: var(--pico-color);
+		border-color: var(--pico-color);
+	}
 </style>

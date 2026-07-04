@@ -50,14 +50,35 @@
 				<div class="auth-error">{error}</div>
 			{/if}
 
-			<form onsubmit={(e) => { e.preventDefault(); submit(); }}>
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					submit();
+				}}
+			>
 				<div class="field">
 					<label for="email">Email</label>
 					<div class="input-wrap">
-						<svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+						<svg
+							class="input-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<rect x="2" y="4" width="20" height="16" rx="2" /><path
+								d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+							/>
 						</svg>
-						<input id="email" type="email" placeholder="you@example.com" bind:value={email} disabled={loading} />
+						<input
+							id="email"
+							type="email"
+							placeholder="you@example.com"
+							bind:value={email}
+							disabled={loading}
+						/>
 					</div>
 				</div>
 

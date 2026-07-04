@@ -12,6 +12,7 @@ import {
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { isBumpCooldownActive, getNextBumpAt } from '$lib/server/listing-bump';
 
 export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	const env = platform?.env;
@@ -100,10 +101,11 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	const trustTierReq = hardReqs.find((r) => r.field === 'trust_tier')?.value ?? null;
 
 	const bumpCooldownHours = parseInt(DEFAULT_CONFIG.LISTING_BUMP_COOLDOWN_HOURS);
-	const bumpCooldownMs = bumpCooldownHours * 60 * 60 * 1000;
-	const lastBumped = listing.lastBumpedAt ? new Date(listing.lastBumpedAt).getTime() : 0;
-	const canBump = isOwner && listing.status === 'active' && (Date.now() - lastBumped) >= bumpCooldownMs;
-	const nextBumpAt = isOwner ? new Date(lastBumped + bumpCooldownMs) : null;
+	const canBump =
+		isOwner &&
+		listing.status === 'active' &&
+		!isBumpCooldownActive(listing.lastBumpedAt, bumpCooldownHours);
+	const nextBumpAt = isOwner ? getNextBumpAt(listing.lastBumpedAt, bumpCooldownHours) : null;
 
 	return {
 		listing: {
@@ -169,7 +171,9 @@ export const actions: Actions = {
 			.all();
 
 		if (activeCount.length >= 1) {
-			return fail(400, { error: 'You already have an active listing. Pause it before resuming another.' });
+			return fail(400, {
+				error: 'You already have an active listing. Pause it before resuming another.'
+			});
 		}
 
 		await db
@@ -198,17 +202,23 @@ export const actions: Actions = {
 		const db = getDb(env.DB);
 
 		const listing = await db
-			.select({ id: listings.id, userId: listings.userId, status: listings.status, lastBumpedAt: listings.lastBumpedAt })
+			.select({
+				id: listings.id,
+				userId: listings.userId,
+				status: listings.status,
+				lastBumpedAt: listings.lastBumpedAt
+			})
 			.from(listings)
 			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)))
 			.get();
 
 		if (!listing) return fail(404, { error: 'Listing not found' });
-		if (listing.status !== 'active') return fail(400, { error: 'Only active listings can be bumped' });
+		if (listing.status !== 'active')
+			return fail(400, { error: 'Only active listings can be bumped' });
 
-		const cooldownMs = parseInt(DEFAULT_CONFIG.LISTING_BUMP_COOLDOWN_HOURS) * 60 * 60 * 1000;
-		const lastBumped = listing.lastBumpedAt ? new Date(listing.lastBumpedAt).getTime() : 0;
-		if (Date.now() - lastBumped < cooldownMs) return fail(400, { error: 'Bump cooldown has not expired yet' });
+		const cooldownHours = parseInt(DEFAULT_CONFIG.LISTING_BUMP_COOLDOWN_HOURS);
+		if (isBumpCooldownActive(listing.lastBumpedAt, cooldownHours))
+			return fail(400, { error: 'Bump cooldown has not expired yet' });
 
 		const now = new Date();
 		await db.update(listings).set({ lastBumpedAt: now }).where(eq(listings.id, params.id));
@@ -241,7 +251,11 @@ export const actions: Actions = {
 		const userId = locals.user.id;
 		const db = getDb(env.DB);
 
-		const listing = await db.select({ userId: listings.userId }).from(listings).where(eq(listings.id, params.id)).get();
+		const listing = await db
+			.select({ userId: listings.userId })
+			.from(listings)
+			.where(eq(listings.id, params.id))
+			.get();
 		if (!listing) return fail(404, { error: 'Listing not found' });
 		if (listing.userId === userId) return fail(400, { error: 'Cannot report your own listing' });
 
@@ -249,10 +263,21 @@ export const actions: Actions = {
 		const category = data.get('category') as string;
 		const detail = (data.get('detail') as string)?.trim() || null;
 
-		const VALID_CATEGORIES = ['harassment', 'spam', 'fake_profile', 'explicit_content', 'unsolicited_dm', 'other'];
+		const VALID_CATEGORIES = [
+			'harassment',
+			'spam',
+			'fake_profile',
+			'explicit_content',
+			'unsolicited_dm',
+			'other'
+		];
 		if (!VALID_CATEGORIES.includes(category)) return fail(400, { error: 'Invalid category' });
 
-		const reporter = await db.select({ reporterTrustScore: userProfiles.reporterTrustScore }).from(userProfiles).where(eq(userProfiles.id, userId)).get();
+		const reporter = await db
+			.select({ reporterTrustScore: userProfiles.reporterTrustScore })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, userId))
+			.get();
 
 		await db.insert(reports).values({
 			id: crypto.randomUUID(),
