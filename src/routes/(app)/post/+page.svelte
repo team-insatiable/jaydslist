@@ -5,6 +5,7 @@
 	import { scanTerms } from '$lib/relative-terms';
 	import { SvelteSet } from 'svelte/reactivity';
 	import RelativeTermsEditor from '$lib/components/listings/RelativeTermsEditor.svelte';
+	import ListingPhotoPicker from '$lib/components/listings/ListingPhotoPicker.svelte';
 
 	let { data } = $props();
 
@@ -26,6 +27,12 @@
 	let subject = $state('');
 	let body = $state('');
 	let termDefinitions: Record<string, string> = $state({});
+	let photoIds: string[] = $state([]);
+	let photosUploading = $state(false);
+	// Local, mutable copy of the SSR-loaded vault list — the picker appends to
+	// this directly on a fresh upload (via bind:vaultPhotos) so a photo
+	// uploaded this session is still resolvable for the Step 5 review preview.
+	let vaultPhotos = $state(data.vaultPhotos);
 
 	// Step 4 — Requirements
 	let trustTierMin = $state('new');
@@ -301,6 +308,16 @@
 					<small>{body.trim().length} characters — minimum 50</small>
 				</div>
 
+				<div class="field">
+					<span class="field-label">Photos (optional)</span>
+					<ListingPhotoPicker
+						bind:photoIds
+						bind:vaultPhotos
+						isSupporter={data.isSupporter}
+						onUploadingChange={(v) => (photosUploading = v)}
+					/>
+				</div>
+
 				<div class="step-nav">
 					<button class="secondary" onclick={() => (step = 2)}>← Back</button>
 					<button onclick={() => (step = 4)} disabled={!step3Valid}>Next →</button>
@@ -364,6 +381,19 @@
 							{#each foundTerms as term (term)}
 								<p class="review-term"><strong>{term}</strong> — {termDefinitions[term]}</p>
 							{/each}
+						</div>
+					{/if}
+					{#if photoIds.length > 0}
+						<div class="review-section">
+							<span class="review-label">Photos</span>
+							<div class="review-photos">
+								{#each photoIds as id (id)}
+									{@const photo = vaultPhotos.find((p) => p.id === id)}
+									{#if photo}
+										<img src={photo.deliveryUrl} alt="" class="review-photo-thumb" />
+									{/if}
+								{/each}
+							</div>
 						</div>
 					{/if}
 					<div class="review-section review-meta">
@@ -447,10 +477,13 @@
 					{#each softRequirements.filter((s) => s.trim()) as req, i (i)}
 						<input type="hidden" name="softReq" value={req} />
 					{/each}
+					{#each photoIds as id (id)}
+						<input type="hidden" name="photoId" value={id} />
+					{/each}
 
 					<div class="step-nav">
 						<button type="button" class="secondary" onclick={() => (step = 4)}>← Back</button>
-						<button type="submit" aria-busy={submitting} disabled={submitting}>
+						<button type="submit" aria-busy={submitting} disabled={submitting || photosUploading}>
 							{submitting ? '' : 'Post listing'}
 						</button>
 					</div>
@@ -760,6 +793,19 @@
 		font-size: 0.875rem;
 		margin-bottom: 0.2rem;
 		color: var(--pico-muted-color);
+	}
+
+	.review-photos {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.review-photo-thumb {
+		width: 64px;
+		height: 64px;
+		border-radius: 8px;
+		object-fit: cover;
+		border: 1px solid var(--pico-muted-border-color);
 	}
 
 	.review-meta {

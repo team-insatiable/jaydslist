@@ -1,9 +1,22 @@
 import { getDb } from '$lib/server/db';
-import { userProfiles, listings, conversationThreads, messages } from '$lib/server/db/schema';
+import {
+	userProfiles,
+	listings,
+	conversationThreads,
+	messages,
+	photoVault
+} from '$lib/server/db/schema';
 
 export async function createTestUser(
 	db: D1Database,
-	overrides: Partial<{ id: string; alias: string; identity: string; lat: number; lng: number }> = {}
+	overrides: Partial<{
+		id: string;
+		alias: string;
+		identity: string;
+		lat: number;
+		lng: number;
+		isSupporter: boolean;
+	}> = {}
 ) {
 	const id = overrides.id ?? crypto.randomUUID();
 	await getDb(db)
@@ -13,7 +26,25 @@ export async function createTestUser(
 			alias: overrides.alias ?? 'Test User',
 			identity: overrides.identity,
 			lat: overrides.lat,
-			lng: overrides.lng
+			lng: overrides.lng,
+			isSupporter: overrides.isSupporter ?? false
+		});
+	return id;
+}
+
+export async function createTestVaultPhoto(
+	db: D1Database,
+	userId: string,
+	overrides: Partial<{ id: string; cfImageId: string; deletedAt: Date }> = {}
+) {
+	const id = overrides.id ?? crypto.randomUUID();
+	await getDb(db)
+		.insert(photoVault)
+		.values({
+			id,
+			userId,
+			cfImageId: overrides.cfImageId ?? `test-cf-image-${id}`,
+			deletedAt: overrides.deletedAt
 		});
 	return id;
 }
