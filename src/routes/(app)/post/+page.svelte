@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { scanTerms } from '$lib/relative-terms';
 	import { SvelteSet } from 'svelte/reactivity';
+	import RelativeTermsEditor from '$lib/components/listings/RelativeTermsEditor.svelte';
 
 	let { data } = $props();
 
@@ -80,18 +81,9 @@
 	const minPct = $derived(((ageMinNum - AGE_MIN) / (AGE_MAX - AGE_MIN)) * 100);
 	const maxPct = $derived(((ageMaxNum - AGE_MIN) / (AGE_MAX - AGE_MIN)) * 100);
 
-	const foundTerms = $derived(scanTerms(body));
-
-	$effect(() => {
-		const current = new Set(foundTerms);
-		for (const key of Object.keys(termDefinitions)) {
-			if (!current.has(key)) {
-				const next = { ...termDefinitions };
-				delete next[key];
-				termDefinitions = next;
-			}
-		}
-	});
+	// Kept for the Step 5 review display only — RelativeTermsEditor computes its
+	// own copy internally for editing/gating, from the same pure scanTerms().
+	const foundTerms = $derived(scanTerms(body, data.vocabulary));
 
 	function toggleSet(s: Set<string>, value: string): Set<string> {
 		const next = new SvelteSet(s);
@@ -114,9 +106,7 @@
 
 	const step2Valid = $derived(nature.size > 0);
 
-	const allTermsDefined = $derived(
-		foundTerms.every((t) => (termDefinitions[t] ?? '').trim().length > 0)
-	);
+	let allTermsDefined = $state(true);
 	const step3Valid = $derived(
 		subject.trim().length >= 10 &&
 			subject.trim().length <= 120 &&
@@ -302,41 +292,14 @@
 
 				<div class="field">
 					<label for="body">Your listing</label>
-					<textarea
-						id="body"
-						rows="8"
-						placeholder="Tell people about yourself and what you're looking for. Be specific — vague listings get fewer responses."
-						bind:value={body}
-					></textarea>
+					<RelativeTermsEditor
+						bind:body
+						vocabulary={data.vocabulary}
+						bind:definitions={termDefinitions}
+						onValidityChange={(v) => (allTermsDefined = v)}
+					/>
 					<small>{body.trim().length} characters — minimum 50</small>
 				</div>
-
-				{#if foundTerms.length > 0}
-					<div class="terms-box">
-						<p class="terms-heading">Define your terms</p>
-						<p class="terms-desc">
-							Help potential matches understand what you mean. All must be defined before
-							continuing.
-						</p>
-						{#each foundTerms as term (term)}
-							<div class="term-row">
-								<span class="term-chip">{term}</span>
-								<input
-									id="term-{term}"
-									type="text"
-									placeholder="What do you mean by this?"
-									value={termDefinitions[term] ?? ''}
-									oninput={(e) => {
-										termDefinitions = {
-											...termDefinitions,
-											[term]: (e.currentTarget as HTMLInputElement).value
-										};
-									}}
-								/>
-							</div>
-						{/each}
-					</div>
-				{/if}
 
 				<div class="step-nav">
 					<button class="secondary" onclick={() => (step = 2)}>← Back</button>
@@ -748,52 +711,6 @@
 		font-weight: 500;
 	}
 
-	/* Relative terms */
-	.terms-box {
-		background: color-mix(in srgb, var(--pico-primary) 6%, transparent);
-		border: 1px solid color-mix(in srgb, var(--pico-primary) 20%, transparent);
-		border-radius: 8px;
-		padding: 1rem 1.25rem;
-		margin-bottom: 1.25rem;
-	}
-
-	.terms-heading {
-		font-size: 0.875rem;
-		font-weight: 600;
-		margin-bottom: 0.2rem;
-	}
-
-	.terms-desc {
-		font-size: 0.8rem;
-		color: var(--pico-muted-color);
-		margin-bottom: 1rem;
-	}
-
-	.term-row {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		margin-bottom: 0.6rem;
-	}
-
-	.term-chip {
-		flex-shrink: 0;
-		font-size: 0.8rem;
-		font-weight: 500;
-		padding: 0.2rem 0.6rem;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--pico-primary) 15%, transparent);
-		color: var(--pico-primary);
-		min-width: 5rem;
-		text-align: center;
-	}
-
-	.term-row input {
-		flex: 1;
-		margin-bottom: 0;
-		font-size: 0.875rem;
-	}
-
 	/* Review */
 	.review-card {
 		background: var(--pico-card-background-color);
@@ -862,6 +779,10 @@
 		justify-content: space-between;
 		gap: 0.75rem;
 		margin-top: 1.5rem;
+	}
+
+	.step-nav button {
+		width: auto;
 	}
 
 	button.secondary {
