@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { uploadPhotoToVault, SUPPORTED_IMAGE_TYPES } from '$lib/client/photo-upload';
+
 	interface VaultPhoto {
 		id: string;
 		deliveryUrl: string;
@@ -65,50 +67,14 @@
 		fileInputEl?.click();
 	}
 
-	// Cloudflare Images only accepts raster formats — SVG (a vector/XML format)
-	// passes a naive `startsWith('image/')` check but gets rejected by CF with
-	// an unfriendly 415, so it needs its own explicit allow-list.
-	const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
 	async function handleFileSelect(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (!file) return;
-		if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
-			photoError = 'Please use a JPEG, PNG, GIF, or WebP image';
-			return;
-		}
-		if (file.size > 10 * 1024 * 1024) {
-			photoError = 'Image must be under 10MB';
-			return;
-		}
 
 		photoError = '';
 		photoUploading = true;
 		try {
-			const urlRes = await fetch('/api/photos/upload-url', { method: 'POST' });
-			if (!urlRes.ok) throw new Error('Failed to get upload URL');
-			const { uploadUrl, id, deliveryUrl } = (await urlRes.json()) as {
-				uploadUrl: string;
-				id: string;
-				deliveryUrl: string;
-			};
-
-			const form = new FormData();
-			form.append('file', file);
-			const uploadRes = await fetch(uploadUrl, { method: 'POST', body: form });
-			if (!uploadRes.ok) throw new Error('Upload failed');
-
-			const confirmRes = await fetch('/api/photos/confirm', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ cfImageId: id, target: 'vault' })
-			});
-			if (!confirmRes.ok) {
-				const errBody = (await confirmRes.json().catch(() => null)) as { message?: string } | null;
-				throw new Error(errBody?.message ?? 'Could not save photo to your vault');
-			}
-			const { id: vaultPhotoId } = (await confirmRes.json()) as { id: string };
-
+			const { id: vaultPhotoId, deliveryUrl } = await uploadPhotoToVault(file);
 			vaultPhotos = [{ id: vaultPhotoId, deliveryUrl, uploadedAt: new Date() }, ...vaultPhotos];
 			photoIds = [...photoIds, vaultPhotoId];
 			closePicker();
@@ -182,7 +148,7 @@
 
 	<input
 		type="file"
-		accept="image/jpeg,image/png,image/gif,image/webp"
+		accept={SUPPORTED_IMAGE_TYPES.join(',')}
 		class="file-input"
 		bind:this={fileInputEl}
 		onchange={handleFileSelect}

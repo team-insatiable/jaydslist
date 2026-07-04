@@ -7,6 +7,7 @@ export interface VaultPhoto {
 	id: string;
 	deliveryUrl: string;
 	uploadedAt: Date;
+	albumId: string | null;
 }
 
 export async function getVaultPhotos(
@@ -18,7 +19,8 @@ export async function getVaultPhotos(
 		.select({
 			id: photoVault.id,
 			cfImageId: photoVault.cfImageId,
-			uploadedAt: photoVault.uploadedAt
+			uploadedAt: photoVault.uploadedAt,
+			albumId: photoVault.albumId
 		})
 		.from(photoVault)
 		.where(and(eq(photoVault.userId, userId), isNull(photoVault.deletedAt)))
@@ -28,6 +30,7 @@ export async function getVaultPhotos(
 	return rows.map((r) => ({
 		id: r.id,
 		deliveryUrl: imageUrl(accountHash, r.cfImageId),
-		uploadedAt: r.uploadedAt
+		uploadedAt: r.uploadedAt,
+		albumId: r.albumId
 	}));
 }
