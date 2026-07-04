@@ -144,6 +144,11 @@
 			</button>
 		</form>
 
+		<p class="terms-notice">
+			By creating an account, you agree to our <a href={resolve('/terms')}>Terms of Use</a> and
+			<a href={resolve('/privacy')}>Privacy Policy</a>.
+		</p>
+
 		<p class="switch-link">Already have an account? <a href={resolve('/login')}>Sign in</a></p>
 	</div>
 </div>
@@ -263,6 +268,14 @@
 		font-size: 0.875rem;
 		color: var(--pico-muted-color);
 		margin-top: 1.5rem;
+		margin-bottom: 0;
+	}
+
+	.terms-notice {
+		text-align: center;
+		font-size: 0.75rem;
+		color: var(--pico-muted-color);
+		margin-top: 1rem;
 		margin-bottom: 0;
 	}
 </style>
