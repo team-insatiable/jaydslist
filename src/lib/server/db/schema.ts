@@ -92,6 +92,9 @@ export const userProfiles = sqliteTable(
 		dbblLastCheckedAt: integer('dbbl_last_checked_at', { mode: 'timestamp' }),
 		alias: text('alias'),
 		isSupporter: integer('is_supporter', { mode: 'boolean' }).notNull().default(false),
+		// Privacy mode (supporter only) — suppresses lastActiveAt updates, hides location on own
+		// listings, and skips outgoing read receipts. Check this before writing lastActiveAt.
+		privacyMode: integer('privacy_mode', { mode: 'boolean' }).notNull().default(false),
 		status: text('status').notNull().default('active'),
 		lastActiveAt: integer('last_active_at', { mode: 'timestamp' }),
 		// Location — stored server-side only, never exposed to client
