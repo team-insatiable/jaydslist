@@ -28,6 +28,7 @@
 		--pico-mark-background-color: #014063;
 		--form-element-bg: #1a2030;
 		--form-element-border: #2a3140;
+		--toggle-track-off: #3d4a5c;
 	}
 }
 
@@ -45,5 +46,6 @@
 		--pico-mark-background-color: #fff3cd;
 		--form-element-bg: #fff;
 		--form-element-border: #cfd5e2;
+		--toggle-track-off: #b0b8c8;
 	}
 }

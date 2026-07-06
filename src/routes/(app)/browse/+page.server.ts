@@ -66,7 +66,8 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 			createdAt: listings.createdAt,
 			posterIdentity: userProfiles.identity,
 			posterAge: userProfiles.age,
-			posterTrustTier: userProfiles.trustTier
+			posterTrustTier: userProfiles.trustTier,
+			posterPrivacyMode: userProfiles.privacyMode
 		})
 		.from(listings)
 		.innerJoin(userProfiles, eq(listings.userId, userProfiles.id))
@@ -115,6 +116,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 			if (!seekingIdentity.includes(row.posterIdentity)) continue;
 		}
 
+		const privacy = row.posterPrivacyMode ?? false;
 		results.push({
 			id: row.id,
 			subject: row.subject,
@@ -125,8 +127,8 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 			mood: row.mood ?? null,
 			availability: row.availability ?? null,
 			trustTier: (row.posterTrustTier ?? 'new') as 'new' | 'established' | 'trusted',
-			fuzzyLocation: row.fuzzyLocation ?? '',
-			distance: Math.round(distance),
+			fuzzyLocation: privacy ? 'Location hidden' : (row.fuzzyLocation ?? ''),
+			distance: privacy ? null : Math.round(distance),
 			postedAt: row.lastBumpedAt ?? row.createdAt ?? now
 		});
 	}
