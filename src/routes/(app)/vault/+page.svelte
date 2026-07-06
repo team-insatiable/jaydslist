@@ -320,13 +320,13 @@
 		display: flex;
 		align-items: center;
 		gap: 0.35rem;
-		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-muted-border-color);
+		background: color-mix(in srgb, #d97706 16%, transparent);
+		border: 1px solid color-mix(in srgb, #d97706 40%, transparent);
 		border-radius: 999px;
 		padding: 0.3rem 0.7rem;
 		font-size: 0.72rem;
-		font-weight: 600;
-		color: var(--pico-muted-color);
+		font-weight: 700;
+		color: #d97706;
 		white-space: nowrap;
 		pointer-events: none;
 	}
