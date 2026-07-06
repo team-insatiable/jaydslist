@@ -96,6 +96,10 @@ DBBL being unavailable must NEVER block core Jaydslist functionality. Wrap all D
 - Trust tier lazy promotion — new→established (14 days), established→trusted (60 days + response rate)
 - Response rate tracking — totalThreads increments on new thread, respondedThreads on poster's first reply
 - Favicon (static/favicon.svg)
+- Real-time-ish messaging — thread polling via `invalidate('app:thread')` every 3s (paused when tab hidden), email notification on new message (15-min cooldown per thread via `lastNotifiedAt`), VAPID web push (service worker + `POST /api/push/subscribe`)
+- Abuse detection — per-thread flood detection (>10 msgs/10min auto-suspends sender + alerts admins), daily thread velocity check against trust tier limits (3x cap triggers auto-suspend)
+- Vault-backed listing photo picker (src/lib/components/listings/ListingPhotoPicker.svelte) — supporter-only, pick from vault or upload fresh during listing creation
+- Photo vault management page (src/routes/(app)/vault/) — supporter-only: view/upload/delete vault photos, organize into albums, soft-delete + conditional hard-purge lifecycle, "purged while paused" warning banner on listing resume
 
 ### Schema additions beyond initial push
 - `photo_albums` table (id, userId, name, createdAt)
@@ -104,7 +108,7 @@ DBBL being unavailable must NEVER block core Jaydslist functionality. Wrap all D
 - `body` column on `messages` now has default '' (allows photo-only messages)
 
 ## What's Next
-- Photo vault + albums (Phase 2) — supporter-only, profile vault management, album organization, listing photo picker
+- Supporter tier "advanced features" list — being designed (see below), not yet implemented
 - pHash blocklist enforcement (Phase 3, deferred)
 - DBBL integration — reputation checks at registration and first message
 - Relative terms scanner — real-time flagging in listing body
@@ -244,6 +248,8 @@ Step 5 — Review and post
 Subject line is free text — the poster's hook. Structured metadata is auto-generated from their selections and shown separately on the card — NOT part of the subject.
 
 Listings expire after 14 days. Grace period of 7 days after expiry where listing is invisible but renewable. After grace period listing is archived — conversation threads retain a snapshot of the listing content even after archival.
+
+**NOT YET IMPLEMENTED:** the expire/grace/archive lifecycle above is aspirational only. `listings.status` is a plain unconstrained text column; the only values ever actually set anywhere in code today are `active`, `paused`, `removed`, `flagged`. There is no `archived`/`expired` status and no cron/scheduled Worker that transitions a listing based on `expiresAt`. This matters for the supporter "total listings" cap design below — it currently has no automatic release valve, only manual delete (`removed`).
 
 ### Relative Terms System
 As poster writes their body text, the platform scans for flagged relative terms in real time.
@@ -452,6 +458,21 @@ No ads. No paywalled core features. Fully functional free tier.
 
 Payment processor: Stripe (required for subscriptions + gifting mechanics).
 Config values to add: SUPPORTER_MIN_MONTHLY, SUPPORTER_MIN_ANNUAL, SUPPORTER_MAX_LISTINGS, SUPPORTER_BUMP_COOLDOWN_HOURS, SUPPORTER_LISTING_DURATION_DAYS.
+
+#### Supporter "advanced features" — design in progress, NOT YET IMPLEMENTED
+Being locked down before any code is written. Decisions so far:
+
+**Messaging perks (confirmed):** typing indicators, read receipts, message edit/unsend (2-minute window), higher thread velocity limit as a flat bonus on top of the trust-tier number (not a multiplier, not a floor).
+
+**Listing perks (confirmed):** listing view analytics; bigger photo vault — 3 albums max, 5 photos max per album, 15 total vault photos. "Uncategorized" is not a separate bucket with its own cap — albums are just organizational pointers onto the same 15-photo pool.
+
+**Explicitly rejected:** browse sort/ranking boost for supporters (flagged as pay-to-win risk against the platform's anti-Doublelist ethos).
+
+**Config mechanism (decided):** hybrid — env vars in wrangler.jsonc (matching the existing `CF_IMAGES_*`/`DBBL_*` pattern) set deploy-time defaults; the existing-but-currently-unused `platform_config` DB table plus a new admin panel page allow live overrides after deploy. Precedence: `platform_config` DB row (if set) > matching env var (if set) > hardcoded `DEFAULT_CONFIG` fallback. Env var names match `DEFAULT_CONFIG` keys exactly so a generic `getConfig()` helper works without a per-key switch statement.
+
+**Listing count tiers (in negotiation, not fully locked):** active (concurrently live) listings scale by trust tier — free: new=1, established=2, trusted=3; supporter = trust-tier base + 2 (new=3, established=4, trusted=5). Separate flat "total" lifetime-style cap regardless of trust tier: 10 for free, 20 for supporter (user's own words: "i think this is excessive but it needs a cap"). "Total is total" — counts every existing listing row regardless of active/paused status; only archiving or manual deletion frees up room. **Open problem:** since archiving doesn't actually exist yet (see NOT YET IMPLEMENTED note under Listing Creation above), this cap currently has no working release valve besides delete — needs resolution before implementation.
+
+**Still unconfirmed:** the actual flat-bonus number for supporter thread velocity (got derailed into the listing-count discussion before a number was picked).
 
 ### Open Source / Self-Hosting
 - AGPL licensed
