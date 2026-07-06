@@ -1,0 +1,1 @@
+ALTER TABLE `user_profiles` ADD `privacy_mode` integer DEFAULT false NOT NULL;

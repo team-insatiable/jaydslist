@@ -45,6 +45,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 			trustTier: userProfiles.trustTier,
 			responseRate: userProfiles.responseRate,
 			isSupporter: userProfiles.isSupporter,
+			privacyMode: userProfiles.privacyMode,
 			locationSet: userProfiles.locationUpdatedAt,
 			seekingIdentity: userProfiles.seekingIdentity,
 			seekingBodyType: userProfiles.seekingBodyType,
@@ -69,7 +70,8 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 						? profile.dateOfBirth.toISOString().slice(0, 10)
 						: null,
 					coupleComposition: profile.coupleComposition ?? null,
-					alias: profile.alias ?? ''
+					alias: profile.alias ?? '',
+					privacyMode: profile.privacyMode ?? false
 				}
 			: null,
 		isComplete: !!(profile?.identity && profile?.dateOfBirth)
@@ -180,6 +182,31 @@ export const actions: Actions = {
 		await getDb(env.DB)
 			.update(userProfiles)
 			.set({ alias: alias || null })
+			.where(eq(userProfiles.id, locals.user.id));
+
+		return { success: true };
+	},
+
+	savePrivacyMode: async ({ request, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const profile = await getDb(env.DB)
+			.select({ isSupporter: userProfiles.isSupporter })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, locals.user.id))
+			.get();
+
+		if (!profile?.isSupporter) return fail(403, { error: 'Privacy mode is a supporter feature' });
+
+		const data = await request.formData();
+		const privacyMode = data.get('privacyMode') === 'true';
+
+		await getDb(env.DB)
+			.update(userProfiles)
+			.set({ privacyMode })
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };

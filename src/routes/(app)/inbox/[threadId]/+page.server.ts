@@ -57,7 +57,7 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			.where(eq(userProfiles.id, otherUserId))
 			.get(),
 		db
-			.select({ isSupporter: userProfiles.isSupporter })
+			.select({ isSupporter: userProfiles.isSupporter, privacyMode: userProfiles.privacyMode })
 			.from(userProfiles)
 			.where(eq(userProfiles.id, userId))
 			.get(),
@@ -82,9 +82,9 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			.get()
 	]);
 
-	// Mark received unread messages as read
+	// Mark received unread messages as read (skipped when viewer has privacy mode on)
 	const hasUnread = threadMessages.some((m) => m.senderId !== userId && !m.readAt);
-	if (hasUnread) {
+	if (hasUnread && !currentProfile?.privacyMode) {
 		await db
 			.update(messages)
 			.set({ readAt: new Date() })
