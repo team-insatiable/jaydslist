@@ -110,7 +110,7 @@
 			</button>
 
 			<button
-				class="secondary outline"
+				class="back-btn"
 				onclick={() => {
 					step = 'phone';
 					error = '';
@@ -143,5 +143,17 @@
 		letter-spacing: 0.4rem;
 		font-size: 1.5rem;
 		text-align: center;
+	}
+
+	.back-btn {
+		background: transparent;
+		border-color: var(--pico-muted-border-color);
+		color: var(--pico-muted-color);
+	}
+
+	.back-btn:hover:not(:disabled) {
+		background: transparent;
+		border-color: var(--pico-primary);
+		color: var(--pico-primary);
 	}
 </style>

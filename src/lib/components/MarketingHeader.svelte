@@ -39,8 +39,12 @@
 			</a>
 		{/if}
 		<div class="cta-group">
-			<a href={resolve('/login')} class="nav-action">Sign in</a>
-			<a href={resolve('/register')} class="cta-primary">Create account</a>
+			{#if (page.data as { user?: unknown }).user}
+				<a href={resolve('/browse')} class="cta-primary">Go to app</a>
+			{:else}
+				<a href={resolve('/login')} class="nav-action">Sign in</a>
+				<a href={resolve('/register')} class="cta-primary">Create account</a>
+			{/if}
 		</div>
 	</nav>
 </header>
