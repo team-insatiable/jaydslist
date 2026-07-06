@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 			alias: userProfiles.alias,
 			trustTier: userProfiles.trustTier,
 			responseRate: userProfiles.responseRate,
+			isSupporter: userProfiles.isSupporter,
 			locationSet: userProfiles.locationUpdatedAt,
 			seekingIdentity: userProfiles.seekingIdentity,
 			seekingBodyType: userProfiles.seekingBodyType,

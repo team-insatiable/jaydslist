@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { uploadPhotoToVault, SUPPORTED_IMAGE_TYPES } from '$lib/client/photo-upload';
+
 	interface VaultPhoto {
 		id: string;
 		deliveryUrl: string;
@@ -65,50 +67,14 @@
 		fileInputEl?.click();
 	}
 
-	// Cloudflare Images only accepts raster formats — SVG (a vector/XML format)
-	// passes a naive `startsWith('image/')` check but gets rejected by CF with
-	// an unfriendly 415, so it needs its own explicit allow-list.
-	const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
 	async function handleFileSelect(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (!file) return;
-		if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
-			photoError = 'Please use a JPEG, PNG, GIF, or WebP image';
-			return;
-		}
-		if (file.size > 10 * 1024 * 1024) {
-			photoError = 'Image must be under 10MB';
-			return;
-		}
 
 		photoError = '';
 		photoUploading = true;
 		try {
-			const urlRes = await fetch('/api/photos/upload-url', { method: 'POST' });
-			if (!urlRes.ok) throw new Error('Failed to get upload URL');
-			const { uploadUrl, id, deliveryUrl } = (await urlRes.json()) as {
-				uploadUrl: string;
-				id: string;
-				deliveryUrl: string;
-			};
-
-			const form = new FormData();
-			form.append('file', file);
-			const uploadRes = await fetch(uploadUrl, { method: 'POST', body: form });
-			if (!uploadRes.ok) throw new Error('Upload failed');
-
-			const confirmRes = await fetch('/api/photos/confirm', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ cfImageId: id, target: 'vault' })
-			});
-			if (!confirmRes.ok) {
-				const errBody = (await confirmRes.json().catch(() => null)) as { message?: string } | null;
-				throw new Error(errBody?.message ?? 'Could not save photo to your vault');
-			}
-			const { id: vaultPhotoId } = (await confirmRes.json()) as { id: string };
-
+			const { id: vaultPhotoId, deliveryUrl } = await uploadPhotoToVault(file);
 			vaultPhotos = [{ id: vaultPhotoId, deliveryUrl, uploadedAt: new Date() }, ...vaultPhotos];
 			photoIds = [...photoIds, vaultPhotoId];
 			closePicker();
@@ -128,52 +94,71 @@
 		</p>
 	{/if}
 
-	<div class="photo-slots" class:disabled={!isSupporter}>
-		{#each Array(maxPhotos) as _, i (i)}
-			{#if photoIds[i]}
-				{@const photo = photoById(photoIds[i])}
-				<div class="photo-slot filled">
-					{#if photo}
-						<img src={photo.deliveryUrl} alt="" />
-					{/if}
+	<div class="photo-slots-wrap">
+		{#if !isSupporter}
+			<div class="supporter-badge">
+				<svg
+					width="12"
+					height="12"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+				</svg>
+				Supporter feature
+			</div>
+		{/if}
+		<div class="photo-slots" class:disabled={!isSupporter}>
+			{#each Array(maxPhotos) as _, i (i)}
+				{#if photoIds[i]}
+					{@const photo = photoById(photoIds[i])}
+					<div class="photo-slot filled">
+						{#if photo}
+							<img src={photo.deliveryUrl} alt="" />
+						{/if}
+						<button
+							type="button"
+							class="remove-btn"
+							onclick={() => removePhoto(photoIds[i])}
+							disabled={!isSupporter}
+							aria-label="Remove photo"
+						>
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="3"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+							</svg>
+						</button>
+					</div>
+				{:else}
 					<button
 						type="button"
-						class="remove-btn"
-						onclick={() => removePhoto(photoIds[i])}
-						disabled={!isSupporter}
-						aria-label="Remove photo"
+						class="photo-slot empty"
+						onclick={openPicker}
+						disabled={!isSupporter || !canAddMore || photoUploading}
+						aria-busy={photoUploading}
+						aria-label="Add photo"
 					>
-						<svg
-							width="12"
-							height="12"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="3"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-						</svg>
+						{#if photoUploading}
+							<span class="spinner"></span>
+						{:else}
+							+
+						{/if}
 					</button>
-				</div>
-			{:else}
-				<button
-					type="button"
-					class="photo-slot empty"
-					onclick={openPicker}
-					disabled={!isSupporter || !canAddMore || photoUploading}
-					aria-busy={photoUploading}
-					aria-label="Add photo"
-				>
-					{#if photoUploading}
-						<span class="spinner"></span>
-					{:else}
-						+
-					{/if}
-				</button>
-			{/if}
-		{/each}
+				{/if}
+			{/each}
+		</div>
 	</div>
 
 	{#if photoError}
@@ -182,7 +167,7 @@
 
 	<input
 		type="file"
-		accept="image/jpeg,image/png,image/gif,image/webp"
+		accept={SUPPORTED_IMAGE_TYPES.join(',')}
 		class="file-input"
 		bind:this={fileInputEl}
 		onchange={handleFileSelect}
@@ -230,6 +215,30 @@
 		font-size: 0.8rem;
 		color: var(--pico-muted-color);
 		margin-bottom: 0.6rem;
+	}
+
+	.photo-slots-wrap {
+		position: relative;
+		padding-top: 2.25rem;
+	}
+
+	.supporter-badge {
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		background: color-mix(in srgb, #d97706 16%, transparent);
+		border: 1px solid color-mix(in srgb, #d97706 40%, transparent);
+		border-radius: 999px;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: #d97706;
+		white-space: nowrap;
+		pointer-events: none;
 	}
 
 	.photo-slots {

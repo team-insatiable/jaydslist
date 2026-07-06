@@ -13,7 +13,7 @@ import {
 	reports,
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, count } from 'drizzle-orm';
 import { isBumpCooldownActive, getNextBumpAt } from '$lib/server/listing-bump';
 import { imageUrl } from '$lib/server/cloudflare-images';
 
@@ -208,7 +208,17 @@ export const actions: Actions = {
 			.update(listings)
 			.set({ status: 'active' })
 			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)));
-		return { success: true };
+
+		const [totalRow] = await db
+			.select({ n: count() })
+			.from(listingPhotos)
+			.where(eq(listingPhotos.listingId, params.id));
+		const [activeRow] = await db
+			.select({ n: count() })
+			.from(listingPhotos)
+			.where(and(eq(listingPhotos.listingId, params.id), isNull(listingPhotos.purgedAt)));
+
+		return { success: true, purgedPhotoCount: totalRow.n - activeRow.n };
 	},
 
 	restore: async ({ params, locals, platform }) => {
