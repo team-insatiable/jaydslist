@@ -82,6 +82,14 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			.get()
 	]);
 
+	// Check if the other party is currently typing (supporter-only feature)
+	// KV minimum TTL is 60s so we store a timestamp and check freshness (8s window)
+	let otherIsTyping = false;
+	if (currentProfile?.isSupporter) {
+		const ts = await env.PHONE_VERIFICATION_KV.get(`typing:${params.threadId}:${otherUserId}`);
+		otherIsTyping = ts ? Date.now() - parseInt(ts) < 8000 : false;
+	}
+
 	// Mark received unread messages as read (skipped when viewer has privacy mode on)
 	const hasUnread = threadMessages.some((m) => m.senderId !== userId && !m.readAt);
 	if (hasUnread && !currentProfile?.privacyMode) {
@@ -161,6 +169,7 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		otherUserId,
 		otherAlias: otherProfile?.alias ?? 'Anonymous',
 		isSupporter: currentProfile?.isSupporter ?? false,
+		otherIsTyping,
 		messages: threadMessages.map((m) => ({
 			id: m.id,
 			isMine: m.senderId === userId,
@@ -277,6 +286,9 @@ export const actions: Actions = {
 			.update(conversationThreads)
 			.set({ lastActivityAt: new Date() })
 			.where(eq(conversationThreads.id, params.threadId));
+
+		// Clear typing indicator now that the message is sent
+		env.PHONE_VERIFICATION_KV.delete(`typing:${params.threadId}:${userId}`).catch(() => {});
 
 		// If the poster is sending their first reply, increment respondedThreads
 		if (userId === thread.posterId) {

@@ -18,7 +18,10 @@
 		let interval: ReturnType<typeof setInterval>;
 
 		const poll = () => {
-			if (!document.hidden) invalidate('app:thread');
+			if (!document.hidden) {
+				invalidate('app:thread');
+				invalidate('app:inbox');
+			}
 		};
 
 		function onVisible() {
@@ -41,6 +44,19 @@
 
 	let body = $state('');
 	let sending = $state(false);
+
+	// Typing indicators — broadcast own typing via KV, display other party's state via poll
+	let typingTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function broadcastTyping() {
+		// All users broadcast; only supporters see the result (gated server-side)
+		if (data.thread.status !== 'open') return;
+		fetch(`/api/threads/${data.thread.id}/typing`, { method: 'POST' }).catch(() => {});
+		if (typingTimer) clearTimeout(typingTimer);
+		typingTimer = setTimeout(() => {
+			typingTimer = null;
+		}, 2000);
+	}
 	let sendError = $state('');
 	let exchangeWorking = $state(false);
 	let showReportMenu = $state(false);
@@ -474,6 +490,13 @@
 		</div>
 	{/if}
 
+	{#if data.isSupporter && data.otherIsTyping}
+		<div class="typing-indicator">
+			<span class="typing-dots"><span></span><span></span><span></span></span>
+			<span class="typing-label">{data.otherAlias} is typing</span>
+		</div>
+	{/if}
+
 	{#if data.thread.status === 'open'}
 		<form
 			class="compose"
@@ -564,6 +587,7 @@
 					placeholder="Write your message…"
 					rows="3"
 					disabled={sending}
+					oninput={broadcastTyping}
 				></textarea>
 				<button
 					type="submit"
@@ -863,6 +887,51 @@
 
 	.seen {
 		color: var(--pico-primary);
+	}
+
+	.typing-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.35rem 0.75rem 0.5rem;
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+	}
+
+	.typing-dots {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+	}
+
+	.typing-dots span {
+		display: block;
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--pico-muted-color);
+		animation: typing-bounce 1.2s infinite ease-in-out;
+	}
+
+	.typing-dots span:nth-child(2) {
+		animation-delay: 0.2s;
+	}
+
+	.typing-dots span:nth-child(3) {
+		animation-delay: 0.4s;
+	}
+
+	@keyframes typing-bounce {
+		0%,
+		60%,
+		100% {
+			transform: translateY(0);
+			opacity: 0.4;
+		}
+		30% {
+			transform: translateY(-4px);
+			opacity: 1;
+		}
 	}
 
 	.compose {
