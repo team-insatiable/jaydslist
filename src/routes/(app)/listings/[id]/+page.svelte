@@ -297,6 +297,14 @@
 				{/if}
 			</div>
 
+			{#if form?.purgedPhotoCount}
+				<p class="purge-warning">
+					{form.purgedPhotoCount === 1
+						? '1 photo was removed from your vault while this listing was paused and is no longer shown.'
+						: `${form.purgedPhotoCount} photos were removed from your vault while this listing was paused and are no longer shown.`}
+				</p>
+			{/if}
+
 			<!-- CTA -->
 			<div class="cta-area">
 				{#if isOwner}
@@ -1114,6 +1122,17 @@
 	}
 
 	.notice-paused {
+		background: color-mix(in srgb, #d97706 10%, transparent);
+		color: #d97706;
+	}
+
+	.purge-warning {
+		font-size: 0.8rem;
+		font-weight: 500;
+		text-align: center;
+		padding: 0.5rem 0.75rem;
+		border-radius: 6px;
+		margin-bottom: 0.5rem;
 		background: color-mix(in srgb, #d97706 10%, transparent);
 		color: #d97706;
 	}
