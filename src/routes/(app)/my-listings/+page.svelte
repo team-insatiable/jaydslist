@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { enhance } from '$app/forms';
 
 	let { data } = $props();
 
@@ -10,11 +11,13 @@
 	);
 
 	const removedCount = $derived(data.myListings.filter((l) => l.status === 'removed').length);
+	const hasSlot = $derived(data.activeCount < data.maxActive);
 
 	const STATUS_LABELS: Record<string, string> = {
 		active: 'Active',
 		paused: 'Paused',
 		expired: 'Expired',
+		lapsed: 'Lapsed',
 		removed: 'Removed',
 		flagged: 'Flagged',
 		renewed: 'Renewed'
@@ -36,6 +39,15 @@
 		if (days === 0) return 'Expires today';
 		if (days === 1) return 'Expires tomorrow';
 		return `Expires in ${days}d`;
+	}
+
+	function graceDeadline(expiresAt: Date | null, graceDays: number): string {
+		if (!expiresAt) return '';
+		const deadline = new Date(expiresAt.getTime() + graceDays * 86400_000);
+		const days = Math.ceil((deadline.getTime() - Date.now()) / 86400_000);
+		if (days <= 0) return 'Grace period ended';
+		if (days === 1) return '1 day left to relist';
+		return `${days} days left to relist`;
 	}
 </script>
 
@@ -103,7 +115,11 @@
 	{:else}
 		<ul class="listings-list">
 			{#each visibleListings as listing (listing.id)}
-				<li class="listing-item" class:flagged={listing.status === 'flagged'}>
+				<li
+					class="listing-item"
+					class:flagged={listing.status === 'flagged'}
+					class:relisted={listing.status === 'expired' || listing.status === 'lapsed'}
+				>
 					<a href={resolve(`/listings/${listing.id}`)} class="listing-link">
 						<div class="listing-top">
 							<span class="listing-subject">{listing.subject}</span>
@@ -114,6 +130,11 @@
 						<div class="listing-meta">
 							{#if listing.status === 'active' && listing.expiresAt}
 								<span class="expires">{daysUntil(listing.expiresAt)}</span>
+								<span class="sep">·</span>
+							{:else if listing.status === 'expired' && listing.expiresAt}
+								<span class="grace-deadline"
+									>{graceDeadline(listing.expiresAt, data.graceDays)}</span
+								>
 								<span class="sep">·</span>
 							{/if}
 							<span>Posted {timeAgo(listing.createdAt)}</span>
@@ -127,11 +148,25 @@
 							{/if}
 						</div>
 					</a>
+
 					{#if listing.status === 'flagged'}
 						<div class="flagged-bar">
 							Suspended by moderator — <a href={resolve(`/listings/${listing.id}/edit`)}
 								>Edit to reactivate</a
 							>
+						</div>
+					{:else if listing.status === 'expired' || listing.status === 'lapsed'}
+						<div class="relist-bar">
+							{#if hasSlot}
+								<form method="POST" action="?/relist" use:enhance>
+									<input type="hidden" name="listingId" value={listing.id} />
+									<button type="submit" class="relist-btn">Relist</button>
+								</form>
+							{:else}
+								<span class="relist-blocked"
+									>No open slot — pause or remove an active listing to relist this one.</span
+								>
+							{/if}
 						</div>
 					{/if}
 				</li>
@@ -305,7 +340,12 @@
 		color: #d97706;
 	}
 
-	.status-expired,
+	.status-expired {
+		background: color-mix(in srgb, #6366f1 12%, transparent);
+		color: #6366f1;
+	}
+
+	.status-lapsed,
 	.status-removed {
 		background: var(--pico-muted-background-color);
 		color: var(--pico-muted-color);
@@ -320,17 +360,51 @@
 		border-color: color-mix(in srgb, #d97706 40%, transparent);
 	}
 
-	.flagged-bar {
+	.listing-item.relisted {
+		border-color: color-mix(in srgb, #6366f1 30%, transparent);
+	}
+
+	.flagged-bar,
+	.relist-bar {
 		padding: 0.5rem 1.125rem;
 		font-size: 0.78rem;
+		border-top: 1px solid var(--pico-muted-border-color);
+		background: color-mix(in srgb, var(--pico-muted-background-color) 60%, transparent);
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.flagged-bar {
 		color: #d97706;
-		border-top: 1px solid color-mix(in srgb, #d97706 20%, transparent);
+		border-top-color: color-mix(in srgb, #d97706 20%, transparent);
 		background: color-mix(in srgb, #d97706 5%, transparent);
 	}
 
 	.flagged-bar a {
 		color: #d97706;
 		font-weight: 600;
+	}
+
+	.relist-btn {
+		font-size: 0.78rem;
+		font-weight: 600;
+		padding: 0.25rem 0.75rem;
+		background: var(--pico-primary);
+		color: #fff;
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		font-family: inherit;
+	}
+
+	.relist-btn:hover {
+		background: var(--pico-primary-hover);
+	}
+
+	.relist-blocked {
+		color: var(--pico-muted-color);
+		font-style: italic;
 	}
 
 	.listing-meta {
@@ -344,6 +418,11 @@
 
 	.expires {
 		color: var(--pico-primary);
+		font-weight: 500;
+	}
+
+	.grace-deadline {
+		color: #6366f1;
 		font-weight: 500;
 	}
 
