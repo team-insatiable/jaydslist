@@ -28,10 +28,7 @@ export async function transitionExpiredListings(
 		.select({ id: listings.id, status: listings.status, expiresAt: listings.expiresAt })
 		.from(listings)
 		.where(
-			and(
-				eq(listings.userId, userId),
-				inArray(listings.status, ['active', 'paused', 'expired'])
-			)
+			and(eq(listings.userId, userId), inArray(listings.status, ['active', 'paused', 'expired']))
 		)
 		.all();
 
@@ -45,10 +42,7 @@ export async function transitionExpiredListings(
 
 		if (listing.status === 'expired' && now > lapseAt) {
 			toLapse.push(listing.id);
-		} else if (
-			(listing.status === 'active' || listing.status === 'paused') &&
-			now > expiresAt
-		) {
+		} else if ((listing.status === 'active' || listing.status === 'paused') && now > expiresAt) {
 			if (now > lapseAt) {
 				toLapse.push(listing.id);
 			} else {
@@ -123,7 +117,11 @@ export async function relistListing(
 	}
 
 	const durationDays = getConfigInt(
-		await getConfig(isSupporter ? 'SUPPORTER_LISTING_DURATION_DAYS' : 'LISTING_DURATION_DAYS', env, db)
+		await getConfig(
+			isSupporter ? 'SUPPORTER_LISTING_DURATION_DAYS' : 'LISTING_DURATION_DAYS',
+			env,
+			db
+		)
 	);
 	const now = new Date();
 	const expiresAt = new Date(now.getTime() + durationDays * 86400_000);

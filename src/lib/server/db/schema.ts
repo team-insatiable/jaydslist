@@ -22,7 +22,14 @@ export type BodyType =
 	| 'extra_padding';
 export type TrustTier = 'new' | 'established' | 'trusted';
 export type AccountStatus = 'active' | 'suspended' | 'banned';
-export type ListingStatus = 'active' | 'paused' | 'expired' | 'lapsed' | 'renewed' | 'removed' | 'flagged';
+export type ListingStatus =
+	| 'active'
+	| 'paused'
+	| 'expired'
+	| 'lapsed'
+	| 'renewed'
+	| 'removed'
+	| 'flagged';
 export type NatureOfConnection = 'dating' | 'fwb' | 'one_time' | 'platonic' | 'open';
 export type MoodVibe =
 	| 'coffee_first'
