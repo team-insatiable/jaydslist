@@ -7,6 +7,11 @@
 
 	let { children, data } = $props();
 	let menuOpen = $state(false);
+	let settingsOpen = $state(false);
+
+	function closeSettings() {
+		settingsOpen = false;
+	}
 
 	$effect(() => {
 		if (!browser || !data.user || !data.vapidPublicKey) return;
@@ -62,6 +67,7 @@
 
 	async function logout() {
 		menuOpen = false;
+		settingsOpen = false;
 		await authClient.signOut();
 		window.location.href = resolve('/login');
 	}
@@ -109,20 +115,147 @@
 			</svg>
 		</a>
 		<ul class="desktop-nav">
-			<li><a href={resolve('/browse')}>Browse</a></li>
-			<li><a href={resolve('/post')}>New listing</a></li>
 			<li>
-				<a href={resolve('/inbox')} class="inbox-link">
-					Inbox
-					{#if data.unreadCount > 0}<span class="badge">{data.unreadCount}</span>{/if}
+				<a href={resolve('/browse')} class="nav-link" class:active={active('/browse')}>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg
+					>
+					Browse
 				</a>
 			</li>
-			<li><a href={resolve('/profile')}>Profile</a></li>
 			<li>
-				{#if data.user}
-					<button class="nav-action" onclick={logout}>Sign out</button>
-				{:else}
-					<a href={resolve('/login')} class="nav-action">Sign in</a>
+				<a href={resolve('/post')} class="nav-link" class:active={active('/post')}>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						><circle cx="12" cy="12" r="10" /><path d="M12 8v8M8 12h8" /></svg
+					>
+					New listing
+				</a>
+			</li>
+			<li>
+				<a href={resolve('/inbox')} class="nav-link nav-link-inbox" class:active={active('/inbox')}>
+					<span class="nav-icon-wrap">
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg
+						>
+						{#if data.unreadCount > 0}<span class="badge">{data.unreadCount}</span>{/if}
+					</span>
+					Inbox
+				</a>
+			</li>
+			<li>
+				<a href={resolve('/my-listings')} class="nav-link" class:active={active('/my-listings')}>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						><path
+							d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"
+						/><rect x="9" y="3" width="6" height="4" rx="1" /></svg
+					>
+					My listings
+				</a>
+			</li>
+			<li class="settings-wrap">
+				<button
+					class="nav-link"
+					class:active={settingsOpen || active('/profile') || active('/vault')}
+					onclick={() => (settingsOpen = !settingsOpen)}
+					aria-label="Settings"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path
+							d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+						/><circle cx="12" cy="12" r="3" />
+					</svg>
+					Settings
+				</button>
+
+				{#if settingsOpen}
+					<div
+						class="settings-overlay"
+						role="button"
+						tabindex="-1"
+						aria-label="Close settings"
+						onclick={closeSettings}
+						onkeydown={(e) => e.key === 'Enter' && closeSettings()}
+					></div>
+					<div class="settings-dropdown">
+						<a href={resolve('/profile')} class="settings-item" onclick={closeSettings}>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
+									cx="12"
+									cy="7"
+									r="4"
+								/></svg
+							>
+							Profile
+						</a>
+						<a href={resolve('/vault')} class="settings-item" onclick={closeSettings}>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								><rect x="3" y="3" width="18" height="18" rx="2" /><circle
+									cx="9"
+									cy="9"
+									r="2"
+								/><path d="m21 15-5-5L5 21" /></svg
+							>
+							Photo vault
+						</a>
+						<div class="settings-divider"></div>
+						<button class="settings-item settings-signout" onclick={logout}>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline
+									points="16 17 21 12 16 7"
+								/><line x1="21" y1="12" x2="9" y2="12" /></svg
+							>
+							Sign out
+						</button>
+					</div>
 				{/if}
 			</li>
 		</ul>
@@ -315,11 +448,10 @@
 		max-width: 1100px;
 		margin-inline: auto;
 		padding: 1.5rem 1rem;
-		/* space for bottom nav on mobile */
 		padding-bottom: calc(1.5rem + 64px + env(safe-area-inset-bottom, 8px));
 	}
 
-	@media (min-width: 768px) {
+	@media (min-width: 960px) {
 		:global(main) {
 			padding: 2rem 1.5rem;
 		}
@@ -372,23 +504,145 @@
 		margin: 0;
 	}
 
-	.desktop-nav a {
-		font-size: 0.9rem;
+	.nav-link {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.2rem;
+		font-size: 0.65rem;
 		font-weight: 500;
 		color: var(--pico-muted-color);
 		text-decoration: none;
+		padding: 0.35rem 0.5rem;
+		border-radius: 8px;
+		transition:
+			color 0.15s,
+			background 0.15s;
+		min-width: 52px;
 	}
 
-	.desktop-nav a:hover {
+	.nav-link svg {
+		width: 20px;
+		height: 20px;
+		stroke-width: 1.75;
+		flex-shrink: 0;
+	}
+
+	.nav-link:hover {
+		color: var(--pico-color);
+		background: var(--pico-muted-background-color);
+		text-decoration: none;
+	}
+
+	.nav-link.active {
+		color: var(--pico-primary);
+	}
+
+	.nav-icon-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+
+	.nav-link-inbox .badge {
+		position: absolute;
+		top: -4px;
+		right: -6px;
+		min-width: 15px;
+		height: 15px;
+		font-size: 0.6rem;
+	}
+
+	/* Settings dropdown */
+	.settings-wrap {
+		position: relative;
+	}
+
+	.settings-wrap > button.nav-link {
+		font-family: inherit;
+		cursor: pointer;
+		border: none;
+		background: none;
+	}
+
+	.settings-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 150;
+		background: transparent !important;
+	}
+
+	.settings-dropdown {
+		position: absolute;
+		top: calc(100% + 8px);
+		right: 0;
+		min-width: 180px;
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 10px;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+		z-index: 151;
+		padding: 0.375rem;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.settings-item {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		padding: 0.6rem 0.75rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--pico-color);
+		text-decoration: none;
+		border-radius: 7px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-family: inherit;
+		text-align: left;
+		width: 100%;
+		transition: background 0.1s;
+	}
+
+	.settings-item:hover {
+		background: var(--pico-muted-background-color);
+		text-decoration: none;
 		color: var(--pico-color);
 	}
 
-	@media (min-width: 768px) {
+	.settings-item svg {
+		width: 16px;
+		height: 16px;
+		flex-shrink: 0;
+		color: var(--pico-muted-color);
+	}
+
+	.settings-divider {
+		height: 1px;
+		background: var(--pico-muted-border-color);
+		margin: 0.25rem 0;
+	}
+
+	.settings-signout {
+		color: var(--pico-del-color);
+	}
+
+	.settings-signout:hover {
+		background: color-mix(in srgb, var(--pico-del-color) 8%, transparent);
+		color: var(--pico-del-color);
+	}
+
+	.settings-signout svg {
+		color: var(--pico-del-color);
+	}
+
+	@media (min-width: 960px) {
 		.desktop-nav {
 			display: flex;
 		}
 		.hamburger {
-			display: none;
+			display: none !important;
 		}
 	}
 
@@ -560,7 +814,7 @@
 		padding-bottom: env(safe-area-inset-bottom, 8px);
 	}
 
-	@media (min-width: 768px) {
+	@media (min-width: 960px) {
 		.bottom-nav {
 			display: none;
 		}
@@ -641,7 +895,7 @@
 		display: none;
 	}
 
-	@media (min-width: 768px) {
+	@media (min-width: 960px) {
 		.site-footer {
 			display: block;
 		}
