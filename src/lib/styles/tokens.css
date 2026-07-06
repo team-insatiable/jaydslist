@@ -1,0 +1,49 @@
+/* ── Brand + typography (same in both modes) ── */
+:root {
+	--pico-primary: #2563eb;
+	--pico-primary-hover: #1d4ed8;
+	--pico-primary-focus: rgba(37, 99, 235, 0.25);
+	--pico-primary-inverse: #fff;
+
+	--pico-font-family-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+	--pico-font-size: 15px;
+	--pico-line-height: 1.5;
+	--pico-border-radius: 0.25rem;
+	--pico-border-width: 0.0625rem;
+	--pico-form-element-spacing-vertical: 0.75rem;
+	--pico-form-element-spacing-horizontal: 1rem;
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--pico-background-color: #131720;
+		--pico-color: #c2c7d0;
+		--pico-muted-color: #7b8495;
+		--pico-muted-border-color: #202632;
+		--pico-card-background-color: #181c25;
+		--pico-muted-background-color: #202632;
+		--pico-del-color: #cd7e7b;
+		--pico-ins-color: #62af9a;
+		--pico-mark-background-color: #014063;
+		--form-element-bg: #1a2030;
+		--form-element-border: #2a3140;
+	}
+}
+
+/* ── Light mode ── */
+@media (prefers-color-scheme: light) {
+	:root {
+		--pico-background-color: #f0f2f5;
+		--pico-color: #373c44;
+		--pico-muted-color: #646b79;
+		--pico-muted-border-color: #e3e7ed;
+		--pico-card-background-color: #fff;
+		--pico-muted-background-color: #e8eaed;
+		--pico-del-color: #883835;
+		--pico-ins-color: #1c6954;
+		--pico-mark-background-color: #fff3cd;
+		--form-element-bg: #fff;
+		--form-element-border: #cfd5e2;
+	}
+}
