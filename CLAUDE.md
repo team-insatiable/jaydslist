@@ -1,5 +1,15 @@
 # Jaydslist — Claude Code Context
 
+## New Machine Setup
+When switching machines, announce it and Claude will run steps 1–3. Step 4 requires sudo (user runs it manually). Step 4 is only needed once per machine.
+
+1. `pnpm install`
+2. `pnpm seed`
+3. `pnpm exec playwright install chromium`
+4. `sudo apt-get install -y libnspr4 libnss3 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64`
+
+Step 4 is Ubuntu 24.04 specific (t64 package suffix). Only needed if `pnpm test:e2e` fails with a missing `.so` library error.
+
 ## Workflow
 GitHub Flow. Every feature on a `feat/` branch. PRs into main.
 

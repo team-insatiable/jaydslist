@@ -17,14 +17,16 @@ test('flagged terms are highlighted, gate the flow, and appear in the published 
 		page.click('button[type="submit"]')
 	]);
 
-	await page.goto('/post');
+	await page.goto('/post', { waitUntil: 'networkidle' });
 
 	// Step 1: identity (optional, just advance)
 	await page.locator('.chip-group .chip').first().click();
 	await page.click('button:has-text("Next")');
 
-	// Step 2: nature of connection (required)
-	await page.locator('.chip-group .chip').first().click();
+	// Step 2: nature of connection (required) — wait for #nature-open to confirm step 2
+	// rendered, then click its visible label (the checkbox itself is hidden inside the chip)
+	await page.waitForSelector('#nature-open', { state: 'attached' });
+	await page.locator('label:has(#nature-open)').click();
 	await page.click('button:has-text("Next")');
 
 	// Step 3: subject + body containing a word from the default seeded vocabulary
