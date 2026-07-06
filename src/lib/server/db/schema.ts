@@ -22,7 +22,14 @@ export type BodyType =
 	| 'extra_padding';
 export type TrustTier = 'new' | 'established' | 'trusted';
 export type AccountStatus = 'active' | 'suspended' | 'banned';
-export type ListingStatus = 'active' | 'paused' | 'expired' | 'renewed' | 'removed' | 'flagged';
+export type ListingStatus =
+	| 'active'
+	| 'paused'
+	| 'expired'
+	| 'lapsed'
+	| 'renewed'
+	| 'removed'
+	| 'flagged';
 export type NatureOfConnection = 'dating' | 'fwb' | 'one_time' | 'platonic' | 'open';
 export type MoodVibe =
 	| 'coffee_first'
@@ -507,6 +514,11 @@ export const DEFAULT_CONFIG = {
 	LISTING_GRACE_PERIOD_DAYS: '7',
 	LISTING_MAX_BUMPS_PER_PERIOD: '14',
 	LISTING_BUMP_COOLDOWN_HOURS: '24',
+	MAX_ACTIVE_LISTINGS: '1',
+	SUPPORTER_LISTING_DURATION_DAYS: '21',
+	SUPPORTER_GRACE_PERIOD_DAYS: '14',
+	SUPPORTER_BUMP_COOLDOWN_HOURS: '12',
+	SUPPORTER_MAX_LISTINGS: '3',
 	MESSAGE_MIN_LENGTH: '100',
 	MESSAGE_SIMILARITY_THRESHOLD: '0.8',
 	TRUST_TIER_ESTABLISHED_DAYS: '14',
