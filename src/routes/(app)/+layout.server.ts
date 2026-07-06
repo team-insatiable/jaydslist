@@ -6,7 +6,8 @@ import { user as authUser } from '$lib/server/db/auth.schema';
 import { eq, and, isNull, ne } from 'drizzle-orm';
 import { nextTrustTier, type TrustTier } from '$lib/server/trust-tier';
 
-export const load: LayoutServerLoad = async ({ locals, platform }) => {
+export const load: LayoutServerLoad = async ({ locals, platform, depends }) => {
+	depends('app:inbox');
 	requirePhoneVerifiedRedirect(locals);
 
 	let unreadCount = 0;

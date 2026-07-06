@@ -4,8 +4,18 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
+	import { invalidate } from '$app/navigation';
 
 	let { children, data } = $props();
+
+	// Poll unread count every 30s from any page so the inbox badge stays fresh
+	$effect(() => {
+		if (!browser || !data.user) return;
+		const interval = setInterval(() => {
+			if (!document.hidden) invalidate('app:inbox');
+		}, 30000);
+		return () => clearInterval(interval);
+	});
 	let menuOpen = $state(false);
 	let settingsOpen = $state(false);
 
