@@ -100,16 +100,6 @@
 			an optional pay-what-you-want supporter tier is available — never required.
 		</p>
 	</section>
-
-	<footer class="site-footer">
-		<small
-			>© {new Date().getFullYear()}
-			{data.instanceName} &mdash; <a href={resolve('/about')}>About</a> &mdash;
-			<a href={resolve('/rules')}>Rules</a> &mdash;
-			<a href={resolve('/terms')}>Terms</a> &mdash;
-			<a href={resolve('/privacy')}>Privacy</a></small
-		>
-	</footer>
 </main>
 
 <style>
@@ -303,12 +293,6 @@
 		max-width: 36rem;
 		margin: 0 auto;
 		font-size: 0.9rem;
-		color: var(--pico-muted-color);
-	}
-
-	.site-footer {
-		text-align: center;
-		padding: 2rem 1.5rem;
 		color: var(--pico-muted-color);
 	}
 </style>
