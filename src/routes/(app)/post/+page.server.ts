@@ -15,8 +15,7 @@ import { eq, and, isNull, inArray } from 'drizzle-orm';
 import { getActiveVocabulary } from '$lib/server/relative-terms.server';
 import { scanTerms } from '$lib/relative-terms';
 import { getVaultPhotos } from '$lib/server/photo-vault';
-
-const MAX_ACTIVE_LISTINGS = 1; // free tier
+import { getMaxActiveListings, getActiveListingCount } from '$lib/server/listing-lifecycle';
 
 const VALID_IDENTITIES = [
 	'man',
@@ -54,17 +53,15 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		throw redirect(302, '/profile');
 	}
 
-	const activeListings = await getDb(env.DB)
-		.select({ id: listings.id })
-		.from(listings)
-		.where(and(eq(listings.userId, locals.user.id), eq(listings.status, 'active')))
-		.all();
-
-	const vocabulary = await getActiveVocabulary(env.DB);
-	const vaultPhotos = await getVaultPhotos(env.DB, locals.user.id, env.CF_IMAGES_ACCOUNT_HASH);
+	const [activeCount, maxActive, vocabulary, vaultPhotos] = await Promise.all([
+		getActiveListingCount(env.DB, locals.user.id),
+		getMaxActiveListings(profile.isSupporter, env, env.DB),
+		getActiveVocabulary(env.DB),
+		getVaultPhotos(env.DB, locals.user.id, env.CF_IMAGES_ACCOUNT_HASH)
+	]);
 
 	return {
-		hasActiveListing: activeListings.length >= MAX_ACTIVE_LISTINGS,
+		hasActiveListing: activeCount >= maxActive,
 		vocabulary,
 		isSupporter: profile.isSupporter,
 		vaultPhotos
@@ -135,18 +132,6 @@ export const actions: Actions = {
 
 		const db = getDb(env.DB);
 
-		const activeListings = await db
-			.select({ id: listings.id })
-			.from(listings)
-			.where(and(eq(listings.userId, locals.user.id), eq(listings.status, 'active')))
-			.all();
-
-		if (activeListings.length >= MAX_ACTIVE_LISTINGS) {
-			return fail(400, {
-				error: `You already have an active listing. You can post another after it expires or is removed.`
-			});
-		}
-
 		const profile = await db
 			.select({
 				lat: userProfiles.lat,
@@ -159,6 +144,17 @@ export const actions: Actions = {
 
 		if (!profile?.lat || !profile?.lng)
 			return fail(400, { error: 'Location not set. Please update your profile first.' });
+
+		const [activeCount, maxActive] = await Promise.all([
+			getActiveListingCount(env.DB, locals.user.id),
+			getMaxActiveListings(profile.isSupporter, env, env.DB)
+		]);
+
+		if (activeCount >= maxActive) {
+			return fail(400, {
+				error: `You already have ${activeCount} active listing${activeCount === 1 ? '' : 's'}. Pause or remove one before posting another.`
+			});
+		}
 
 		// Never trust the client's gray-out — silently drop photo ids for
 		// non-supporters (listing still posts, just without photos) and drop
