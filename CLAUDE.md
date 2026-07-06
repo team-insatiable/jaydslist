@@ -1,5 +1,18 @@
 # Jaydslist — Claude Code Context
 
+## Workflow
+GitHub Flow. Every feature on a `feat/` branch. PRs into main.
+
+1. Discuss feature → plan → user agrees
+2. Open `feat/<name>` branch, implement
+3. Run `pnpm lint && pnpm check && pnpm test` — all must pass before reporting done
+4. Tell user it's done; user reviews in local dev (`pnpm dev`)
+5. User says "looks good" → commit + open PR via `gh pr create`
+6. User merges PR on GitHub
+7. User says "merged" → switch to main, pull, delete remote and local feature branch
+
+CI runs on every PR and push to main: lint, typecheck, unit tests, integration tests, Playwright e2e.
+
 ## Project Overview
 Jaydslist is an AGPL open source personals platform focused on casual encounters.
 Mobile-first PWA, privacy-focused, built on SvelteKit + Cloudflare.
