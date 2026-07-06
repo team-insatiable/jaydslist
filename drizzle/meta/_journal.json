@@ -85,6 +85,13 @@
       "when": 1783146714932,
       "tag": "0011_add_relative_terms_vocabulary",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1783325183305,
+      "tag": "0012_panoramic_veda",
+      "breakpoints": true
     }
   ]
 }

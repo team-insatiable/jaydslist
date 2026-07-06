@@ -44,7 +44,8 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			posterCoupleComposition: userProfiles.coupleComposition,
 			posterAge: userProfiles.age,
 			posterTrustTier: userProfiles.trustTier,
-			posterAlias: userProfiles.alias
+			posterAlias: userProfiles.alias,
+			posterPrivacyMode: userProfiles.privacyMode
 		})
 		.from(listings)
 		.innerJoin(userProfiles, eq(listings.userId, userProfiles.id))
@@ -146,7 +147,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			mood: listing.mood,
 			ageRangeMin: listing.ageRangeMin,
 			ageRangeMax: listing.ageRangeMax,
-			fuzzyLocation: listing.fuzzyLocation,
+			fuzzyLocation: listing.posterPrivacyMode ? 'Location hidden' : listing.fuzzyLocation,
 			expiresAt: listing.expiresAt,
 			lastBumpedAt: listing.lastBumpedAt,
 			createdAt: listing.createdAt,

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { resolve } from '$app/paths';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data } = $props();
@@ -54,6 +53,7 @@
 		bodyType = data.profile?.bodyType ?? '';
 		coupleComposition = data.profile?.coupleComposition ?? '';
 		dateOfBirth = data.profile?.dateOfBirthValue ?? '';
+		privacyMode = data.profile?.privacyMode ?? false;
 	});
 
 	function derivedAge(dob: string): number | null {
@@ -150,6 +150,27 @@
 		if (next.has(value)) next.delete(value);
 		else next.add(value);
 		return next;
+	}
+
+	// Privacy mode
+	let privacyMode = $state(false);
+	let privacySaving = $state(false);
+	let privacyError = $state('');
+
+	async function togglePrivacyMode() {
+		if (!data.profile?.isSupporter || privacySaving) return;
+		// privacyMode already updated by bind:checked before onchange fires
+		privacySaving = true;
+		privacyError = '';
+		const form = new FormData();
+		form.set('privacyMode', String(privacyMode));
+		const res = await fetch('?/savePrivacyMode', { method: 'POST', body: form });
+		const result = (await res.json()) as { type: string; data?: { error?: string } };
+		privacySaving = false;
+		if (result.type !== 'success') {
+			privacyError = result.data?.error ?? 'Something went wrong';
+			privacyMode = !privacyMode; // revert on error
+		}
 	}
 
 	function toggleNature(value: string): void {
@@ -456,6 +477,45 @@
 		</form>
 	</section>
 
+	<!-- Privacy Mode -->
+	<section class="card">
+		<h2>Privacy mode</h2>
+		{#if !data.profile?.isSupporter}
+			<div class="supporter-badge">
+				<svg
+					width="12"
+					height="12"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+				</svg>
+				Supporter feature
+			</div>
+		{/if}
+		<label class="toggle-row">
+			<span class="toggle-label">
+				<span class="toggle-title">Enable privacy mode</span>
+				<span class="toggle-desc"
+					>Your listings show "Location hidden", read receipts aren't sent, and your activity isn't
+					tracked.</span
+				>
+			</span>
+			<input
+				type="checkbox"
+				role="switch"
+				bind:checked={privacyMode}
+				disabled={!data.profile?.isSupporter || privacySaving}
+				onchange={togglePrivacyMode}
+			/>
+		</label>
+		{#if privacyError}<p class="field-error">{privacyError}</p>{/if}
+	</section>
+
 	<!-- Account Info -->
 	<section class="card account-info">
 		<h2>Account</h2>
@@ -473,7 +533,6 @@
 			<dt>Supporter</dt>
 			<dd>{data.profile?.isSupporter ? 'Active' : 'Not a supporter'}</dd>
 		</dl>
-		<a href={resolve('/vault')}>Manage your photo vault</a>
 	</section>
 </div>
 
@@ -638,6 +697,58 @@
 		border-color: var(--pico-primary);
 		color: var(--pico-primary) !important;
 		font-weight: 500;
+	}
+
+	/* Privacy mode */
+	.supporter-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		background: color-mix(in srgb, #d97706 16%, transparent);
+		border: 1px solid color-mix(in srgb, #d97706 40%, transparent);
+		border-radius: 999px;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: #d97706;
+		white-space: nowrap;
+		margin-bottom: 0.75rem;
+	}
+
+	.toggle-row {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 0.75rem;
+		cursor: pointer;
+	}
+
+	.toggle-row input[type='checkbox'][role='switch'] {
+		flex-shrink: 0;
+	}
+
+	.toggle-label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.toggle-title {
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.toggle-desc {
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		line-height: 1.4;
+	}
+
+	.field-error {
+		color: var(--pico-del-color);
+		font-size: 0.875rem;
+		margin-top: 0.5rem;
 	}
 
 	/* Account info */
