@@ -1,4 +1,4 @@
-import { eq, and, isNull, desc } from 'drizzle-orm';
+import { eq, and, isNull, desc, asc, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { photoVault, photoAlbums } from '$lib/server/db/schema';
 import { imageUrl } from '$lib/server/cloudflare-images';
@@ -27,39 +27,23 @@ export async function getAlbumPhotos(
 		.select({ id: photoVault.id, cfImageId: photoVault.cfImageId })
 		.from(photoVault)
 		.where(and(eq(photoVault.albumId, albumId), isNull(photoVault.deletedAt)))
-		.orderBy(photoVault.uploadedAt)
+		.orderBy(sql`coalesce(${photoVault.displayOrder}, 999999) asc`, asc(photoVault.uploadedAt))
 		.all();
 	return rows.map((r) => ({ id: r.id, deliveryUrl: imageUrl(accountHash, r.cfImageId) }));
 }
 
-export async function getAlbums(
+// Returns just the album rows — cover URL and photo count are computed by the
+// caller from the photo list to avoid a separate JS-filtered query.
+export async function getAlbumList(
 	db: D1Database,
-	userId: string,
-	accountHash: string
-): Promise<VaultAlbum[]> {
-	const albums = await getDb(db)
+	userId: string
+): Promise<{ id: string; name: string }[]> {
+	return getDb(db)
 		.select({ id: photoAlbums.id, name: photoAlbums.name })
 		.from(photoAlbums)
 		.where(eq(photoAlbums.userId, userId))
 		.orderBy(desc(photoAlbums.createdAt))
 		.all();
-
-	const photos = await getDb(db)
-		.select({ albumId: photoVault.albumId, cfImageId: photoVault.cfImageId })
-		.from(photoVault)
-		.where(and(eq(photoVault.userId, userId), isNull(photoVault.deletedAt)))
-		.all();
-
-	return albums.map((a) => {
-		const albumPhotos = photos.filter((p) => p.albumId === a.id);
-		const cover = albumPhotos[0];
-		return {
-			id: a.id,
-			name: a.name,
-			coverUrl: cover ? imageUrl(accountHash, cover.cfImageId) : null,
-			photoCount: albumPhotos.length
-		};
-	});
 }
 
 export async function getVaultPhotos(

@@ -86,7 +86,6 @@
 	let vaultAlbums = $state<
 		{ id: string; name: string; coverUrl: string | null; photoCount: number }[]
 	>([]);
-	let vaultLoaded = $state(false);
 	let vaultLoading = $state(false);
 	let selectedAlbum = $state<{ id: string; name: string; photoCount: number } | null>(null);
 	let expiryPickerOpen = $state(false);
@@ -186,7 +185,7 @@
 		mediaOpen = true;
 		selectedAlbum = null;
 		expiryPickerOpen = false;
-		if (!vaultLoaded && data.isSupporter) {
+		if (data.isSupporter) {
 			vaultLoading = true;
 			try {
 				const res = await fetch('/api/photos/vault');
@@ -196,7 +195,6 @@
 				};
 				vaultPhotos = json.photos;
 				vaultAlbums = json.albums;
-				vaultLoaded = true;
 			} catch {
 				// ignore — vault grid will be empty
 			} finally {
@@ -2301,6 +2299,11 @@
 
 	.album-thumb {
 		position: relative;
+	}
+
+	.album-thumb img {
+		filter: blur(6px);
+		transform: scale(1.12);
 	}
 
 	.album-empty-cover {
