@@ -23,11 +23,25 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 
 		const db = getDb(event.platform.env.DB);
 		const profile = await db
-			.select({ phoneVerified: userProfiles.phoneVerified })
+			.select({
+				phoneVerified: userProfiles.phoneVerified,
+				privacyMode: userProfiles.privacyMode,
+				lastActiveAt: userProfiles.lastActiveAt
+			})
 			.from(userProfiles)
 			.where(eq(userProfiles.id, session.user.id))
 			.get();
 		event.locals.phoneVerified = profile?.phoneVerified ?? false;
+
+		// Update lastActiveAt (throttled to 30s, skipped when privacy mode is on)
+		const now = new Date();
+		const stale = !profile?.lastActiveAt || now.getTime() - profile.lastActiveAt.getTime() > 30_000;
+		if (!profile?.privacyMode && stale) {
+			db.update(userProfiles)
+				.set({ lastActiveAt: now })
+				.where(eq(userProfiles.id, session.user.id))
+				.run();
+		}
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });

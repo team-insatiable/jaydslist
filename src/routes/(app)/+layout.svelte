@@ -656,27 +656,6 @@
 		}
 	}
 
-	.nav-action {
-		background: none;
-		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 6px;
-		padding: 0.35rem 0.9rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: var(--pico-color);
-		cursor: pointer;
-		text-decoration: none;
-		transition:
-			border-color 0.15s,
-			color 0.15s;
-	}
-
-	.nav-action:hover {
-		border-color: var(--pico-primary);
-		color: var(--pico-primary);
-		text-decoration: none;
-	}
-
 	/* ── Hamburger button ── */
 	.hamburger {
 		display: flex;
@@ -878,12 +857,6 @@
 		font-size: 0.65rem;
 		font-weight: 700;
 		line-height: 1;
-	}
-
-	.inbox-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
 	}
 
 	.tab-icon-wrap {

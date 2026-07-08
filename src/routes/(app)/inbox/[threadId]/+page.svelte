@@ -21,6 +21,7 @@
 
 		const poll = () => {
 			if (!document.hidden) {
+				fetch(`/api/threads/${data.thread.id}/presence`, { method: 'POST' }).catch(() => {});
 				invalidate('app:thread');
 				invalidate('app:inbox');
 			}
@@ -115,6 +116,15 @@
 	let expiringTimer: ReturnType<typeof setInterval> | null = null;
 
 	const minLength = $derived(data.minLength);
+
+	function formatLastActive(d: Date | null): string {
+		if (!d) return '';
+		const diff = Date.now() - new Date(d).getTime();
+		if (diff < 3 * 60_000) return 'Active now';
+		if (diff < 60 * 60_000) return `Active ${Math.floor(diff / 60_000)}m ago`;
+		if (diff < 24 * 60 * 60_000) return `Active ${Math.floor(diff / 3_600_000)}h ago`;
+		return `Active ${Math.floor(diff / 86_400_000)}d ago`;
+	}
 	// pointer: fine = mouse/trackpad (desktop); pointer: coarse = touchscreen (mobile)
 	const isDesktop = $derived(browser ? window.matchMedia('(pointer: fine)').matches : false);
 
@@ -378,7 +388,20 @@
 			<a href={resolve(`/listings/${data.thread.listingId}`)} class="listing-link"
 				>{data.thread.listingSubject}</a
 			>
-			<span class="other-alias">{data.otherAlias}</span>
+			<span class="other-alias">
+				{#if data.isSupporter && data.otherPresence}
+					<span
+						class="presence-dot"
+						class:presence-in-thread={data.otherPresence === 'in_thread'}
+						class:presence-in-app={data.otherPresence === 'in_app'}
+						class:presence-offline={data.otherPresence === 'offline'}
+					></span>
+				{/if}
+				{data.otherAlias}
+			</span>
+			{#if data.isSupporter && data.otherPresence}
+				<span class="last-active">{formatLastActive(data.otherLastActive)}</span>
+			{/if}
 		</div>
 		<button
 			class="more-btn"
@@ -1599,6 +1622,34 @@
 	.other-alias {
 		font-size: 0.775rem;
 		color: var(--pico-muted-color);
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.presence-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	.presence-in-thread {
+		background: #22c55e;
+	}
+
+	.presence-in-app {
+		background: #3b82f6;
+	}
+
+	.presence-offline {
+		background: #6b7280;
+	}
+
+	.last-active {
+		font-size: 0.7rem;
+		color: var(--pico-muted-color);
+		opacity: 0.75;
 	}
 
 	.messages {
