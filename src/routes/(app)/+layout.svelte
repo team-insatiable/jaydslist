@@ -384,7 +384,7 @@
 </main>
 
 <!-- Mobile bottom tab bar -->
-<nav class="bottom-nav">
+<nav class="bottom-nav" class:hidden={page.url.pathname.match(/^\/inbox\/.+/)}>
 	<a href={resolve('/browse')} class="tab-item" class:active={active('/browse')}>
 		<svg
 			viewBox="0 0 24 24"
@@ -822,6 +822,10 @@
 		border-top: 1px solid var(--pico-muted-border-color);
 		z-index: 100;
 		padding-bottom: env(safe-area-inset-bottom, 8px);
+	}
+
+	.bottom-nav.hidden {
+		display: none;
 	}
 
 	@media (min-width: 960px) {

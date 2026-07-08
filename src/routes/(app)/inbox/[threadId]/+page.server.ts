@@ -10,7 +10,9 @@ import {
 	keyExchanges,
 	reports,
 	pushSubscriptions,
-	user
+	user,
+	photoVault,
+	photoAlbums
 } from '$lib/server/db/schema';
 import { eq, and, asc, ne, isNull, desc, gte } from 'drizzle-orm';
 import { decryptContact } from '$lib/server/crypto';
@@ -67,6 +69,10 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 				senderId: messages.senderId,
 				body: messages.body,
 				cfImageId: messages.cfImageId,
+				isExpiring: messages.isExpiring,
+				photoViewedAt: messages.photoViewedAt,
+				expiresAt: messages.expiresAt,
+				albumId: messages.albumId,
 				sentAt: messages.sentAt,
 				readAt: messages.readAt
 			})
@@ -158,6 +164,27 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		};
 	}
 
+	// Fetch cover photo URL and name for each album referenced in this thread
+	const albumIds = [...new Set(threadMessages.map((m) => m.albumId).filter(Boolean))] as string[];
+	const albumCovers: Record<string, string> = {};
+	const albumNames: Record<string, string> = {};
+	if (albumIds.length > 0) {
+		const [covers, names] = await Promise.all([
+			db
+				.select({ albumId: photoVault.albumId, cfImageId: photoVault.cfImageId })
+				.from(photoVault)
+				.where(and(isNull(photoVault.deletedAt)))
+				.all(),
+			db.select({ id: photoAlbums.id, name: photoAlbums.name }).from(photoAlbums).all()
+		]);
+		for (const aid of albumIds) {
+			const cover = covers.find((c) => c.albumId === aid);
+			if (cover) albumCovers[aid] = imageUrl(env.CF_IMAGES_ACCOUNT_HASH, cover.cfImageId);
+			const album = names.find((a) => a.id === aid);
+			if (album) albumNames[aid] = album.name;
+		}
+	}
+
 	return {
 		thread: {
 			id: thread.id,
@@ -170,14 +197,45 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		otherAlias: otherProfile?.alias ?? 'Anonymous',
 		isSupporter: currentProfile?.isSupporter ?? false,
 		otherIsTyping,
-		messages: threadMessages.map((m) => ({
-			id: m.id,
-			isMine: m.senderId === userId,
-			body: m.body,
-			cfImageUrl: m.cfImageId ? imageUrl(env.CF_IMAGES_ACCOUNT_HASH, m.cfImageId) : null,
-			sentAt: m.sentAt,
-			readAt: m.readAt
-		})),
+		messages: threadMessages.map((m) => {
+			const isMine = m.senderId === userId;
+			const now = new Date();
+			const timedExpired = m.expiresAt ? m.expiresAt <= now : false;
+
+			let cfImageUrl: string | null = null;
+			let expiringState: 'none' | 'unviewed' | 'expired' = 'none';
+			if (m.cfImageId) {
+				if (timedExpired) {
+					expiringState = 'expired';
+				} else if (!m.isExpiring) {
+					cfImageUrl = imageUrl(env.CF_IMAGES_ACCOUNT_HASH, m.cfImageId);
+				} else if (isMine) {
+					cfImageUrl = imageUrl(env.CF_IMAGES_ACCOUNT_HASH, m.cfImageId);
+					expiringState = m.photoViewedAt ? 'expired' : 'unviewed';
+				} else {
+					expiringState = m.photoViewedAt ? 'expired' : 'unviewed';
+				}
+			}
+
+			const albumExpired = !!m.albumId && timedExpired;
+			const resolvedAlbumId = albumExpired ? null : (m.albumId ?? null);
+
+			return {
+				id: m.id,
+				isMine,
+				body: m.body,
+				cfImageUrl,
+				isExpiring: m.isExpiring,
+				expiringState,
+				expiresAt: m.expiresAt ?? null,
+				albumId: resolvedAlbumId,
+				albumCoverUrl: resolvedAlbumId ? (albumCovers[resolvedAlbumId] ?? null) : null,
+				albumName: resolvedAlbumId ? (albumNames[resolvedAlbumId] ?? null) : null,
+				albumExpired,
+				sentAt: m.sentAt,
+				readAt: m.readAt
+			};
+		}),
 		minLength: 1,
 		exchange: activeExchange
 			? {
@@ -266,8 +324,23 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const body = (formData.get('body') as string)?.trim() ?? '';
 		const cfImageId = (formData.get('cfImageId') as string)?.trim() || null;
+		const albumId = (formData.get('albumId') as string)?.trim() || null;
+		const expiryType = (formData.get('expiryType') as string) || 'none';
 
-		if (!cfImageId && body.length < 1) return fail(400, { error: 'Message cannot be empty' });
+		const hasMedia = !!(cfImageId || albumId);
+		const isExpiring = hasMedia && expiryType === 'view_once';
+		const EXPIRY_OFFSETS: Record<string, number> = {
+			'10min': 10 * 60 * 1000,
+			'60min': 60 * 60 * 1000,
+			'24hr': 24 * 60 * 60 * 1000
+		};
+		const expiresAt =
+			hasMedia && EXPIRY_OFFSETS[expiryType]
+				? new Date(Date.now() + EXPIRY_OFFSETS[expiryType])
+				: null;
+
+		if (!cfImageId && !albumId && body.length < 1)
+			return fail(400, { error: 'Message cannot be empty' });
 		if (body && CONTACT_INFO_PATTERN.test(body))
 			return fail(400, {
 				error:
@@ -280,6 +353,9 @@ export const actions: Actions = {
 			senderId: userId,
 			body,
 			cfImageId,
+			albumId,
+			isExpiring,
+			expiresAt,
 			sentAt: new Date()
 		});
 		await db
