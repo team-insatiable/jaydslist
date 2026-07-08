@@ -88,17 +88,37 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			.get()
 	]);
 
-	// Check if the other party is currently typing (supporter-only feature)
-	// KV minimum TTL is 60s so we store a timestamp and check freshness (8s window)
+	// Supporter-only: typing indicator + presence state
 	let otherIsTyping = false;
+	let otherPresence: 'in_thread' | 'in_app' | 'offline' | null = null;
+	let otherLastActive: Date | null = null;
+
 	if (currentProfile?.isSupporter) {
-		const ts = await env.PHONE_VERIFICATION_KV.get(`typing:${params.threadId}:${otherUserId}`);
-		otherIsTyping = ts ? Date.now() - parseInt(ts) < 8000 : false;
+		const [typingTs, presenceTs, otherFull] = await Promise.all([
+			env.PHONE_VERIFICATION_KV.get(`typing:${params.threadId}:${otherUserId}`),
+			env.PHONE_VERIFICATION_KV.get(`presence:${params.threadId}:${otherUserId}`),
+			db
+				.select({ lastActiveAt: userProfiles.lastActiveAt, privacyMode: userProfiles.privacyMode })
+				.from(userProfiles)
+				.where(eq(userProfiles.id, otherUserId))
+				.get()
+		]);
+
+		otherIsTyping = typingTs ? Date.now() - parseInt(typingTs) < 8000 : false;
+
+		if (!otherFull?.privacyMode) {
+			otherLastActive = otherFull?.lastActiveAt ?? null;
+			const inThread = presenceTs ? Date.now() - parseInt(presenceTs) < 10_000 : false;
+			const inApp = otherLastActive ? Date.now() - otherLastActive.getTime() < 3 * 60_000 : false;
+			otherPresence = inThread ? 'in_thread' : inApp ? 'in_app' : 'offline';
+		}
 	}
 
 	// Mark received unread messages as read (skipped when viewer has privacy mode on)
 	const hasUnread = threadMessages.some((m) => m.senderId !== userId && !m.readAt);
-	if (hasUnread && !currentProfile?.privacyMode) {
+	// Always stamp readAt for badge purposes; privacy mode suppresses display of the timestamp to
+	// the sender, but shouldn't prevent the viewer's own unread count from clearing.
+	if (hasUnread) {
 		await db
 			.update(messages)
 			.set({ readAt: new Date() })
@@ -196,6 +216,8 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		otherUserId,
 		otherAlias: otherProfile?.alias ?? 'Anonymous',
 		isSupporter: currentProfile?.isSupporter ?? false,
+		otherPresence,
+		otherLastActive,
 		otherIsTyping,
 		messages: threadMessages.map((m) => {
 			const isMine = m.senderId === userId;
