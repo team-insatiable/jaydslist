@@ -27,8 +27,6 @@
 	let touchDragId = $state<string | null>(null);
 	let touchGhostEl: HTMLElement | null = null;
 
-	const coverUrl = $derived(photoOrder[0]?.deliveryUrl ?? null);
-
 	function formatDate(d: Date | null): string {
 		if (!d) return '';
 		const dt = new Date(d);
@@ -172,11 +170,11 @@
 		<p class="form-error">{form?.error ?? uploadError}</p>
 	{/if}
 
-	<!-- Album info section -->
+	<!-- Album info: thumbnail left, all text in right column -->
 	<div class="album-info">
 		<div class="cover-thumb">
-			{#if coverUrl}
-				<img src={coverUrl} alt="Album cover" class="cover-img-blur" />
+			{#if photoOrder[0]}
+				<img src={photoOrder[0].deliveryUrl} alt="Album cover" class="cover-img-blur" />
 			{:else}
 				<div class="cover-placeholder">
 					<svg
@@ -197,7 +195,6 @@
 					</svg>
 				</div>
 			{/if}
-			<span class="cover-label">{data.albumName}</span>
 		</div>
 
 		<div class="album-meta">
@@ -210,9 +207,9 @@
 					class="rename-form"
 					use:enhance={() => {
 						submitting = 'rename';
-						return async ({ result, update }) => {
+						return async ({ update }) => {
 							submitting = null;
-							if (result.type === 'success') renaming = false;
+							renaming = false;
 							await update();
 							await invalidateAll();
 						};
@@ -252,14 +249,11 @@
 					</svg>
 				</button>
 			{/if}
-
 			<p class="meta-hint">Only you see the album name</p>
 			<p class="meta-stats">
 				{data.albumPhotos.length}
 				{data.albumPhotos.length === 1 ? 'item' : 'items'}
-				{#if data.lastUpdated}
-					· Last updated {formatDate(data.lastUpdated)}
-				{/if}
+				{#if data.lastUpdated}· Last updated {formatDate(data.lastUpdated)}{/if}
 			</p>
 		</div>
 	</div>
@@ -548,13 +542,14 @@
 	/* Info section */
 	.album-info {
 		display: flex;
+		flex-direction: row;
 		gap: 1rem;
 		align-items: flex-start;
 		margin-bottom: 1.5rem;
 	}
 
 	.cover-thumb {
-		position: relative;
+		flex-shrink: 0;
 		width: 90px;
 		height: 90px;
 		border-radius: 10px;
@@ -563,14 +558,11 @@
 		background: #1a1a1a;
 	}
 
-	.cover-thumb img {
+	.cover-img-blur {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
 		display: block;
-	}
-
-	.cover-img-blur {
 		filter: blur(6px);
 		transform: scale(1.12);
 	}
@@ -584,28 +576,12 @@
 		color: #555;
 	}
 
-	.cover-label {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
-		color: #fff;
-		font-size: 0.7rem;
-		font-weight: 600;
-		padding: 0.5rem 0.35rem 0.3rem;
-		text-align: center;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
 	.album-meta {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
+		align-items: flex-start;
 		gap: 0.25rem;
-		padding-top: 0.1rem;
 	}
 
 	.album-name-static {
@@ -616,6 +592,7 @@
 
 	.name-row {
 		display: flex;
+		justify-content: flex-start;
 		align-items: center;
 		gap: 0.4rem;
 		background: none;
@@ -624,7 +601,7 @@
 		margin: 0;
 		cursor: pointer;
 		color: var(--pico-color);
-		width: auto;
+		width: 100%;
 		text-align: left;
 	}
 
