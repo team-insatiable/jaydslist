@@ -376,7 +376,11 @@ export const messages = sqliteTable(
 		sentAt: integer('sent_at', { mode: 'timestamp' })
 			.notNull()
 			.default(sql`(unixepoch())`),
-		readAt: integer('read_at', { mode: 'timestamp' })
+		readAt: integer('read_at', { mode: 'timestamp' }),
+		isExpiring: integer('is_expiring', { mode: 'boolean' }).notNull().default(false),
+		photoViewedAt: integer('photo_viewed_at', { mode: 'timestamp' }),
+		expiresAt: integer('expires_at', { mode: 'timestamp' }),
+		albumId: text('album_id').references(() => photoAlbums.id, { onDelete: 'set null' })
 	},
 	(table) => ({
 		threadIdx: index('messages_thread_idx').on(table.threadId),
