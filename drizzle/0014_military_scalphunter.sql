@@ -1,0 +1,1 @@
+ALTER TABLE `messages` ADD `album_id` text REFERENCES photo_albums(id);
