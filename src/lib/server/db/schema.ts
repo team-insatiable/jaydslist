@@ -217,7 +217,8 @@ export const photoVault = sqliteTable(
 		deletedAt: integer('deleted_at', { mode: 'timestamp' }),
 		uploadedAt: integer('uploaded_at', { mode: 'timestamp' })
 			.notNull()
-			.default(sql`(unixepoch())`)
+			.default(sql`(unixepoch())`),
+		displayOrder: integer('display_order')
 	},
 	(table) => ({
 		userIdx: index('vault_user_idx').on(table.userId),
