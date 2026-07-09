@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 
 	let { data, form } = $props();
@@ -242,12 +242,12 @@
 				submitting = true;
 				return async ({ result, update }) => {
 					submitting = false;
-					if (result.type === 'success') {
-						newAlbumName = '';
-						creatingAlbum = false;
+					if (result.type === 'success' && result.data?.albumId) {
+						await goto(resolve(`/vault/${result.data.albumId}`));
+					} else {
+						await update();
+						await invalidateAll();
 					}
-					await update();
-					await invalidateAll();
 				};
 			}}
 		>
