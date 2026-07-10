@@ -67,6 +67,7 @@
 	let blockWorking = $state(false);
 	let showReportSheet = $state(false);
 	let showReceivedPhotos = $state(false);
+	let spamConfirm = $state(false);
 	let spamWorking = $state(false);
 	let spamDone = $state(false);
 
@@ -164,7 +165,7 @@
 	async function submitSpam() {
 		if (spamDone || spamWorking) return;
 		spamWorking = true;
-		menuOpen = false;
+		spamConfirm = false;
 		await tick();
 		spamFormEl?.requestSubmit();
 	}
@@ -596,7 +597,10 @@
 				<button
 					class="flyout-tile"
 					class:flyout-tile-done={spamDone}
-					onclick={submitSpam}
+					onclick={() => {
+						menuOpen = false;
+						spamConfirm = true;
+					}}
 					disabled={spamWorking || spamDone}
 				>
 					<svg
@@ -681,6 +685,37 @@
 					</button>
 				</div>
 			</form>
+		</div>
+	{/if}
+
+	<!-- Spam confirm overlay -->
+	{#if spamConfirm}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="overlay-backdrop" onclick={() => (spamConfirm = false)}></div>
+		<div class="block-overlay" transition:fly={{ y: 8, duration: 160 }}>
+			<p class="block-overlay-title">Report as spam?</p>
+			<p class="block-overlay-hint">
+				This will flag {data.otherAlias} for sending unwanted messages.
+			</p>
+			<div class="block-overlay-actions">
+				<button
+					type="button"
+					class="overlay-cancel-btn"
+					onclick={() => (spamConfirm = false)}
+					disabled={spamWorking}
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					class="overlay-block-btn"
+					onclick={submitSpam}
+					disabled={spamWorking}
+					aria-busy={spamWorking}
+				>
+					Report
+				</button>
+			</div>
 		</div>
 	{/if}
 
