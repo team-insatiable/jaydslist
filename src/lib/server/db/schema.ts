@@ -1,5 +1,13 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+	sqliteTable,
+	text,
+	integer,
+	real,
+	index,
+	uniqueIndex,
+	unique
+} from 'drizzle-orm/sqlite-core';
 
 export type UserIdentity =
 	| 'man'
@@ -544,5 +552,23 @@ export const DEFAULT_CONFIG = {
 	LISTING_MAX_PHOTOS: '3',
 	PHASH_HAMMING_THRESHOLD: '10'
 } as const;
+
+export const userBlocks = sqliteTable(
+	'user_blocks',
+	{
+		id: text('id').primaryKey(),
+		blockerId: text('blocker_id')
+			.notNull()
+			.references(() => userProfiles.id),
+		blockedId: text('blocked_id')
+			.notNull()
+			.references(() => userProfiles.id),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+	},
+	(table) => ({
+		blockerBlockedUniq: unique('blocker_blocked_uniq').on(table.blockerId, table.blockedId),
+		blockerIdx: index('user_blocks_blocker_idx').on(table.blockerId)
+	})
+);
 
 export * from './auth.schema';

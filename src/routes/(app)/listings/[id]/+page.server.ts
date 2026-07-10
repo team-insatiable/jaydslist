@@ -11,9 +11,10 @@ import {
 	userProfiles,
 	conversationThreads,
 	reports,
+	userBlocks,
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
-import { eq, and, isNull, count } from 'drizzle-orm';
+import { eq, and, isNull, count, or } from 'drizzle-orm';
 import { isBumpCooldownActive, getNextBumpAt } from '$lib/server/listing-bump';
 import { imageUrl } from '$lib/server/cloudflare-images';
 
@@ -55,6 +56,22 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	if (!listing) throw error(404, 'Listing not found');
 
 	const isOwner = locals.user?.id === listing.userId;
+
+	// Block check — non-owners see a 404 when either party has blocked the other
+	if (locals.user && !isOwner) {
+		const block = await db
+			.select({ id: userBlocks.id })
+			.from(userBlocks)
+			.where(
+				or(
+					and(eq(userBlocks.blockerId, locals.user.id), eq(userBlocks.blockedId, listing.userId)),
+					and(eq(userBlocks.blockerId, listing.userId), eq(userBlocks.blockedId, locals.user.id))
+				)
+			)
+			.get();
+		if (block) throw error(404, 'Listing not found');
+	}
+
 	const isAvailable = listing.status === 'active';
 
 	// Non-owners can still see the listing exists, just not its full content

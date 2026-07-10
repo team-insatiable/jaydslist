@@ -534,6 +534,38 @@
 			<dd>{data.profile?.isSupporter ? 'Active' : 'Not a supporter'}</dd>
 		</dl>
 	</section>
+
+	<!-- Blocked Users -->
+	<section class="card">
+		<h2>Blocked users</h2>
+		<p class="muted">
+			Blocked users cannot see your listings or contact you. Blocking is silent — they are not
+			notified.
+		</p>
+		{#if data.blockedUsers.length === 0}
+			<p class="muted empty">No blocked users.</p>
+		{:else}
+			<ul class="blocked-list">
+				{#each data.blockedUsers as blocked (blocked.id)}
+					<li class="blocked-row">
+						<span class="blocked-alias">{blocked.alias}</span>
+						<form
+							method="POST"
+							action="?/unblock"
+							use:enhance={() => {
+								return async ({ update }) => {
+									await update();
+								};
+							}}
+						>
+							<input type="hidden" name="blockedId" value={blocked.blockedId} />
+							<button type="submit" class="unblock-btn">Unblock</button>
+						</form>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
 </div>
 
 <style>
@@ -780,5 +812,49 @@
 	}
 	.tier-trusted {
 		color: var(--pico-ins-color);
+	}
+
+	/* Blocked users */
+	.blocked-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.blocked-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.6rem 0;
+		border-bottom: 1px solid var(--pico-muted-border-color);
+	}
+
+	.blocked-row:last-child {
+		border-bottom: none;
+	}
+
+	.blocked-alias {
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.unblock-btn {
+		background: none;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 6px;
+		padding: 0.3rem 0.75rem;
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+		white-space: nowrap;
+	}
+
+	.unblock-btn:hover {
+		border-color: var(--pico-primary);
+		color: var(--pico-primary);
 	}
 </style>

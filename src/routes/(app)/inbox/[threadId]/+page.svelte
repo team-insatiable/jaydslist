@@ -63,6 +63,8 @@
 	let sendError = $state('');
 	let exchangeWorking = $state(false);
 	let showReportMenu = $state(false);
+	let blockConfirm = $state(false);
+	let blockWorking = $state(false);
 
 	// Decline flow (poster-only)
 	let declineOpen = $state(false);
@@ -514,6 +516,61 @@
 				<p class="report-done">Report submitted. Our moderation team will review it.</p>
 			{:else}
 				<p class="report-panel-title">Report {data.otherAlias}</p>
+
+				<!-- Block section -->
+				<div class="block-section">
+					{#if !blockConfirm}
+						<button
+							type="button"
+							class="block-btn"
+							onclick={() => (blockConfirm = true)}
+							disabled={blockWorking}
+						>
+							Block {data.otherAlias}
+						</button>
+					{:else}
+						<p class="block-confirm-text">
+							Block this user? They won't be able to see your listings or contact you.
+						</p>
+						<form
+							method="POST"
+							action="?/blockUser"
+							use:enhance={() => {
+								blockWorking = true;
+								return async ({ result, update }) => {
+									blockWorking = false;
+									if (result.type === 'success') {
+										showReportMenu = false;
+										blockConfirm = false;
+										await invalidate('app:thread');
+									}
+									await update();
+								};
+							}}
+						>
+							<div class="block-confirm-actions">
+								<button
+									type="button"
+									class="block-cancel-btn"
+									onclick={() => (blockConfirm = false)}
+									disabled={blockWorking}
+								>
+									Cancel
+								</button>
+								<button
+									type="submit"
+									class="block-confirm-btn"
+									disabled={blockWorking}
+									aria-busy={blockWorking}
+								>
+									Block
+								</button>
+							</div>
+						</form>
+					{/if}
+				</div>
+				<hr class="block-divider" />
+
 				<form
 					method="POST"
 					action="?/report"
@@ -1842,6 +1899,74 @@
 	.report-done {
 		font-size: 0.8rem;
 		color: var(--pico-ins-color);
+	}
+
+	.block-section {
+		margin-bottom: 0.75rem;
+	}
+
+	.block-btn {
+		background: none;
+		border: 1px solid color-mix(in srgb, var(--pico-del-color) 40%, transparent);
+		border-radius: 6px;
+		padding: 0.4rem 1rem;
+		font-size: 0.825rem;
+		font-weight: 500;
+		color: var(--pico-del-color);
+		cursor: pointer;
+		font-family: inherit;
+		width: 100%;
+		margin: 0;
+		text-align: left;
+	}
+
+	.block-btn:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--pico-del-color) 8%, transparent);
+	}
+
+	.block-confirm-text {
+		font-size: 0.825rem;
+		color: var(--pico-color);
+		margin-bottom: 0.5rem;
+	}
+
+	.block-confirm-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+	}
+
+	.block-cancel-btn {
+		background: none;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 6px;
+		padding: 0.4rem 1rem;
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+	}
+
+	.block-confirm-btn {
+		background: color-mix(in srgb, var(--pico-del-color) 15%, transparent);
+		color: var(--pico-del-color);
+		border: 1px solid color-mix(in srgb, var(--pico-del-color) 30%, transparent);
+		border-radius: 6px;
+		padding: 0.4rem 1rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+	}
+
+	.block-divider {
+		border: none;
+		border-top: 1px solid var(--pico-muted-border-color);
+		margin: 0 0 0.75rem;
 	}
 
 	.listing-link {

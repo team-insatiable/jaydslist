@@ -1,8 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
-import { userProfiles } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { userProfiles, userBlocks } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 const VALID_IDENTITIES = [
 	'man',
@@ -34,27 +34,42 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 	if (!env) throw new Error('Server configuration error');
 
 	const db = getDb(env.DB);
-	const profile = await db
-		.select({
-			identity: userProfiles.identity,
-			bodyType: userProfiles.bodyType,
-			coupleComposition: userProfiles.coupleComposition,
-			dateOfBirth: userProfiles.dateOfBirth,
-			age: userProfiles.age,
-			alias: userProfiles.alias,
-			trustTier: userProfiles.trustTier,
-			responseRate: userProfiles.responseRate,
-			isSupporter: userProfiles.isSupporter,
-			privacyMode: userProfiles.privacyMode,
-			locationSet: userProfiles.locationUpdatedAt,
-			seekingIdentity: userProfiles.seekingIdentity,
-			seekingBodyType: userProfiles.seekingBodyType,
-			seekingNatureOfConnection: userProfiles.seekingNatureOfConnection,
-			browseRadius: userProfiles.browseRadius
-		})
-		.from(userProfiles)
-		.where(eq(userProfiles.id, locals.user.id))
-		.get();
+	const userId = locals.user.id;
+
+	const [profile, blockedUsers] = await Promise.all([
+		db
+			.select({
+				identity: userProfiles.identity,
+				bodyType: userProfiles.bodyType,
+				coupleComposition: userProfiles.coupleComposition,
+				dateOfBirth: userProfiles.dateOfBirth,
+				age: userProfiles.age,
+				alias: userProfiles.alias,
+				trustTier: userProfiles.trustTier,
+				responseRate: userProfiles.responseRate,
+				isSupporter: userProfiles.isSupporter,
+				privacyMode: userProfiles.privacyMode,
+				locationSet: userProfiles.locationUpdatedAt,
+				seekingIdentity: userProfiles.seekingIdentity,
+				seekingBodyType: userProfiles.seekingBodyType,
+				seekingNatureOfConnection: userProfiles.seekingNatureOfConnection,
+				browseRadius: userProfiles.browseRadius
+			})
+			.from(userProfiles)
+			.where(eq(userProfiles.id, userId))
+			.get(),
+		db
+			.select({
+				id: userBlocks.id,
+				blockedId: userBlocks.blockedId,
+				alias: userProfiles.alias,
+				createdAt: userBlocks.createdAt
+			})
+			.from(userBlocks)
+			.innerJoin(userProfiles, eq(userBlocks.blockedId, userProfiles.id))
+			.where(eq(userBlocks.blockerId, userId))
+			.all()
+	]);
 
 	return {
 		profile: profile
@@ -74,7 +89,13 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 					privacyMode: profile.privacyMode ?? false
 				}
 			: null,
-		isComplete: !!(profile?.identity && profile?.dateOfBirth)
+		isComplete: !!(profile?.identity && profile?.dateOfBirth),
+		blockedUsers: blockedUsers.map((b) => ({
+			id: b.id,
+			blockedId: b.blockedId,
+			alias: b.alias ?? 'Anonymous',
+			createdAt: b.createdAt
+		}))
 	};
 };
 
@@ -237,5 +258,22 @@ export const actions: Actions = {
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };
+	},
+
+	unblock: async ({ request, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const data = await request.formData();
+		const blockedId = data.get('blockedId') as string;
+		if (!blockedId) return fail(400, { error: 'Invalid request' });
+
+		await getDb(env.DB)
+			.delete(userBlocks)
+			.where(and(eq(userBlocks.blockerId, locals.user.id), eq(userBlocks.blockedId, blockedId)));
+
+		return { unblocked: true };
 	}
 };

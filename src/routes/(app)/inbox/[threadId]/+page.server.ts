@@ -12,9 +12,10 @@ import {
 	pushSubscriptions,
 	user,
 	photoVault,
-	photoAlbums
+	photoAlbums,
+	userBlocks
 } from '$lib/server/db/schema';
-import { eq, and, asc, ne, isNull, desc, gte } from 'drizzle-orm';
+import { eq, and, asc, ne, isNull, desc, gte, or } from 'drizzle-orm';
 import { DECLINE_PHRASES } from '$lib/server/decline-phrases';
 import { decryptContact } from '$lib/server/crypto';
 import { sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
@@ -302,6 +303,20 @@ export const actions: Actions = {
 		if (thread.initiatorId !== userId && thread.posterId !== userId)
 			return fail(403, { error: 'Forbidden' });
 		if (thread.status !== 'open') return fail(400, { error: 'This thread is closed' });
+
+		// Block check — prevent sending if either party has blocked the other
+		const sendOtherUserId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
+		const sendBlockCheck = await db
+			.select({ id: userBlocks.id })
+			.from(userBlocks)
+			.where(
+				or(
+					and(eq(userBlocks.blockerId, userId), eq(userBlocks.blockedId, sendOtherUserId)),
+					and(eq(userBlocks.blockerId, sendOtherUserId), eq(userBlocks.blockedId, userId))
+				)
+			)
+			.get();
+		if (sendBlockCheck) return fail(403, { error: 'You cannot send messages in this thread' });
 
 		// Flood detection: >10 messages from sender in this thread in the last 10 minutes
 		const floodCutoff = new Date(Date.now() - 10 * 60 * 1000);
@@ -764,5 +779,63 @@ export const actions: Actions = {
 		});
 
 		return { reported: true };
+	},
+
+	blockUser: async ({ params, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const userId = locals.user.id;
+		const db = getDb(env.DB);
+
+		const thread = await db
+			.select({
+				initiatorId: conversationThreads.initiatorId,
+				posterId: conversationThreads.posterId
+			})
+			.from(conversationThreads)
+			.where(eq(conversationThreads.id, params.threadId))
+			.get();
+
+		if (!thread) return fail(404, { error: 'Thread not found' });
+		if (thread.initiatorId !== userId && thread.posterId !== userId)
+			return fail(403, { error: 'Forbidden' });
+
+		const blockedId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
+
+		// Insert block, ignore if already exists
+		try {
+			await db.insert(userBlocks).values({
+				id: crypto.randomUUID(),
+				blockerId: userId,
+				blockedId,
+				createdAt: new Date()
+			});
+		} catch {
+			// Already blocked — that's fine
+		}
+
+		// Close all open threads between the two users
+		await db
+			.update(conversationThreads)
+			.set({ status: 'closed' })
+			.where(
+				and(
+					eq(conversationThreads.status, 'open'),
+					or(
+						and(
+							eq(conversationThreads.initiatorId, userId),
+							eq(conversationThreads.posterId, blockedId)
+						),
+						and(
+							eq(conversationThreads.initiatorId, blockedId),
+							eq(conversationThreads.posterId, userId)
+						)
+					)
+				)
+			);
+
+		return { blocked: true };
 	}
 };
