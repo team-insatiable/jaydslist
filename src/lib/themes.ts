@@ -80,7 +80,7 @@ export const THEME_NAMES = Object.keys(THEMES) as ThemeName[];
 /** Returns inline CSS custom properties to set on a root wrapper element, or '' for the default theme. */
 export function getThemeStyle(name: string): string {
 	if (name === 'default') return '';
-	const theme = THEMES[name as ThemeName] ?? THEMES.default;
+	const theme = THEMES[name as ThemeName];
 	if (!theme) return '';
 	return `--pico-primary:${theme.primary};--pico-primary-hover:${theme.primaryHover};--pico-primary-focus:${theme.primaryFocus};--pico-primary-inverse:${theme.primaryInverse}`;
 }
