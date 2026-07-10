@@ -33,6 +33,7 @@
 	// this directly on a fresh upload (via bind:vaultPhotos) so a photo
 	// uploaded this session is still resolvable for the Step 5 review preview.
 	let vaultPhotos = $state(data.vaultPhotos);
+	let vaultAlbums = $state(data.vaultAlbums);
 
 	// Step 4 — Requirements
 	let trustTierMin = $state('new');
@@ -313,6 +314,7 @@
 					<ListingPhotoPicker
 						bind:photoIds
 						bind:vaultPhotos
+						bind:vaultAlbums
 						isSupporter={data.isSupporter}
 						onUploadingChange={(v) => (photosUploading = v)}
 					/>

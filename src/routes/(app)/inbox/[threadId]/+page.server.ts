@@ -241,6 +241,7 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 
 			const albumExpired = !!m.albumId && timedExpired;
 			const resolvedAlbumId = albumExpired ? null : (m.albumId ?? null);
+			if (albumExpired && !m.cfImageId) expiringState = 'expired';
 
 			return {
 				id: m.id,
