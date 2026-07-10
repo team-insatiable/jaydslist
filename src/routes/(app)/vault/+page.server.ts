@@ -61,13 +61,10 @@ export const actions: Actions = {
 		if (!name) return fail(400, { error: 'Album name is required' });
 		if (name.length > 40) return fail(400, { error: 'Album name must be 40 characters or less' });
 
-		await db.insert(photoAlbums).values({
-			id: crypto.randomUUID(),
-			userId: locals.user.id,
-			name
-		});
+		const id = crypto.randomUUID();
+		await db.insert(photoAlbums).values({ id, userId: locals.user.id, name });
 
-		return { success: true };
+		return { success: true, albumId: id };
 	},
 
 	renameAlbum: async ({ request, locals, platform }) => {
