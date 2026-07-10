@@ -8,12 +8,12 @@
 	let sending = $state(false);
 	let listingExpanded = $state(false);
 
-	const minLength = data.minLength;
+	const minLength = $derived(data.minLength);
 	const PREVIEW_LENGTH = 200;
-	const listingBodyLong = data.listing.body.length > PREVIEW_LENGTH;
-	const listingBodyPreview = listingBodyLong
-		? data.listing.body.slice(0, PREVIEW_LENGTH).trimEnd() + '…'
-		: data.listing.body;
+	const listingBodyLong = $derived(data.listing.body.length > PREVIEW_LENGTH);
+	const listingBodyPreview = $derived(
+		listingBodyLong ? data.listing.body.slice(0, PREVIEW_LENGTH).trimEnd() + '…' : data.listing.body
+	);
 </script>
 
 <div class="compose-page">
