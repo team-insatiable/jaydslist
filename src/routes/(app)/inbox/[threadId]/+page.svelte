@@ -2006,8 +2006,8 @@
 		right: 0;
 		left: 0;
 		z-index: 49;
-		background: color-mix(in srgb, var(--pico-card-background-color) 92%, white);
-		border: 1px solid color-mix(in srgb, var(--pico-muted-border-color) 80%, white);
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
 		border-radius: 12px;
 		display: flex;
 		padding: 0.25rem 0;
