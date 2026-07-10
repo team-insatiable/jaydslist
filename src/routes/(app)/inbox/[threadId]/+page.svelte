@@ -62,9 +62,14 @@
 	}
 	let sendError = $state('');
 	let exchangeWorking = $state(false);
-	let showReportMenu = $state(false);
+	let menuOpen = $state(false);
 	let blockConfirm = $state(false);
 	let blockWorking = $state(false);
+	let showReportSheet = $state(false);
+	let showReceivedPhotos = $state(false);
+	let spamConfirm = $state(false);
+	let spamWorking = $state(false);
+	let spamDone = $state(false);
 
 	// Decline flow (poster-only)
 	let declineOpen = $state(false);
@@ -149,6 +154,21 @@
 
 	// Unalbumized photos shown in top-level grid
 	const unalbumizedPhotos = $derived(vaultPhotos.filter((p) => !p.albumId));
+
+	// Photos received from the other party in this thread
+	const receivedPhotos = $derived(
+		data.messages.filter((m) => !m.isMine && m.cfImageUrl && m.expiringState !== 'expired')
+	);
+
+	let spamFormEl = $state<HTMLFormElement | null>(null);
+
+	async function submitSpam() {
+		if (spamDone || spamWorking) return;
+		spamWorking = true;
+		spamConfirm = false;
+		await tick();
+		spamFormEl?.requestSubmit();
+	}
 
 	// Expiring photo viewer
 	let expiringViewing = $state<{ msgId: string; url: string } | null>(null);
@@ -451,115 +471,260 @@
 </script>
 
 <div class="thread-page">
-	<header class="thread-header">
-		<a href={resolve('/inbox')} class="back-link" aria-label="Back to inbox">
-			<svg
-				width="20"
-				height="20"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<polyline points="15 18 9 12 15 6"></polyline>
-			</svg>
-		</a>
-		<div class="thread-header-info">
-			<a href={resolve(`/listings/${data.thread.listingId}`)} class="listing-link"
-				>{data.thread.listingSubject}</a
-			>
-			<span class="other-alias">
-				{#if data.isSupporter && data.otherPresence}
-					<span
-						class="presence-dot"
-						class:presence-in-thread={data.otherPresence === 'in_thread'}
-						class:presence-in-app={data.otherPresence === 'in_app'}
-						class:presence-offline={data.otherPresence === 'offline'}
-					></span>
-				{/if}
-				{data.otherAlias}
-			</span>
-			{#if data.isSupporter && data.otherPresence}
-				<span class="last-active">{formatLastActive(data.otherLastActive)}</span>
-			{/if}
-		</div>
-		<button
-			class="more-btn"
-			onclick={() => (showReportMenu = !showReportMenu)}
-			type="button"
-			aria-label="More options"
-		>
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-				<circle cx="5" cy="12" r="2" />
-				<circle cx="12" cy="12" r="2" />
-				<circle cx="19" cy="12" r="2" />
-			</svg>
-		</button>
-	</header>
-
-	{#if showReportMenu}
-		<div class="report-panel">
-			{#if reportDone}
-				<p class="report-done">Report submitted. Our moderation team will review it.</p>
-			{:else}
-				<p class="report-panel-title">{data.otherAlias}</p>
-
-				<!-- Block section -->
-				<div class="block-section">
-					{#if !blockConfirm}
-						<button
-							type="button"
-							class="block-btn"
-							onclick={() => (blockConfirm = true)}
-							disabled={blockWorking}
-						>
-							Block {data.otherAlias}
-						</button>
-					{:else}
-						<p class="block-confirm-text">
-							Block this user? They won't be able to see your listings or contact you.
-						</p>
-						<form
-							method="POST"
-							action="?/blockUser"
-							use:enhance={() => {
-								blockWorking = true;
-								return async ({ result, update }) => {
-									blockWorking = false;
-									if (result.type === 'success') {
-										showReportMenu = false;
-										blockConfirm = false;
-										await invalidate('app:thread');
-									}
-									await update();
-								};
-							}}
-						>
-							<div class="block-confirm-actions">
-								<button
-									type="button"
-									class="block-cancel-btn"
-									onclick={() => (blockConfirm = false)}
-									disabled={blockWorking}
-								>
-									Cancel
-								</button>
-								<button
-									type="submit"
-									class="block-confirm-btn"
-									disabled={blockWorking}
-									aria-busy={blockWorking}
-								>
-									Block
-								</button>
-							</div>
-						</form>
+	<div class="header-wrap">
+		<header class="thread-header">
+			<a href={resolve('/inbox')} class="back-link" aria-label="Back to inbox">
+				<svg
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<polyline points="15 18 9 12 15 6"></polyline>
+				</svg>
+			</a>
+			<div class="thread-header-info">
+				<a href={resolve(`/listings/${data.thread.listingId}`)} class="listing-link"
+					>{data.thread.listingSubject}</a
+				>
+				<span class="other-alias">
+					{#if data.isSupporter && data.otherPresence}
+						<span
+							class="presence-dot"
+							class:presence-in-thread={data.otherPresence === 'in_thread'}
+							class:presence-in-app={data.otherPresence === 'in_app'}
+							class:presence-offline={data.otherPresence === 'offline'}
+						></span>
 					{/if}
-				</div>
-				<hr class="block-divider" />
+					{data.otherAlias}
+				</span>
+				{#if data.isSupporter && data.otherPresence}
+					<span class="last-active">{formatLastActive(data.otherLastActive)}</span>
+				{/if}
+			</div>
+			<button
+				class="more-btn"
+				onclick={() => (menuOpen = !menuOpen)}
+				type="button"
+				aria-label="More options"
+			>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+					<circle cx="5" cy="12" r="2" />
+					<circle cx="12" cy="12" r="2" />
+					<circle cx="19" cy="12" r="2" />
+				</svg>
+			</button>
+		</header>
 
+		{#if menuOpen}
+			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+			<div class="menu-backdrop" onclick={() => (menuOpen = false)}></div>
+			<div class="more-flyout" transition:fly={{ y: -6, duration: 160 }}>
+				<button
+					class="flyout-tile"
+					onclick={() => {
+						menuOpen = false;
+						showReceivedPhotos = true;
+					}}
+				>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+						<circle cx="8.5" cy="8.5" r="1.5"></circle>
+						<polyline points="21 15 16 10 5 21"></polyline>
+					</svg>
+					<span>Received<br />Photos</span>
+				</button>
+
+				<button
+					class="flyout-tile flyout-tile-danger"
+					onclick={() => {
+						menuOpen = false;
+						blockConfirm = true;
+					}}
+				>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<circle cx="12" cy="12" r="10"></circle>
+						<line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+					</svg>
+					<span>Block</span>
+				</button>
+
+				<button
+					class="flyout-tile"
+					onclick={() => {
+						menuOpen = false;
+						showReportSheet = true;
+					}}
+				>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+						<line x1="4" y1="22" x2="4" y2="15"></line>
+					</svg>
+					<span>Report</span>
+				</button>
+
+				<button
+					class="flyout-tile"
+					class:flyout-tile-done={spamDone}
+					onclick={() => {
+						menuOpen = false;
+						spamConfirm = true;
+					}}
+					disabled={spamWorking || spamDone}
+				>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path
+							d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+						></path>
+						<line x1="12" y1="9" x2="12" y2="13"></line>
+						<line x1="12" y1="17" x2="12.01" y2="17"></line>
+					</svg>
+					<span>{spamDone ? 'Reported' : 'Spam'}</span>
+				</button>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Hidden spam form -->
+	<form
+		bind:this={spamFormEl}
+		method="POST"
+		action="?/report"
+		style="display:none"
+		use:enhance={() => {
+			return async ({ result, update }) => {
+				spamWorking = false;
+				if (result.type === 'success') spamDone = true;
+				await update();
+			};
+		}}
+	>
+		<input type="hidden" name="targetUserId" value={data.otherUserId} />
+		<input type="hidden" name="category" value="spam" />
+		<input type="hidden" name="detail" value="" />
+	</form>
+
+	<!-- Block confirm overlay -->
+	{#if blockConfirm}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="overlay-backdrop" onclick={() => (blockConfirm = false)}></div>
+		<div class="block-overlay" transition:fly={{ y: 8, duration: 160 }}>
+			<p class="block-overlay-title">Block {data.otherAlias}?</p>
+			<p class="block-overlay-hint">They won't see your listings or be able to message you.</p>
+			<form
+				method="POST"
+				action="?/blockUser"
+				use:enhance={() => {
+					blockWorking = true;
+					return async ({ result, update }) => {
+						blockWorking = false;
+						if (result.type === 'success') {
+							blockConfirm = false;
+							await invalidate('app:thread');
+						}
+						await update();
+					};
+				}}
+			>
+				<div class="block-overlay-actions">
+					<button
+						type="button"
+						class="overlay-cancel-btn"
+						onclick={() => (blockConfirm = false)}
+						disabled={blockWorking}
+					>
+						Cancel
+					</button>
+					<button
+						type="submit"
+						class="overlay-block-btn"
+						disabled={blockWorking}
+						aria-busy={blockWorking}
+					>
+						Block
+					</button>
+				</div>
+			</form>
+		</div>
+	{/if}
+
+	<!-- Spam confirm overlay -->
+	{#if spamConfirm}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="overlay-backdrop" onclick={() => (spamConfirm = false)}></div>
+		<div class="block-overlay" transition:fly={{ y: 8, duration: 160 }}>
+			<p class="block-overlay-title">Report as spam?</p>
+			<div class="block-overlay-actions">
+				<button
+					type="button"
+					class="overlay-cancel-btn"
+					onclick={() => (spamConfirm = false)}
+					disabled={spamWorking}
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					class="overlay-block-btn"
+					onclick={submitSpam}
+					disabled={spamWorking}
+					aria-busy={spamWorking}
+				>
+					Report
+				</button>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Report bottom sheet -->
+	{#if showReportSheet}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="sheet-backdrop" onclick={() => (showReportSheet = false)}></div>
+		<div class="bottom-sheet" transition:fly={{ y: 320, duration: 240, easing: cubicOut }}>
+			{#if reportDone}
+				<p class="sheet-done">Report submitted. Our moderation team will review it.</p>
+			{:else}
+				<p class="sheet-title">Report {data.otherAlias}</p>
 				<form
 					method="POST"
 					action="?/report"
@@ -567,9 +732,7 @@
 						reportSubmitting = true;
 						return async ({ result, update }) => {
 							reportSubmitting = false;
-							if (result.type === 'success') {
-								reportDone = true;
-							}
+							if (result.type === 'success') reportDone = true;
 							await update();
 						};
 					}}
@@ -588,15 +751,19 @@
 						name="detail"
 						bind:value={reportDetail}
 						placeholder="Additional details (optional)"
-						rows="2"
+						rows="3"
 					></textarea>
-					<div class="report-actions">
-						<button type="button" class="report-cancel" onclick={() => (showReportMenu = false)}
-							>Cancel</button
+					<div class="sheet-actions">
+						<button
+							type="button"
+							class="sheet-cancel-btn"
+							onclick={() => (showReportSheet = false)}
 						>
+							Cancel
+						</button>
 						<button
 							type="submit"
-							class="report-submit"
+							class="sheet-submit-btn"
 							disabled={!reportCategory || reportSubmitting}
 							aria-busy={reportSubmitting}
 						>
@@ -604,6 +771,33 @@
 						</button>
 					</div>
 				</form>
+			{/if}
+		</div>
+	{/if}
+
+	<!-- Received Photos bottom sheet -->
+	{#if showReceivedPhotos}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="sheet-backdrop" onclick={() => (showReceivedPhotos = false)}></div>
+		<div class="bottom-sheet" transition:fly={{ y: 320, duration: 240, easing: cubicOut }}>
+			<p class="sheet-title">Photos from {data.otherAlias}</p>
+			{#if receivedPhotos.length === 0}
+				<p class="sheet-empty">No photos shared in this thread yet.</p>
+			{:else}
+				<div class="received-photos-grid">
+					{#each receivedPhotos as photo (photo.id)}
+						<button
+							class="received-photo-tile"
+							type="button"
+							onclick={() => {
+								lightboxUrl = photo.cfImageUrl ?? null;
+								showReceivedPhotos = false;
+							}}
+						>
+							<img src={photo.cfImageUrl} alt="" loading="lazy" />
+						</button>
+					{/each}
+				</div>
 			{/if}
 		</div>
 	{/if}
@@ -1794,7 +1988,6 @@
 		gap: 0.75rem;
 		padding: 0.75rem 0 0.75rem;
 		border-bottom: 1px solid var(--pico-muted-border-color);
-		flex-shrink: 0;
 	}
 
 	.back-link {
@@ -1827,110 +2020,117 @@
 		color: var(--pico-color);
 	}
 
-	.report-panel {
-		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 10px;
-		padding: 1rem;
-		margin-bottom: 0.5rem;
+	/* ── header wrap + flyout ── */
+	.header-wrap {
+		position: relative;
 		flex-shrink: 0;
 	}
 
-	.report-panel-title {
-		font-size: 0.875rem;
-		font-weight: 600;
-		margin-bottom: 0.75rem;
+	.menu-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 48;
 	}
 
-	.report-panel select,
-	.report-panel textarea {
-		margin-bottom: 0.5rem;
-		font-size: 0.875rem;
-	}
-
-	.report-panel textarea {
-		resize: vertical;
-	}
-
-	.report-actions {
-		display: flex;
-		gap: 0.5rem;
-		justify-content: flex-end;
-	}
-
-	.report-cancel {
-		background: none;
+	.more-flyout {
+		position: absolute;
+		top: 100%;
+		right: 0;
+		left: 0;
+		z-index: 49;
+		background: var(--pico-card-background-color);
 		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 6px;
-		padding: 0.4rem 1rem;
-		font-size: 0.8rem;
-		color: var(--pico-muted-color);
-		cursor: pointer;
-		font-family: inherit;
-		width: auto;
-		margin: 0;
+		border-radius: 12px;
+		display: flex;
+		padding: 0.25rem 0;
+		box-shadow:
+			0 8px 32px rgba(0, 0, 0, 0.45),
+			0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
-	.report-submit {
-		background: color-mix(in srgb, var(--pico-del-color) 15%, transparent);
+	.flyout-tile {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.75rem 0.25rem 0.6rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.7rem;
+		color: var(--pico-color);
+		line-height: 1.2;
+		text-align: center;
+		margin: 0;
+		width: auto;
+	}
+
+	.flyout-tile:hover:not(:disabled) {
+		background: var(--pico-muted-border-color);
+		border-radius: 10px;
+	}
+
+	.flyout-tile:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.flyout-tile-danger {
 		color: var(--pico-del-color);
-		border: 1px solid color-mix(in srgb, var(--pico-del-color) 30%, transparent);
-		border-radius: 6px;
-		padding: 0.4rem 1rem;
-		font-size: 0.8rem;
-		font-weight: 600;
-		cursor: pointer;
-		font-family: inherit;
-		width: auto;
-		margin: 0;
 	}
 
-	.report-done {
-		font-size: 0.8rem;
+	.flyout-tile-done {
 		color: var(--pico-ins-color);
 	}
 
-	.block-section {
-		margin-bottom: 0.75rem;
+	/* ── overlay (block confirm) ── */
+	.overlay-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.45);
+		z-index: 60;
 	}
 
-	.block-btn {
-		background: none;
-		border: 1px solid color-mix(in srgb, var(--pico-del-color) 40%, transparent);
-		border-radius: 6px;
-		padding: 0.4rem 1rem;
+	.block-overlay {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		z-index: 61;
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 14px;
+		padding: 1.25rem 1.25rem 1rem;
+		width: min(320px, calc(100vw - 2rem));
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+	}
+
+	.block-overlay-title {
+		font-size: 1rem;
+		font-weight: 600;
+		margin-bottom: 0.4rem;
+	}
+
+	.block-overlay-hint {
 		font-size: 0.825rem;
-		font-weight: 500;
-		color: var(--pico-del-color);
-		cursor: pointer;
-		font-family: inherit;
-		width: 100%;
-		margin: 0;
-		text-align: left;
+		color: var(--pico-muted-color);
+		margin-bottom: 1rem;
 	}
 
-	.block-btn:hover:not(:disabled) {
-		background: color-mix(in srgb, var(--pico-del-color) 8%, transparent);
-	}
-
-	.block-confirm-text {
-		font-size: 0.825rem;
-		color: var(--pico-color);
-		margin-bottom: 0.5rem;
-	}
-
-	.block-confirm-actions {
+	.block-overlay-actions {
 		display: flex;
 		gap: 0.5rem;
 		justify-content: flex-end;
 	}
 
-	.block-cancel-btn {
+	.overlay-cancel-btn {
 		background: none;
 		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 6px;
-		padding: 0.4rem 1rem;
-		font-size: 0.8rem;
+		border-radius: 8px;
+		padding: 0.45rem 1.1rem;
+		font-size: 0.85rem;
 		color: var(--pico-muted-color);
 		cursor: pointer;
 		font-family: inherit;
@@ -1938,13 +2138,13 @@
 		margin: 0;
 	}
 
-	.block-confirm-btn {
+	.overlay-block-btn {
 		background: color-mix(in srgb, var(--pico-del-color) 15%, transparent);
 		color: var(--pico-del-color);
 		border: 1px solid color-mix(in srgb, var(--pico-del-color) 30%, transparent);
-		border-radius: 6px;
-		padding: 0.4rem 1rem;
-		font-size: 0.8rem;
+		border-radius: 8px;
+		padding: 0.45rem 1.1rem;
+		font-size: 0.85rem;
 		font-weight: 600;
 		cursor: pointer;
 		font-family: inherit;
@@ -1952,10 +2152,115 @@
 		margin: 0;
 	}
 
-	.block-divider {
-		border: none;
+	/* ── bottom sheets (report + received photos) ── */
+	.sheet-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.45);
+		z-index: 60;
+	}
+
+	.bottom-sheet {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		z-index: 61;
+		background: var(--pico-card-background-color);
 		border-top: 1px solid var(--pico-muted-border-color);
-		margin: 0 0 0.75rem;
+		border-radius: 16px 16px 0 0;
+		padding: 1.25rem 1rem 2rem;
+		max-height: 70dvh;
+		overflow-y: auto;
+	}
+
+	.sheet-title {
+		font-size: 0.95rem;
+		font-weight: 600;
+		margin-bottom: 1rem;
+	}
+
+	.sheet-empty {
+		font-size: 0.875rem;
+		color: var(--pico-muted-color);
+		text-align: center;
+		padding: 1.5rem 0;
+	}
+
+	.sheet-done {
+		font-size: 0.875rem;
+		color: var(--pico-ins-color);
+		text-align: center;
+		padding: 1rem 0;
+	}
+
+	.bottom-sheet select,
+	.bottom-sheet textarea {
+		margin-bottom: 0.5rem;
+		font-size: 0.875rem;
+	}
+
+	.bottom-sheet textarea {
+		resize: vertical;
+	}
+
+	.sheet-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+		margin-top: 0.25rem;
+	}
+
+	.sheet-cancel-btn {
+		background: none;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 8px;
+		padding: 0.45rem 1.1rem;
+		font-size: 0.85rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+	}
+
+	.sheet-submit-btn {
+		background: color-mix(in srgb, var(--pico-del-color) 15%, transparent);
+		color: var(--pico-del-color);
+		border: 1px solid color-mix(in srgb, var(--pico-del-color) 30%, transparent);
+		border-radius: 8px;
+		padding: 0.45rem 1.1rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		margin: 0;
+	}
+
+	.received-photos-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 3px;
+	}
+
+	.received-photo-tile {
+		aspect-ratio: 1;
+		overflow: hidden;
+		padding: 0;
+		margin: 0;
+		background: var(--pico-muted-border-color);
+		border: none;
+		cursor: pointer;
+		border-radius: 4px;
+		width: auto;
+	}
+
+	.received-photo-tile img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
 	}
 
 	.listing-link {
