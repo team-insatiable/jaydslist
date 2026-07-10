@@ -1,6 +1,10 @@
 /**
  * Dev seed script — generates SQL for local D1
  * Run: npx tsx scripts/seed.ts | npx wrangler d1 execute jaydslist --local --file /dev/stdin
+ *
+ * Test accounts (password: Password01):
+ *   alice@example.com — woman, non-supporter, has 1 active listing
+ *   bob@example.com   — man, supporter, replied to Alice's listing (1 thread exists)
  */
 
 import { promisify } from 'util';
@@ -28,9 +32,9 @@ const now = Math.floor(Date.now() / 1000);
 const nowMs = Date.now();
 const expires14 = now + 14 * 24 * 60 * 60;
 
-// ── Real accounts ──────────────────────────────────────────────────────────────
-const KEIROCK_ID = randomUUID();
-const KIERA_ID = randomUUID();
+// ── Dev accounts ───────────────────────────────────────────────────────────────
+const BOB_ID = randomUUID(); // bob@example.com — man, supporter
+const ALICE_ID = randomUUID(); // alice@example.com — woman, non-supporter
 
 // ── Fake background users ──────────────────────────────────────────────────────
 const fakeUsers = [
@@ -277,7 +281,7 @@ const fakeUsers = [
 ];
 
 // ── Listings ───────────────────────────────────────────────────────────────────
-// Assigned to fake users (index into fakeUsers array) + 2 for Keirock and Kiera
+// Index 0 = Bob's listing, index 1 = Alice's listing (the one Bob replies to)
 type ListingDef = {
 	userId: string;
 	subject: string;
@@ -297,7 +301,7 @@ type ListingDef = {
 const f = (i: number) => fakeUsers[i % fakeUsers.length];
 
 const raw: Omit<ListingDef, 'userId' | 'lat' | 'lng' | 'fuzzy'>[] = [
-	// From Keirock (man, 47)
+	// Index 0 — Bob's listing (man, 47)
 	{
 		subject: 'Experienced Dom looking for a sub to explore with',
 		body: "Married man, very much in an open ENM arrangement. I've been in the lifestyle for over a decade and have a strong foundation in D/s dynamics. I'm patient, communicative, and safety-first. Looking for a woman who is curious about submission or already experienced. We'll go at whatever pace feels right. I want connection first — the dynamic comes after we establish trust. Sacramento area, flexible on schedule.",
@@ -309,7 +313,7 @@ const raw: Omit<ListingDef, 'userId' | 'lat' | 'lng' | 'fuzzy'>[] = [
 		ageMin: 25,
 		ageMax: 50
 	},
-	// From Kiera (woman, 43)
+	// Index 1 — Alice's listing (woman, 43) — Bob replies to this one
 	{
 		subject: 'Hotwife exploring on her own — looking for confident men',
 		body: "My husband and I are fully open and this profile is mine alone. I'm 43, take care of myself, and know exactly what I want. Looking for men who are confident, clean, and don't need handholding. I enjoy the build-up as much as the main event. Discretion is important to me. No single women please — I have a girlfriend for that. If you can hold a conversation and aren't in a rush, message me.",
@@ -801,7 +805,7 @@ const raw: Omit<ListingDef, 'userId' | 'lat' | 'lng' | 'fuzzy'>[] = [
 ];
 
 // Assign users to listing defs
-// First two are Keirock and Kiera, rest cycle through fake users
+// Index 0 = Bob, index 1 = Alice, rest cycle through fake users
 const listingAssignments: ListingDef[] = raw.map((r, i) => {
 	let userId: string;
 	let lat: number;
@@ -809,12 +813,12 @@ const listingAssignments: ListingDef[] = raw.map((r, i) => {
 	let fuzzy: string;
 
 	if (i === 0) {
-		userId = KEIROCK_ID;
+		userId = BOB_ID;
 		lat = 38.5816;
 		lng = -121.4944;
 		fuzzy = 'Central Sacramento';
 	} else if (i === 1) {
-		userId = KIERA_ID;
+		userId = ALICE_ID;
 		lat = 38.5816;
 		lng = -121.4944;
 		fuzzy = 'Central Sacramento';
@@ -841,19 +845,19 @@ async function main() {
 		`INSERT OR IGNORE INTO user (id, name, email, email_verified, created_at, updated_at) VALUES (${sq(id)}, ${sq(name)}, ${sq(email)}, 1, ${nowMs}, ${nowMs});`;
 
 	lines.push('-- Users');
-	lines.push(insertUser(KEIROCK_ID, 'Keirock', 'keirockjd@gmail.com'));
-	lines.push(insertUser(KIERA_ID, 'Kiera', 'keirajd@gmail.com'));
+	lines.push(insertUser(BOB_ID, 'Bob', 'bob@example.com'));
+	lines.push(insertUser(ALICE_ID, 'Alice', 'alice@example.com'));
 	for (const u of fakeUsers) lines.push(insertUser(u.id, u.name, u.email));
 	lines.push('');
 
-	// For real accounts: upsert password using a subquery so it works whether or not
+	// For dev accounts: upsert password using a subquery so it works whether or not
 	// the user was registered via the app (different user ID) or via this seed.
 	const upsertAccount = (email: string) =>
 		`INSERT OR IGNORE INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at) SELECT ${sq(randomUUID())}, ${sq(email)}, 'credential', id, ${sq(pw)}, ${nowMs}, ${nowMs} FROM user WHERE email = ${sq(email)};`;
 
 	lines.push('-- Accounts');
-	lines.push(upsertAccount('keirockjd@gmail.com'));
-	lines.push(upsertAccount('keirajd@gmail.com'));
+	lines.push(upsertAccount('bob@example.com'));
+	lines.push(upsertAccount('alice@example.com'));
 	lines.push('');
 
 	// User profiles
@@ -868,16 +872,18 @@ async function main() {
 		seeking: string,
 		alias: string,
 		trustTier = 'established',
+		isSupporter = false,
 		dob?: number
 	) => {
 		const dobVal = dob ?? now - age * 365.25 * 24 * 3600;
-		return `INSERT OR IGNORE INTO user_profiles (id, identity, physical_type, age, date_of_birth, lat, lng, seeking_identity, phone_verified, trust_tier, alias, status, created_at, location_updated_at) VALUES (${sq(id)}, ${sq(identity)}, ${sq(physical)}, ${age}, ${Math.floor(dobVal)}, ${lat}, ${lng}, ${sq(seeking)}, 1, ${sq(trustTier)}, ${sq(alias)}, 'active', ${now}, ${now});`;
+		return `INSERT OR IGNORE INTO user_profiles (id, identity, physical_type, age, date_of_birth, lat, lng, seeking_identity, phone_verified, trust_tier, is_supporter, alias, status, created_at, location_updated_at) VALUES (${sq(id)}, ${sq(identity)}, ${sq(physical)}, ${age}, ${Math.floor(dobVal)}, ${lat}, ${lng}, ${sq(seeking)}, 1, ${sq(trustTier)}, ${isSupporter ? 1 : 0}, ${sq(alias)}, 'active', ${now}, ${now});`;
 	};
 
 	lines.push('-- User profiles');
+	// Bob: man, 47, supporter, trusted
 	lines.push(
 		insertProfile(
-			KEIROCK_ID,
+			BOB_ID,
 			'man',
 			'male',
 			47,
@@ -885,13 +891,15 @@ async function main() {
 			-121.4944,
 			'Central Sacramento',
 			'["woman"]',
-			'Keirock',
-			'trusted'
+			'Bob',
+			'trusted',
+			true
 		)
 	);
+	// Alice: woman, 43, non-supporter, trusted
 	lines.push(
 		insertProfile(
-			KIERA_ID,
+			ALICE_ID,
 			'woman',
 			'female',
 			43,
@@ -899,8 +907,9 @@ async function main() {
 			-121.4944,
 			'Central Sacramento',
 			'["man"]',
-			'Kiera',
-			'trusted'
+			'Alice',
+			'trusted',
+			false
 		)
 	);
 	const fakeTiers = [
@@ -943,10 +952,12 @@ async function main() {
 	}
 	lines.push('');
 
-	// Listings
+	// Listings — capture Alice's listing ID (index 1) for the thread
 	lines.push('-- Listings');
-	for (const l of listingAssignments) {
+	let aliceListingId: string | null = null;
+	for (const [i, l] of listingAssignments.entries()) {
 		const id = randomUUID();
+		if (i === 1) aliceListingId = id;
 		const bumpedAt = now - Math.floor(Math.random() * 7 * 24 * 3600);
 		const ageMinVal = l.ageMin ? l.ageMin.toString() : null;
 		const ageMaxVal = l.ageMax ? l.ageMax.toString() : null;
@@ -956,6 +967,28 @@ async function main() {
 		);
 	}
 	lines.push('');
+
+	// Thread: Bob replied to Alice's listing
+	lines.push("-- Thread (Bob replied to Alice's listing)");
+	const threadId = randomUUID();
+	const threadCreatedAt = now - 3600; // 1 hour ago
+	lines.push(
+		`INSERT OR IGNORE INTO conversation_threads (id, listing_id, initiator_id, poster_id, status, acknowledged_requirements, created_at, last_activity_at) VALUES (${sq(threadId)}, ${sq(aliceListingId!)}, ${sq(BOB_ID)}, ${sq(ALICE_ID)}, 'open', '[]', ${threadCreatedAt}, ${threadCreatedAt + 600});`
+	);
+	lines.push('');
+
+	// Messages in the thread
+	lines.push('-- Messages');
+	const msg1At = threadCreatedAt;
+	const msg2At = threadCreatedAt + 600; // Alice replied 10 minutes later
+	lines.push(
+		`INSERT OR IGNORE INTO messages (id, thread_id, sender_id, body, scan_status, sent_at) VALUES (${sq(randomUUID())}, ${sq(threadId)}, ${sq(BOB_ID)}, ${sq("Hi — I came across your listing and thought there might be genuine compatibility here. I've been in the ENM lifestyle for over a decade and I know what I'm looking for. Your post stood out because it's direct and you clearly know yourself. I'd love to start with a coffee conversation if you're open to it. No rush, no pressure.")}, 'passed', ${msg1At});`
+	);
+	lines.push(
+		`INSERT OR IGNORE INTO messages (id, thread_id, sender_id, body, scan_status, sent_at) VALUES (${sq(randomUUID())}, ${sq(threadId)}, ${sq(ALICE_ID)}, ${sq('Thanks for reaching out — your message is actually thoughtful which is more than I can say for most. Your profile looks genuine. Coffee works for me. What part of Sacramento are you based in and when are you generally free?')}, 'passed', ${msg2At});`
+	);
+	lines.push('');
+
 	lines.push('PRAGMA foreign_keys = ON;');
 
 	console.log(lines.join('\n'));
