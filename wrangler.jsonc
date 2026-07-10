@@ -31,7 +31,7 @@
 		"CF_IMAGES_ACCOUNT_HASH": "8VjAau7ob8PpQADLz9tf3Q",
 		"VAPID_PUBLIC_KEY": "BLktrgMdWP8hfYMXeIHNyaXoSS-GrDZQrbGDdHtEpM0re4zkfzyxhkLYwSJ5ny0KPmJFAlOpAkTp9K6dOZtwDl8",
 		"VAPID_CONTACT": "mailto:admin@jaydslist.com",
-		"INSTANCE_THEME": "default"
+		"INSTANCE_THEME": "rose"
 		// CF_IMAGES_API_TOKEN goes in .dev.vars (secret)
 		// VAPID_PRIVATE_KEY goes in .dev.vars (secret)
 		// ADMIN_EMAILS goes in .dev.vars (comma-separated list of admin email addresses)
