@@ -14,6 +14,7 @@
 	let uploading = $state(false);
 	let uploadProgress = $state<{ current: number; total: number } | null>(null);
 	let uploadError = $state('');
+	let lightboxUrl = $state<string | null>(null);
 
 	const MAX_BATCH = 10;
 
@@ -316,7 +317,14 @@
 				ondrop={(e) => onDrop(e, photo.id)}
 				ondragend={onDragEnd}
 			>
-				<img src={photo.deliveryUrl} alt="" />
+				<button
+					type="button"
+					class="photo-view-btn"
+					onclick={() => (lightboxUrl = photo.deliveryUrl)}
+					aria-label="View photo"
+				>
+					<img src={photo.deliveryUrl} alt="" />
+				</button>
 				<form
 					method="POST"
 					action="?/deletePhoto"
@@ -380,6 +388,42 @@
 		style="display:none"
 	/>
 </div>
+
+<!-- Lightbox -->
+{#if lightboxUrl}
+	<div
+		class="lightbox"
+		role="dialog"
+		aria-label="Photo viewer"
+		aria-modal="true"
+		tabindex="-1"
+		onclick={() => (lightboxUrl = null)}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') lightboxUrl = null;
+		}}
+	>
+		<button
+			class="lightbox-close"
+			type="button"
+			aria-label="Close"
+			onclick={() => (lightboxUrl = null)}
+		>
+			<svg
+				width="20"
+				height="20"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.5"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+			</svg>
+		</button>
+		<img src={lightboxUrl} alt="" />
+	</div>
+{/if}
 
 <!-- Action sheet backdrop -->
 {#if actionSheetOpen}
@@ -675,7 +719,7 @@
 	.add-tile {
 		aspect-ratio: 1;
 		background: #1a1a1a;
-		border: none;
+		border: 2px dashed #333;
 		border-radius: 4px;
 		display: flex;
 		align-items: center;
@@ -689,6 +733,7 @@
 
 	.add-tile:hover {
 		background: #242424;
+		border-color: #555;
 		color: #888;
 	}
 
@@ -697,13 +742,6 @@
 		aspect-ratio: 1;
 		border-radius: 4px;
 		overflow: hidden;
-	}
-
-	.photo-tile img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
 	}
 
 	.photo-tile.drag-over {
@@ -765,6 +803,61 @@
 		to {
 			transform: rotate(360deg);
 		}
+	}
+
+	.photo-view-btn {
+		width: 100%;
+		height: 100%;
+		padding: 0;
+		margin: 0;
+		border: none;
+		background: none;
+		cursor: pointer;
+		display: block;
+	}
+
+	.photo-view-btn img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	/* Lightbox */
+	.lightbox {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.9);
+		z-index: 1000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1rem;
+	}
+
+	.lightbox img {
+		max-width: 100%;
+		max-height: 90dvh;
+		border-radius: 8px;
+		object-fit: contain;
+	}
+
+	.lightbox-close {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		background: rgba(0, 0, 0, 0.5);
+		border: none;
+		border-radius: 50%;
+		width: 36px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: white;
+		cursor: pointer;
+		padding: 0;
+		margin: 0;
 	}
 
 	/* Backdrop */

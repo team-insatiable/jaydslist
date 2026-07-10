@@ -5,23 +5,32 @@
 		id: string;
 		deliveryUrl: string;
 		uploadedAt: Date;
+		albumId: string | null;
+	}
+
+	interface VaultAlbum {
+		id: string;
+		name: string;
 	}
 
 	let {
 		photoIds = $bindable(),
 		vaultPhotos = $bindable(),
+		vaultAlbums = $bindable(),
 		isSupporter,
 		maxPhotos = 3,
 		onUploadingChange
 	}: {
 		photoIds: string[];
 		vaultPhotos: VaultPhoto[];
+		vaultAlbums: VaultAlbum[];
 		isSupporter: boolean;
 		maxPhotos?: number;
 		onUploadingChange?: (uploading: boolean) => void;
 	} = $props();
 
 	let pickerOpen = $state(false);
+	let currentAlbumId = $state<string | null>(null);
 	let photoUploading = $state(false);
 	let photoError = $state('');
 	let fileInputEl: HTMLInputElement | undefined = $state();
@@ -30,8 +39,37 @@
 		onUploadingChange?.(photoUploading);
 	});
 
-	const availableVaultPhotos = $derived(vaultPhotos.filter((p) => !photoIds.includes(p.id)));
+	const coverMap = $derived.by(() => {
+		const map: Record<string, string> = {};
+		for (const p of vaultPhotos) {
+			if (p.albumId && !map[p.albumId]) map[p.albumId] = p.deliveryUrl;
+		}
+		return map;
+	});
+
+	const countMap = $derived.by(() => {
+		const map: Record<string, number> = {};
+		for (const p of vaultPhotos) {
+			if (p.albumId) map[p.albumId] = (map[p.albumId] ?? 0) + 1;
+		}
+		return map;
+	});
+
+	const uncategorizedPhotos = $derived(
+		vaultPhotos.filter((p) => !p.albumId && !photoIds.includes(p.id))
+	);
+
+	const currentAlbumPhotos = $derived(
+		currentAlbumId
+			? vaultPhotos.filter((p) => p.albumId === currentAlbumId && !photoIds.includes(p.id))
+			: []
+	);
+
+	const currentAlbumName = $derived(vaultAlbums.find((a) => a.id === currentAlbumId)?.name ?? '');
+
 	const canAddMore = $derived(photoIds.length < maxPhotos);
+
+	const hasAnything = $derived(vaultPhotos.length > 0 || vaultAlbums.length > 0);
 
 	function photoById(id: string): VaultPhoto | undefined {
 		return vaultPhotos.find((p) => p.id === id);
@@ -40,18 +78,17 @@
 	function openPicker() {
 		if (!isSupporter || !canAddMore) return;
 		photoError = '';
-		// Nothing to pick from yet — skip the panel and go straight to the file
-		// picker instead of making the common "just add a photo" case take two
-		// clicks (+ then Upload new photo).
-		if (availableVaultPhotos.length === 0) {
+		if (!hasAnything) {
 			triggerFilePicker();
 			return;
 		}
+		currentAlbumId = null;
 		pickerOpen = true;
 	}
 
 	function closePicker() {
 		pickerOpen = false;
+		currentAlbumId = null;
 	}
 
 	function selectVaultPhoto(id: string) {
@@ -75,9 +112,11 @@
 		photoUploading = true;
 		try {
 			const { id: vaultPhotoId, deliveryUrl } = await uploadPhotoToVault(file);
-			vaultPhotos = [{ id: vaultPhotoId, deliveryUrl, uploadedAt: new Date() }, ...vaultPhotos];
-			photoIds = [...photoIds, vaultPhotoId];
-			closePicker();
+			// Add to vault (uncategorized) — user taps it in the grid to select for the listing
+			vaultPhotos = [
+				{ id: vaultPhotoId, deliveryUrl, uploadedAt: new Date(), albumId: null },
+				...vaultPhotos
+			];
 		} catch (err) {
 			photoError = err instanceof Error ? err.message : 'Photo upload failed. Try again.';
 		} finally {
@@ -147,14 +186,9 @@
 						class="photo-slot empty"
 						onclick={openPicker}
 						disabled={!isSupporter || !canAddMore || photoUploading}
-						aria-busy={photoUploading}
 						aria-label="Add photo"
 					>
-						{#if photoUploading}
-							<span class="spinner"></span>
-						{:else}
-							+
-						{/if}
+						+
 					</button>
 				{/if}
 			{/each}
@@ -177,29 +211,146 @@
 
 	{#if pickerOpen}
 		<div class="picker-panel">
-			<p class="panel-label">Choose from your vault</p>
-			<div class="vault-grid">
-				{#each availableVaultPhotos as photo (photo.id)}
+			{#if currentAlbumId}
+				<!-- Album drill-in view -->
+				<div class="panel-header">
 					<button
 						type="button"
-						class="vault-thumb"
-						onclick={() => selectVaultPhoto(photo.id)}
-						aria-label="Use this photo"
+						class="back-btn"
+						aria-label="Back"
+						onclick={() => (currentAlbumId = null)}
 					>
-						<img src={photo.deliveryUrl} alt="" />
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<polyline points="15 18 9 12 15 6" />
+						</svg>
 					</button>
-				{/each}
-			</div>
+					<span class="panel-title">{currentAlbumName}</span>
+				</div>
+				{#if currentAlbumPhotos.length === 0}
+					<p class="empty-hint">No photos in this album yet.</p>
+				{:else}
+					<div class="vault-grid">
+						{#each currentAlbumPhotos as photo (photo.id)}
+							<button
+								type="button"
+								class="vault-thumb"
+								onclick={() => selectVaultPhoto(photo.id)}
+								aria-label="Use this photo"
+							>
+								<img src={photo.deliveryUrl} alt="" />
+							</button>
+						{/each}
+					</div>
+				{/if}
+			{:else}
+				<!-- Root view: albums + uncategorized -->
+				<p class="panel-label">Choose from your vault</p>
+
+				{#if vaultAlbums.length > 0}
+					<div class="album-row">
+						{#each vaultAlbums as album (album.id)}
+							<button
+								type="button"
+								class="album-tile"
+								onclick={() => (currentAlbumId = album.id)}
+								aria-label="Open album {album.name}"
+							>
+								<div class="album-cover">
+									{#if coverMap[album.id]}
+										<img src={coverMap[album.id]} alt="" class="album-cover-img" />
+									{:else}
+										<div class="album-cover-empty">
+											<svg
+												width="20"
+												height="20"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												<rect x="3" y="3" width="18" height="18" rx="2" /><circle
+													cx="8.5"
+													cy="8.5"
+													r="1.5"
+												/><polyline points="21 15 16 10 5 21" />
+											</svg>
+										</div>
+									{/if}
+									<div class="album-badge">
+										<svg
+											width="10"
+											height="10"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										>
+											<polyline points="9 18 15 12 9 6" />
+										</svg>
+									</div>
+								</div>
+								<span class="album-name">{album.name}</span>
+								<span class="album-count">{countMap[album.id] ?? 0}</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
+
+				{#if vaultAlbums.length > 0 && uncategorizedPhotos.length > 0}
+					<p class="section-label">Uncategorized</p>
+				{/if}
+				<div class="vault-grid">
+					<button
+						type="button"
+						class="picker-add-tile"
+						onclick={triggerFilePicker}
+						disabled={photoUploading}
+						aria-label="Upload new photo"
+					>
+						{#if photoUploading}
+							<span class="picker-spinner"></span>
+						{:else}
+							<svg
+								width="26"
+								height="26"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+							</svg>
+						{/if}
+					</button>
+					{#each uncategorizedPhotos as photo (photo.id)}
+						<button
+							type="button"
+							class="vault-thumb"
+							onclick={() => selectVaultPhoto(photo.id)}
+							aria-label="Use this photo"
+						>
+							<img src={photo.deliveryUrl} alt="" />
+						</button>
+					{/each}
+				</div>
+			{/if}
+
 			<div class="panel-actions">
-				<button
-					type="button"
-					class="upload-btn"
-					onclick={triggerFilePicker}
-					disabled={photoUploading}
-					aria-busy={photoUploading}
-				>
-					{photoUploading ? 'Uploading…' : '+ Upload new photo'}
-				</button>
 				<button type="button" class="cancel-btn" onclick={closePicker}>Cancel</button>
 			</div>
 		</div>
@@ -277,16 +428,6 @@
 		color: var(--pico-primary);
 	}
 
-	.spinner {
-		width: 16px;
-		height: 16px;
-		border: 2px solid var(--pico-muted-border-color);
-		border-top-color: var(--pico-primary);
-		border-radius: 50%;
-		animation: spin 0.6s linear infinite;
-		display: block;
-	}
-
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);
@@ -338,12 +479,128 @@
 		background: var(--pico-card-background-color);
 	}
 
+	.panel-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.back-btn {
+		background: none;
+		border: none;
+		padding: 0.25rem;
+		margin: 0;
+		cursor: pointer;
+		color: var(--pico-color);
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		width: auto;
+	}
+
+	.panel-title {
+		font-size: 0.875rem;
+		font-weight: 600;
+	}
+
 	.panel-label {
 		font-size: 0.8rem;
 		font-weight: 600;
 		margin-bottom: 0.5rem;
 	}
 
+	.section-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--pico-muted-color);
+		margin: 0.75rem 0 0.4rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	/* Album row */
+	.album-row {
+		display: flex;
+		gap: 0.5rem;
+		overflow-x: auto;
+		padding-bottom: 0.25rem;
+		margin-bottom: 0.25rem;
+	}
+
+	.album-tile {
+		flex-shrink: 0;
+		width: 72px;
+		background: none;
+		border: none;
+		padding: 0;
+		margin: 0;
+		cursor: pointer;
+		text-align: left;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.album-cover {
+		position: relative;
+		width: 72px;
+		height: 72px;
+		border-radius: 8px;
+		overflow: hidden;
+		background: #1a1a1a;
+		border: 1px solid var(--pico-muted-border-color);
+	}
+
+	.album-cover-img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		filter: blur(5px);
+		transform: scale(1.1);
+	}
+
+	.album-cover-empty {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #555;
+	}
+
+	.album-badge {
+		position: absolute;
+		bottom: 4px;
+		right: 4px;
+		background: rgba(0, 0, 0, 0.55);
+		border-radius: 50%;
+		width: 18px;
+		height: 18px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #fff;
+	}
+
+	.album-name {
+		font-size: 0.7rem;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 72px;
+		display: block;
+		color: var(--pico-color);
+	}
+
+	.album-count {
+		font-size: 0.65rem;
+		color: var(--pico-muted-color);
+	}
+
+	/* Photo grid */
 	.vault-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
@@ -368,21 +625,57 @@
 		object-fit: cover;
 	}
 
+	.empty-hint {
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		margin-bottom: 0.75rem;
+	}
+
 	.file-input {
 		display: none;
 	}
 
-	.panel-actions {
+	.picker-add-tile {
+		aspect-ratio: 1;
+		background: #1a1a1a;
+		border: 2px dashed #333;
+		border-radius: 4px;
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		justify-content: center;
+		color: #666;
+		cursor: pointer;
+		padding: 0;
+		margin: 0;
+		width: 100%;
 	}
 
-	.upload-btn {
-		width: auto;
-		margin: 0;
-		font-size: 0.875rem;
-		padding: 0.5rem 1rem;
+	.picker-add-tile:hover:not(:disabled) {
+		background: #242424;
+		border-color: #555;
+		color: #888;
+	}
+
+	.picker-spinner {
+		width: 16px;
+		height: 16px;
+		border: 2px solid #444;
+		border-top-color: #aaa;
+		border-radius: 50%;
+		animation: spin 0.6s linear infinite;
+		display: block;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.panel-actions {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: 0.25rem;
 	}
 
 	.cancel-btn {
