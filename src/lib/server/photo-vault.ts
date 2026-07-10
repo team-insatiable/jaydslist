@@ -22,14 +22,18 @@ export async function getAlbumPhotos(
 	db: D1Database,
 	albumId: string,
 	accountHash: string
-): Promise<{ id: string; deliveryUrl: string }[]> {
+): Promise<{ id: string; cfImageId: string; deliveryUrl: string }[]> {
 	const rows = await getDb(db)
 		.select({ id: photoVault.id, cfImageId: photoVault.cfImageId })
 		.from(photoVault)
 		.where(and(eq(photoVault.albumId, albumId), isNull(photoVault.deletedAt)))
 		.orderBy(sql`coalesce(${photoVault.displayOrder}, 999999) asc`, asc(photoVault.uploadedAt))
 		.all();
-	return rows.map((r) => ({ id: r.id, deliveryUrl: imageUrl(accountHash, r.cfImageId) }));
+	return rows.map((r) => ({
+		id: r.id,
+		cfImageId: r.cfImageId,
+		deliveryUrl: imageUrl(accountHash, r.cfImageId)
+	}));
 }
 
 // Returns just the album rows — cover URL and photo count are computed by the
