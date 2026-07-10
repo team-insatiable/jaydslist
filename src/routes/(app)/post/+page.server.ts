@@ -14,7 +14,7 @@ import {
 import { eq, and, isNull, inArray } from 'drizzle-orm';
 import { getActiveVocabulary } from '$lib/server/relative-terms.server';
 import { scanTerms } from '$lib/relative-terms';
-import { getVaultPhotos } from '$lib/server/photo-vault';
+import { getVaultPhotos, getAlbumList } from '$lib/server/photo-vault';
 import { getMaxActiveListings, getActiveListingCount } from '$lib/server/listing-lifecycle';
 
 const VALID_IDENTITIES = [
@@ -53,18 +53,20 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		throw redirect(302, '/profile');
 	}
 
-	const [activeCount, maxActive, vocabulary, vaultPhotos] = await Promise.all([
+	const [activeCount, maxActive, vocabulary, vaultPhotos, vaultAlbums] = await Promise.all([
 		getActiveListingCount(env.DB, locals.user.id),
 		getMaxActiveListings(profile.isSupporter, env, env.DB),
 		getActiveVocabulary(env.DB),
-		getVaultPhotos(env.DB, locals.user.id, env.CF_IMAGES_ACCOUNT_HASH)
+		getVaultPhotos(env.DB, locals.user.id, env.CF_IMAGES_ACCOUNT_HASH),
+		getAlbumList(env.DB, locals.user.id)
 	]);
 
 	return {
 		hasActiveListing: activeCount >= maxActive,
 		vocabulary,
 		isSupporter: profile.isSupporter,
-		vaultPhotos
+		vaultPhotos,
+		vaultAlbums
 	};
 };
 
