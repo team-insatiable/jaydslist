@@ -489,24 +489,13 @@
 			class="more-btn"
 			onclick={() => (showReportMenu = !showReportMenu)}
 			type="button"
-			aria-label="Report user"
+			aria-label="More options"
 		>
-			<svg
-				width="17"
-				height="17"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line
-					x1="4"
-					y1="22"
-					x2="4"
-					y2="15"
-				/></svg
-			>
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+				<circle cx="5" cy="12" r="2" />
+				<circle cx="12" cy="12" r="2" />
+				<circle cx="19" cy="12" r="2" />
+			</svg>
 		</button>
 	</header>
 
@@ -515,7 +504,7 @@
 			{#if reportDone}
 				<p class="report-done">Report submitted. Our moderation team will review it.</p>
 			{:else}
-				<p class="report-panel-title">Report {data.otherAlias}</p>
+				<p class="report-panel-title">{data.otherAlias}</p>
 
 				<!-- Block section -->
 				<div class="block-section">
