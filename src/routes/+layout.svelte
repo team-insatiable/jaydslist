@@ -1,8 +1,11 @@
 <script lang="ts">
 	import '$lib/styles/tokens.css';
 	import '$lib/styles/base.css';
+	import { getThemeStyle } from '$lib/themes';
 
-	let { children } = $props();
+	let { data, children } = $props();
+
+	const themeStyle = $derived(getThemeStyle(data.themeName));
 </script>
 
 <svelte:head>
@@ -14,4 +17,6 @@
 	/>
 </svelte:head>
 
-{@render children()}
+<div style={themeStyle || undefined}>
+	{@render children()}
+</div>
