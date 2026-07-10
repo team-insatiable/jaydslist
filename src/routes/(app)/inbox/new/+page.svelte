@@ -6,8 +6,14 @@
 
 	let body = $state('');
 	let sending = $state(false);
+	let listingExpanded = $state(false);
 
 	const minLength = data.minLength;
+	const PREVIEW_LENGTH = 200;
+	const listingBodyLong = data.listing.body.length > PREVIEW_LENGTH;
+	const listingBodyPreview = listingBodyLong
+		? data.listing.body.slice(0, PREVIEW_LENGTH).trimEnd() + '…'
+		: data.listing.body;
 </script>
 
 <div class="compose-page">
@@ -31,6 +37,20 @@
 		<span class="context-label">Replying to</span>
 		<p class="listing-subject">{data.listing.subject}</p>
 		<span class="poster-alias">Posted by {data.listing.posterAlias}</span>
+		{#if data.listing.body}
+			<p class="listing-body">
+				{listingExpanded ? data.listing.body : listingBodyPreview}
+			</p>
+			{#if listingBodyLong}
+				<button
+					type="button"
+					class="show-more-btn"
+					onclick={() => (listingExpanded = !listingExpanded)}
+				>
+					{listingExpanded ? 'Show less' : 'Show more'}
+				</button>
+			{/if}
+		{/if}
 	</div>
 
 	<div class="compose-card card">
@@ -125,6 +145,28 @@
 	.poster-alias {
 		font-size: 0.8rem;
 		color: var(--pico-muted-color);
+	}
+
+	.listing-body {
+		font-size: 0.85rem;
+		color: var(--pico-color);
+		line-height: 1.55;
+		margin-top: 0.6rem;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+
+	.show-more-btn {
+		background: none;
+		border: none;
+		padding: 0;
+		margin-top: 0.25rem;
+		font-size: 0.8rem;
+		color: var(--pico-primary);
+		cursor: pointer;
+		font-family: inherit;
+		width: auto;
+		text-decoration: underline;
 	}
 
 	h2 {
