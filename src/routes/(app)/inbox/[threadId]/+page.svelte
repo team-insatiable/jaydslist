@@ -694,9 +694,6 @@
 		<div class="overlay-backdrop" onclick={() => (spamConfirm = false)}></div>
 		<div class="block-overlay" transition:fly={{ y: 8, duration: 160 }}>
 			<p class="block-overlay-title">Report as spam?</p>
-			<p class="block-overlay-hint">
-				This will flag {data.otherAlias} for sending unwanted messages.
-			</p>
 			<div class="block-overlay-actions">
 				<button
 					type="button"
