@@ -36,6 +36,7 @@ export const load: PageServerLoad = async ({ url, locals, platform }) => {
 			id: listings.id,
 			userId: listings.userId,
 			subject: listings.subject,
+			body: listings.body,
 			status: listings.status,
 			posterAlias: userProfiles.alias
 		})
@@ -63,6 +64,7 @@ export const load: PageServerLoad = async ({ url, locals, platform }) => {
 		listing: {
 			id: listing.id,
 			subject: listing.subject,
+			body: listing.body ?? '',
 			posterAlias: listing.posterAlias ?? 'Anonymous'
 		},
 		minLength: parseInt(DEFAULT_CONFIG.MESSAGE_MIN_LENGTH)
