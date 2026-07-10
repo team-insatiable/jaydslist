@@ -87,21 +87,30 @@
 		{ id: string; name: string; coverUrl: string | null; photoCount: number }[]
 	>([]);
 	let vaultLoading = $state(false);
-	let selectedAlbum = $state<{ id: string; name: string; photoCount: number } | null>(null);
-	let expiryPickerOpen = $state(false);
+	let selectedVaultPhotos = $state<{ cfImageId: string; deliveryUrl: string }[]>([]);
+	let selectedAlbum = $state<{ id: string; name: string; coverUrl: string | null } | null>(null);
+	let albumExpiryOpen = $state(false);
+
 	const EXPIRY_LABELS: Record<string, string> = {
 		none: 'Indefinitely',
-		view_once: 'View Once',
-		'10min': '10 min',
-		'60min': '60 min',
-		'24hr': '24 hrs'
+		view_once: 'View once',
+		'10min': '10 minutes',
+		'60min': '1 hour',
+		'24hr': '24 hours'
 	};
+	const EXPIRY_OPTIONS = [
+		{ value: 'none', label: 'Indefinitely' },
+		{ value: 'view_once', label: 'View once' },
+		{ value: '10min', label: '10 minutes' },
+		{ value: '60min', label: '1 hour' },
+		{ value: '24hr', label: '24 hours' }
+	] as const;
 
 	// Album browsing lightbox (recipient side)
 	let albumViewing = $state<{
 		albumId: string;
 		name: string;
-		photos: { id: string; deliveryUrl: string }[];
+		photos: { id: string; cfImageId: string; deliveryUrl: string }[];
 		index: number;
 	} | null>(null);
 	let _albumViewLoading = $state(false);
@@ -184,7 +193,6 @@
 	async function openMedia() {
 		mediaOpen = true;
 		selectedAlbum = null;
-		expiryPickerOpen = false;
 		if (data.isSupporter) {
 			vaultLoading = true;
 			try {
@@ -205,23 +213,32 @@
 
 	function closeMedia() {
 		mediaOpen = false;
-		expiryPickerOpen = false;
+		selectedVaultPhotos = [];
 		selectedAlbum = null;
+		albumExpiryOpen = false;
 		photoId = null;
 		photoPreviewUrl = null;
 		expiryType = 'none';
 	}
 
-	function selectVaultPhoto(photo: { cfImageId: string; deliveryUrl: string }) {
-		photoId = photo.cfImageId;
-		photoPreviewUrl = photo.deliveryUrl;
-		selectedAlbum = null;
+	function toggleVaultPhoto(photo: { cfImageId: string; deliveryUrl: string }) {
+		const idx = selectedVaultPhotos.findIndex((p) => p.cfImageId === photo.cfImageId);
+		if (idx >= 0) {
+			selectedVaultPhotos = selectedVaultPhotos.filter((_, i) => i !== idx);
+		} else if (selectedVaultPhotos.length < 10) {
+			selectedVaultPhotos = [...selectedVaultPhotos, photo];
+		}
 	}
 
-	function selectAlbum(album: { id: string; name: string; photoCount: number }) {
-		selectedAlbum = album;
-		photoId = null;
-		photoPreviewUrl = null;
+	function selectAlbum(album: { id: string; name: string; coverUrl: string | null }) {
+		if (selectedAlbum?.id === album.id) {
+			selectedAlbum = null;
+			albumExpiryOpen = false;
+			expiryType = 'none';
+		} else {
+			selectedAlbum = album;
+			albumExpiryOpen = false;
+		}
 	}
 
 	async function openAlbumViewer(albumId: string) {
@@ -230,7 +247,7 @@
 			const res = await fetch(`/api/albums/${albumId}`);
 			const data = (await res.json()) as {
 				name: string;
-				photos: { id: string; deliveryUrl: string }[];
+				photos: { id: string; cfImageId: string; deliveryUrl: string }[];
 			};
 			albumViewing = { albumId, name: data.name, photos: data.photos, index: 0 };
 		} catch {
@@ -294,14 +311,49 @@
 		}
 	}
 
-	async function sendFromPanel() {
-		if (!photoId && !selectedAlbum) return;
-		// Close panel UI only — don't clear photoId/selectedAlbum/expiryType yet,
-		// the form's hidden inputs still need them for the submit
+	function sendFromPanel() {
+		if (!photoId && selectedVaultPhotos.length === 0 && !selectedAlbum) return;
 		mediaOpen = false;
-		expiryPickerOpen = false;
-		await tick();
-		formEl?.requestSubmit();
+		if (selectedVaultPhotos.length > 1) {
+			sendMultipleVaultPhotos();
+		} else {
+			// Camera photo, album, or single vault photo: submit form
+			tick().then(() => formEl?.requestSubmit());
+		}
+	}
+
+	async function sendMultipleVaultPhotos() {
+		sending = true;
+		sendError = '';
+		try {
+			for (let i = 0; i < selectedVaultPhotos.length; i++) {
+				const params = new URLSearchParams({
+					body: i === 0 ? body : '',
+					cfImageId: selectedVaultPhotos[i].cfImageId,
+					...(expiryType !== 'none' ? { expiryType } : {})
+				});
+				const res = await fetch('?/send', {
+					method: 'POST',
+					headers: { 'content-type': 'application/x-www-form-urlencoded' },
+					body: params
+				});
+				if (!res.ok) {
+					sendError = 'Failed to send some photos';
+					break;
+				}
+			}
+			if (!sendError) {
+				body = '';
+				selectedVaultPhotos = [];
+				expiryType = 'none';
+			}
+		} catch {
+			sendError = 'Failed to send. Try again.';
+		} finally {
+			sending = false;
+			await invalidate('app:thread');
+			setTimeout(() => textareaEl?.focus(), 0);
+		}
 	}
 
 	async function tapExpiringPhoto(msgId: string) {
@@ -831,14 +883,20 @@
 			class="compose"
 			method="POST"
 			action="?/send"
-			use:enhance={() => {
-				sending = true;
+			use:enhance={async ({ cancel }) => {
 				sendError = '';
+				if (selectedVaultPhotos.length > 1) {
+					cancel();
+					await sendMultipleVaultPhotos();
+					return;
+				}
+				sending = true;
 				return async ({ result, update }) => {
 					sending = false;
 					if (result.type === 'success') {
 						body = '';
 						clearPhoto();
+						selectedVaultPhotos = [];
 						selectedAlbum = null;
 						expiryType = 'none';
 						sendError = '';
@@ -852,11 +910,14 @@
 		>
 			{#if photoId}
 				<input type="hidden" name="cfImageId" value={photoId} />
+			{:else if selectedVaultPhotos.length === 1}
+				<input type="hidden" name="cfImageId" value={selectedVaultPhotos[0].cfImageId} />
 			{/if}
 			{#if selectedAlbum}
 				<input type="hidden" name="albumId" value={selectedAlbum.id} />
 			{/if}
-			{#if photoId || selectedAlbum}
+			{#if (photoId || selectedVaultPhotos.length === 1 || selectedAlbum) && expiryType !== 'none'}
+				<!-- multi-vault handled in sendMultipleVaultPhotos directly -->
 				<input type="hidden" name="expiryType" value={expiryType} />
 			{/if}
 			{#if sendError}
@@ -905,6 +966,34 @@
 					{/if}
 				</div>
 			{/if}
+			{#if selectedVaultPhotos.length > 0}
+				<div class="vault-preview-row">
+					{#each selectedVaultPhotos as photo (photo.cfImageId)}
+						<div class="vault-preview-thumb">
+							<img src={photo.deliveryUrl} alt="" />
+							<button
+								type="button"
+								class="vault-preview-remove"
+								onclick={() => toggleVaultPhoto(photo)}
+								aria-label="Remove"
+							>
+								<svg
+									width="10"
+									height="10"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+								</svg>
+							</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
 			{#if photoError}
 				<p class="send-error">{photoError}</p>
 			{/if}
@@ -927,7 +1016,7 @@
 							e.key === 'Enter' &&
 							!e.shiftKey &&
 							window.matchMedia('(pointer: fine)').matches &&
-							(body.trim().length >= minLength || !!photoId) &&
+							(body.trim().length >= minLength || !!photoId || selectedVaultPhotos.length > 0) &&
 							!sending &&
 							!photoUploading
 						) {
@@ -939,14 +1028,20 @@
 				<button
 					type="submit"
 					class="pill-action-btn"
-					class:has-content={body.trim().length >= minLength || !!photoId}
+					class:has-content={body.trim().length >= minLength ||
+						!!photoId ||
+						selectedVaultPhotos.length > 0}
 					aria-busy={sending}
-					aria-label={body.trim().length >= minLength || photoId ? 'Send' : 'Voice (not available)'}
-					disabled={sending || photoUploading || (!photoId && body.trim().length < minLength)}
+					aria-label={body.trim().length >= minLength || photoId || selectedVaultPhotos.length > 0
+						? 'Send'
+						: 'Voice (not available)'}
+					disabled={sending ||
+						photoUploading ||
+						(!photoId && selectedVaultPhotos.length === 0 && body.trim().length < minLength)}
 				>
 					{#if sending}
 						<span class="spinner"></span>
-					{:else if body.trim().length >= minLength || photoId}
+					{:else if body.trim().length >= minLength || photoId || selectedVaultPhotos.length > 0}
 						<!-- Send arrow -->
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
 							<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -1177,15 +1272,20 @@
 						{#if vaultLoading}
 							<p class="vault-grid-empty">Loading vault…</p>
 						{:else if vaultPhotos.length > 0 || vaultAlbums.length > 0}
-							<div class="vault-grid" class:dimmed={!!(photoId || selectedAlbum)}>
-								<!-- Albums -->
+							<div class="vault-grid">
+								<!-- Albums: tap to select the whole album -->
 								{#each vaultAlbums as album (album.id)}
+									{@const albumSelected = selectedAlbum?.id === album.id}
+									{@const albumDimmed =
+										selectedVaultPhotos.length > 0 || (!!selectedAlbum && !albumSelected)}
 									<button
 										type="button"
 										class="vault-thumb album-thumb"
-										class:selected={selectedAlbum?.id === album.id}
+										class:selected={albumSelected}
+										class:dimmed={albumDimmed}
 										onclick={() => selectAlbum(album)}
 										aria-label="Select album {album.name}"
+										aria-pressed={albumSelected}
 									>
 										{#if album.coverUrl}
 											<img src={album.coverUrl} alt="" loading="lazy" />
@@ -1195,35 +1295,26 @@
 										<div class="album-label">
 											<span class="album-name">{album.name}</span>
 										</div>
-										{#if selectedAlbum?.id === album.id}
-											<span class="vault-check" aria-hidden="true">
-												<svg
-													width="16"
-													height="16"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="white"
-													stroke-width="3"
-													stroke-linecap="round"
-													stroke-linejoin="round"
-												>
-													<polyline points="20 6 9 17 4 12" />
-												</svg>
-											</span>
-										{/if}
 									</button>
 								{/each}
-								<!-- Unalbumized photos -->
+								<!-- Uncategorized photos: multi-select up to 10 -->
 								{#each unalbumizedPhotos as photo (photo.id)}
+									{@const photoSelected = selectedVaultPhotos.some(
+										(p) => p.cfImageId === photo.cfImageId
+									)}
+									{@const photoDimmed =
+										!!selectedAlbum || (selectedVaultPhotos.length >= 10 && !photoSelected)}
 									<button
 										type="button"
 										class="vault-thumb"
-										class:selected={photoId === photo.id}
-										onclick={() => selectVaultPhoto(photo)}
+										class:selected={photoSelected}
+										class:dimmed={photoDimmed}
+										onclick={() => toggleVaultPhoto(photo)}
 										aria-label="Select vault photo"
+										aria-pressed={photoSelected}
 									>
 										<img src={photo.deliveryUrl} alt="" loading="lazy" />
-										{#if photoId === photo.id}
+										{#if photoSelected}
 											<span class="vault-check" aria-hidden="true">
 												<svg
 													width="16"
@@ -1233,10 +1324,8 @@
 													stroke="white"
 													stroke-width="3"
 													stroke-linecap="round"
-													stroke-linejoin="round"
+													stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg
 												>
-													<polyline points="20 6 9 17 4 12" />
-												</svg>
 											</span>
 										{/if}
 									</button>
@@ -1248,113 +1337,133 @@
 					{/if}
 				</div>
 
-				<!-- Panel footer: overlays the grid, slides up when a photo or album is selected -->
-				{#if data.isSupporter && (photoId || selectedAlbum)}
-					<div class="panel-footer" transition:fly={{ y: 80, duration: 220, easing: cubicOut }}>
-						<!-- Album: full 5-option expiry picker drawer -->
-						{#if selectedAlbum && expiryPickerOpen}
-							<div
-								class="expiry-picker"
-								transition:fly={{ y: 60, duration: 200, easing: cubicOut }}
-							>
-								{#each [{ key: '24hr', label: 'For 24 Hours' }, { key: '60min', label: 'For 60 Minutes' }, { key: '10min', label: 'For 10 Minutes' }, { key: 'view_once', label: 'View Once' }, { key: 'none', label: 'Indefinitely' }] as opt (opt.key)}
-									<button
-										type="button"
-										class="expiry-option"
-										onclick={() => {
-											expiryType = opt.key as typeof expiryType;
-											expiryPickerOpen = false;
-										}}
-									>
-										<svg
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="1.75"
-											stroke-linecap="round"
-											stroke-linejoin="round"
+				<!-- Panel footer: overlays the grid, slides up when a photo or selection is made -->
+				{#if data.isSupporter && (photoId || selectedVaultPhotos.length > 0 || selectedAlbum)}
+					<div
+						class="panel-footer"
+						class:panel-footer-album={!!selectedAlbum}
+						transition:fly={{ y: 80, duration: 220, easing: cubicOut }}
+					>
+						{#if selectedAlbum}
+							<!-- Album: collapsed expiry selector + sliding options list -->
+							{#if albumExpiryOpen}
+								<div
+									class="album-expiry-list"
+									transition:fly={{ y: 12, duration: 180, easing: cubicOut }}
+								>
+									{#each EXPIRY_OPTIONS as opt (opt.value)}
+										<button
+											type="button"
+											class="expiry-list-item"
+											class:active={expiryType === opt.value}
+											onclick={() => {
+												expiryType = opt.value;
+												albumExpiryOpen = false;
+											}}
 										>
-											<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-										</svg>
-										{opt.label}
-										{#if expiryType === opt.key}
-											<svg
-												class="expiry-tick"
-												width="16"
-												height="16"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2.5"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-											>
-												<polyline points="20 6 9 17 4 12" />
-											</svg>
-										{/if}
-									</button>
-								{/each}
-							</div>
-						{/if}
-						<!-- Timer button: toggle for photos, opens picker for albums -->
-						<button
-							type="button"
-							class="panel-expiring-btn"
-							class:active={expiryType !== 'none'}
-							onclick={() => {
-								if (selectedAlbum) {
-									expiryPickerOpen = !expiryPickerOpen;
-								} else {
-									expiryType = expiryType === 'none' ? 'view_once' : 'none';
-								}
-							}}
-							aria-pressed={expiryType !== 'none'}
-						>
-							<svg
-								width="18"
-								height="18"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
+											<span>{opt.label}</span>
+											{#if expiryType === opt.value}
+												<svg
+													width="16"
+													height="16"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2.5"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													aria-hidden="true"
+												>
+													<polyline points="20 6 9 17 4 12" />
+												</svg>
+											{/if}
+										</button>
+									{/each}
+								</div>
+								<hr class="expiry-list-divider" />
+							{/if}
+							<button
+								type="button"
+								class="album-expiry-selector"
+								onclick={() => (albumExpiryOpen = !albumExpiryOpen)}
 							>
-								<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-							</svg>
-							{#if selectedAlbum}
-								{EXPIRY_LABELS[expiryType]}
 								<svg
-									width="14"
-									height="14"
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+								</svg>
+								<span class="expiry-selector-label">{EXPIRY_LABELS[expiryType]}</span>
+								<svg
+									class="expiry-chevron"
+									class:open={albumExpiryOpen}
+									width="16"
+									height="16"
 									viewBox="0 0 24 24"
 									fill="none"
 									stroke="currentColor"
 									stroke-width="2.5"
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									style="opacity:0.6"
+									aria-hidden="true"
 								>
 									<polyline points="6 9 12 15 18 9" />
 								</svg>
-							{:else}
+							</button>
+							<hr class="expiry-list-divider" />
+							<button
+								type="button"
+								class="panel-send-btn"
+								onclick={sendFromPanel}
+								disabled={sending || photoUploading}
+							>
+								Share Album
+							</button>
+						{:else}
+							<!-- Timer toggle: camera photo or vault selection -->
+							<button
+								type="button"
+								class="panel-expiring-btn"
+								class:active={expiryType !== 'none'}
+								onclick={() => {
+									expiryType = expiryType === 'none' ? 'view_once' : 'none';
+								}}
+								aria-pressed={expiryType !== 'none'}
+							>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+								</svg>
 								{expiryType !== 'none' ? '10s' : 'Off'}
-							{/if}
-						</button>
-						<button
-							type="button"
-							class="panel-send-btn"
-							onclick={sendFromPanel}
-							disabled={sending || photoUploading}
-						>
-							{#if selectedAlbum}
-								{expiryType !== 'none' ? `Send · ${EXPIRY_LABELS[expiryType]}` : 'Send Album (1)'}
-							{:else}
-								{expiryType !== 'none' ? 'Send Expiring (1)' : 'Send (1)'}
-							{/if}
-						</button>
+							</button>
+							<button
+								type="button"
+								class="panel-send-btn"
+								onclick={sendFromPanel}
+								disabled={sending || photoUploading}
+							>
+								{#if selectedVaultPhotos.length > 0}
+									Send ({selectedVaultPhotos.length})
+								{:else}
+									Send (1)
+								{/if}
+							</button>
+						{/if}
 					</div>
 				{/if}
 			</div>
@@ -2193,6 +2302,88 @@
 		-webkit-backdrop-filter: blur(8px);
 	}
 
+	.panel-footer-album {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0;
+		padding-top: 0;
+	}
+
+	/* Sliding expiry options list */
+	.album-expiry-list {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.expiry-list-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.75rem 1rem;
+		background: none;
+		border: none;
+		font-size: 0.9rem;
+		font-family: inherit;
+		color: var(--pico-color);
+		cursor: pointer;
+		text-align: left;
+		width: 100%;
+		margin: 0;
+		transition: background 0.1s;
+	}
+
+	.expiry-list-item:hover {
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.expiry-list-item.active {
+		color: var(--pico-primary);
+		font-weight: 600;
+	}
+
+	.expiry-list-item.active svg {
+		stroke: var(--pico-primary);
+	}
+
+	.expiry-list-divider {
+		border: none;
+		border-top: 1px solid rgba(255, 255, 255, 0.1);
+		margin: 0;
+	}
+
+	/* Collapsed selector row */
+	.album-expiry-selector {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		background: none;
+		border: none;
+		font-size: 0.9rem;
+		font-family: inherit;
+		color: var(--pico-color);
+		cursor: pointer;
+		width: 100%;
+		margin: 0;
+	}
+
+	.expiry-selector-label {
+		text-align: center;
+	}
+
+	.expiry-chevron {
+		position: absolute;
+		right: 1rem;
+		color: var(--pico-muted-color);
+		transition: transform 0.2s;
+	}
+
+	.expiry-chevron.open {
+		transform: rotate(180deg);
+	}
+
 	.panel-expiring-btn {
 		display: flex;
 		align-items: center;
@@ -2273,6 +2464,11 @@
 		border-color: var(--pico-primary);
 	}
 
+	.vault-thumb.dimmed {
+		opacity: 0.3;
+		pointer-events: none;
+	}
+
 	.vault-thumb img {
 		width: 100%;
 		height: 100%;
@@ -2293,8 +2489,47 @@
 		justify-content: center;
 	}
 
-	.vault-grid.dimmed .vault-thumb:not(.selected) {
-		opacity: 0.35;
+	/* Vault photo preview row in compose area */
+	.vault-preview-row {
+		display: flex;
+		gap: 0.4rem;
+		overflow-x: auto;
+		padding-bottom: 0.5rem;
+		margin-bottom: 0.25rem;
+	}
+
+	.vault-preview-thumb {
+		position: relative;
+		flex-shrink: 0;
+		width: 72px;
+		height: 72px;
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.vault-preview-thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	.vault-preview-remove {
+		position: absolute;
+		top: 3px;
+		right: 3px;
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 50%;
+		width: 18px;
+		height: 18px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		padding: 0;
+		margin: 0;
+		color: var(--pico-muted-color);
 	}
 
 	.album-thumb {
@@ -2340,44 +2575,6 @@
 		font-size: 0.85rem;
 		padding: 1.5rem;
 		margin: 0;
-	}
-
-	/* Expiry picker sub-drawer */
-	.expiry-picker {
-		position: absolute;
-		bottom: 100%;
-		left: 0;
-		right: 0;
-		background: rgba(28, 28, 30, 0.97);
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
-		border-top: 1px solid rgba(255, 255, 255, 0.1);
-		padding: 0.5rem 0;
-	}
-
-	.expiry-option {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		width: 100%;
-		padding: 0.9rem 1.25rem;
-		background: none;
-		border: none;
-		color: var(--pico-color);
-		font-size: 0.95rem;
-		font-family: inherit;
-		cursor: pointer;
-		text-align: left;
-		transition: background 0.1s;
-	}
-
-	.expiry-option:hover {
-		background: rgba(255, 255, 255, 0.06);
-	}
-
-	.expiry-tick {
-		margin-left: auto;
-		color: var(--pico-primary);
 	}
 
 	/* Album message card */
