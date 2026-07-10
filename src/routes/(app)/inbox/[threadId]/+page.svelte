@@ -2006,12 +2006,14 @@
 		right: 0;
 		left: 0;
 		z-index: 49;
-		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-muted-border-color);
+		background: color-mix(in srgb, var(--pico-card-background-color) 92%, white);
+		border: 1px solid color-mix(in srgb, var(--pico-muted-border-color) 80%, white);
 		border-radius: 12px;
 		display: flex;
 		padding: 0.25rem 0;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+		box-shadow:
+			0 8px 32px rgba(0, 0, 0, 0.45),
+			0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
 	.flyout-tile {
