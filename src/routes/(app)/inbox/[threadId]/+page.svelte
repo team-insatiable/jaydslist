@@ -2002,7 +2002,7 @@
 
 	.more-flyout {
 		position: absolute;
-		top: calc(100% + 4px);
+		top: 100%;
 		right: 0;
 		left: 0;
 		z-index: 49;
