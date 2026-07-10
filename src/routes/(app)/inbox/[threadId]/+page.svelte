@@ -63,6 +63,36 @@
 	let sendError = $state('');
 	let exchangeWorking = $state(false);
 	let showReportMenu = $state(false);
+
+	// Decline flow (poster-only)
+	let declineOpen = $state(false);
+	let declineWorking = $state(false);
+	let pauseNudge = $state(false);
+	let pauseWorking = $state(false);
+	let pauseDone = $state(false);
+
+	const DECLINE_PHRASES = [
+		{
+			id: 'not_looking',
+			text: "Thanks for reaching out — not quite what I'm looking for right now.",
+			hint: 'Closes this thread · listing stays active'
+		},
+		{
+			id: 'found_someone',
+			text: "I've already connected with someone — best of luck!",
+			hint: 'Closes this thread · suggests pausing your listing'
+		},
+		{
+			id: 'taking_break',
+			text: "I appreciate the message but I'm taking a break.",
+			hint: 'Closes this thread · suggests pausing your listing'
+		},
+		{
+			id: 'not_right_time',
+			text: 'Not the right timing for me — thank you for reaching out.',
+			hint: 'Closes this thread · listing stays active'
+		}
+	];
 	let reportCategory = $state('');
 	let reportDetail = $state('');
 	let reportSubmitting = $state(false);
@@ -997,6 +1027,18 @@
 			{#if photoError}
 				<p class="send-error">{photoError}</p>
 			{/if}
+			{#if data.thread.role === 'poster'}
+				<div class="decline-strip">
+					<button
+						type="button"
+						class="decline-open-btn"
+						onclick={() => (declineOpen = true)}
+						disabled={declineWorking}
+					>
+						Not interested? Decline conversation
+					</button>
+				</div>
+			{/if}
 			<div class="compose-pill">
 				<textarea
 					name="body"
@@ -1472,6 +1514,92 @@
 		<div class="thread-closed">This conversation is closed.</div>
 	{/if}
 </div>
+
+<!-- Decline phrase sheet -->
+{#if declineOpen}
+	<button
+		type="button"
+		class="media-overlay"
+		onclick={() => (declineOpen = false)}
+		aria-label="Close"
+		tabindex="-1"
+	></button>
+	<div class="decline-sheet" transition:fly={{ y: 400, duration: 280, easing: cubicOut }}>
+		<div class="panel-handle"></div>
+		<p class="decline-sheet-title">Send a polite decline</p>
+		<p class="decline-sheet-hint">This will send a message and close the thread.</p>
+		{#each DECLINE_PHRASES as phrase (phrase.id)}
+			<form
+				method="POST"
+				action="?/decline"
+				use:enhance={() => {
+					declineWorking = true;
+					return async ({ result, update }) => {
+						declineWorking = false;
+						declineOpen = false;
+						if (result.type === 'success' && result.data) {
+							const d = result.data as { nudgePause?: boolean; listingId?: string };
+							if (d.nudgePause && d.listingId) {
+								pauseNudge = true;
+							}
+						}
+						await update();
+					};
+				}}
+			>
+				<input type="hidden" name="phraseId" value={phrase.id} />
+				<button type="submit" class="phrase-row" disabled={declineWorking}>
+					<span class="phrase-text">{phrase.text}</span>
+					<span class="phrase-hint">{phrase.hint}</span>
+				</button>
+			</form>
+		{/each}
+		<button
+			type="button"
+			class="decline-cancel"
+			onclick={() => (declineOpen = false)}
+			disabled={declineWorking}
+		>
+			Cancel
+		</button>
+	</div>
+{/if}
+
+<!-- Pause nudge banner -->
+{#if pauseNudge && !pauseDone}
+	<div class="pause-nudge" transition:fly={{ y: -40, duration: 220, easing: cubicOut }}>
+		<p class="pause-nudge-text">Want to pause your listing while you're busy?</p>
+		<div class="pause-nudge-actions">
+			<form
+				method="POST"
+				action="?/pauseListing"
+				use:enhance={() => {
+					pauseWorking = true;
+					return async ({ result, update }) => {
+						pauseWorking = false;
+						if (result.type === 'success') {
+							pauseDone = true;
+							pauseNudge = false;
+						}
+						await update();
+					};
+				}}
+			>
+				<button type="submit" class="pause-confirm-btn" disabled={pauseWorking}>
+					Pause listing
+				</button>
+			</form>
+			<button
+				type="button"
+				class="pause-dismiss-btn"
+				onclick={() => (pauseNudge = false)}
+				disabled={pauseWorking}
+			>
+				Keep active
+			</button>
+		</div>
+	</div>
+{/if}
 
 <!-- Expiring photo viewer -->
 {#if expiringViewing}
@@ -3128,5 +3256,172 @@
 	.exchange-offer-hint {
 		font-size: 0.75rem;
 		color: var(--pico-muted-color);
+	}
+
+	/* Decline strip above compose */
+	.decline-strip {
+		display: flex;
+		justify-content: center;
+		padding: 0.35rem 0 0.5rem;
+	}
+
+	.decline-open-btn {
+		background: none;
+		border: none;
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		padding: 0.25rem 0.5rem;
+		font-family: inherit;
+		margin: 0;
+		width: auto;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		transition: color 0.15s;
+	}
+
+	.decline-open-btn:hover:not(:disabled) {
+		color: var(--pico-del-color);
+	}
+
+	/* Decline phrase bottom sheet */
+	.decline-sheet {
+		position: fixed;
+		bottom: 0;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 100%;
+		max-width: 640px;
+		z-index: 200;
+		background: var(--pico-card-background-color);
+		border-top: 1px solid var(--pico-muted-border-color);
+		border-radius: 16px 16px 0 0;
+		padding: 0.75rem 0 calc(1rem + env(safe-area-inset-bottom, 0px));
+		display: flex;
+		flex-direction: column;
+	}
+
+	.decline-sheet-title {
+		font-size: 1rem;
+		font-weight: 600;
+		text-align: center;
+		margin: 0.25rem 0 0.25rem;
+		color: var(--pico-color);
+	}
+
+	.decline-sheet-hint {
+		font-size: 0.78rem;
+		color: var(--pico-muted-color);
+		text-align: center;
+		margin: 0 0 0.5rem;
+	}
+
+	.phrase-row {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.2rem;
+		width: 100%;
+		padding: 0.875rem 1.25rem;
+		background: none;
+		border: none;
+		border-top: 1px solid var(--pico-muted-border-color);
+		cursor: pointer;
+		text-align: left;
+		font-family: inherit;
+		margin: 0;
+		transition: background 0.1s;
+	}
+
+	.phrase-row:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.phrase-text {
+		font-size: 0.9rem;
+		color: var(--pico-color);
+		line-height: 1.4;
+	}
+
+	.phrase-hint {
+		font-size: 0.73rem;
+		color: var(--pico-muted-color);
+	}
+
+	.decline-cancel {
+		width: calc(100% - 2.5rem);
+		margin: 0.75rem 1.25rem 0;
+		padding: 0.7rem;
+		background: rgba(255, 255, 255, 0.06);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 10px;
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--pico-color);
+		cursor: pointer;
+		font-family: inherit;
+		transition: background 0.15s;
+	}
+
+	.decline-cancel:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	/* Pause nudge banner */
+	.pause-nudge {
+		position: fixed;
+		top: 72px;
+		left: 50%;
+		transform: translateX(-50%);
+		width: calc(100% - 2rem);
+		max-width: 600px;
+		z-index: 300;
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 12px;
+		padding: 1rem 1.25rem;
+		box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+	}
+
+	.pause-nudge-text {
+		font-size: 0.9rem;
+		font-weight: 500;
+		margin: 0 0 0.75rem;
+		color: var(--pico-color);
+	}
+
+	.pause-nudge-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.pause-nudge-actions form {
+		margin: 0;
+	}
+
+	.pause-confirm-btn {
+		background: var(--pico-primary);
+		color: white;
+		border: none;
+		border-radius: 6px;
+		padding: 0.45rem 1rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		margin: 0;
+	}
+
+	.pause-dismiss-btn {
+		background: transparent;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 6px;
+		padding: 0.45rem 1rem;
+		font-size: 0.85rem;
+		color: var(--pico-muted-color);
+		cursor: pointer;
+		font-family: inherit;
+		margin: 0;
+		width: auto;
 	}
 </style>
