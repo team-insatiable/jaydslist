@@ -15,6 +15,7 @@ import {
 	photoAlbums
 } from '$lib/server/db/schema';
 import { eq, and, asc, ne, isNull, desc, gte } from 'drizzle-orm';
+import { DECLINE_PHRASES } from '$lib/server/decline-phrases';
 import { decryptContact } from '$lib/server/crypto';
 import { sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
 import { sendPushNotification } from '$lib/server/push';
@@ -621,6 +622,92 @@ export const actions: Actions = {
 			.where(eq(keyExchanges.id, exchange.id));
 
 		return { success: true };
+	},
+
+	decline: async ({ params, request, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const userId = locals.user.id;
+		const db = getDb(env.DB);
+
+		const thread = await db
+			.select({
+				id: conversationThreads.id,
+				listingId: conversationThreads.listingId,
+				initiatorId: conversationThreads.initiatorId,
+				posterId: conversationThreads.posterId,
+				status: conversationThreads.status
+			})
+			.from(conversationThreads)
+			.where(eq(conversationThreads.id, params.threadId))
+			.get();
+
+		if (!thread) return fail(404, { error: 'Thread not found' });
+		if (thread.posterId !== userId) return fail(403, { error: 'Only the poster can decline' });
+		if (thread.status !== 'open') return fail(400, { error: 'Thread is already closed' });
+
+		const data = await request.formData();
+		const phraseId = data.get('phraseId') as string;
+		const phrase = DECLINE_PHRASES.find((p) => p.id === phraseId);
+		if (!phrase) return fail(400, { error: 'Invalid phrase' });
+
+		await db.insert(messages).values({
+			id: crypto.randomUUID(),
+			threadId: params.threadId,
+			senderId: userId,
+			body: phrase.text,
+			sentAt: new Date(),
+			scanStatus: 'passed'
+		});
+
+		await db
+			.update(conversationThreads)
+			.set({ status: 'closed', lastActivityAt: new Date() })
+			.where(eq(conversationThreads.id, params.threadId));
+
+		const listing = await db
+			.select({ status: listings.status })
+			.from(listings)
+			.where(eq(listings.id, thread.listingId))
+			.get();
+
+		return {
+			declined: true,
+			nudgePause: phrase.nudgePause && listing?.status === 'active',
+			listingId: thread.listingId
+		};
+	},
+
+	pauseListing: async ({ params, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const userId = locals.user.id;
+		const db = getDb(env.DB);
+
+		const thread = await db
+			.select({ listingId: conversationThreads.listingId, posterId: conversationThreads.posterId })
+			.from(conversationThreads)
+			.where(eq(conversationThreads.id, params.threadId))
+			.get();
+
+		if (!thread) return fail(404, { error: 'Thread not found' });
+		if (thread.posterId !== userId) return fail(403, { error: 'Forbidden' });
+
+		const listing = await db
+			.select({ id: listings.id, userId: listings.userId })
+			.from(listings)
+			.where(eq(listings.id, thread.listingId))
+			.get();
+
+		if (!listing || listing.userId !== userId) return fail(403, { error: 'Forbidden' });
+
+		await db.update(listings).set({ status: 'paused' }).where(eq(listings.id, listing.id));
+
+		return { paused: true };
 	},
 
 	report: async ({ params, request, locals, platform }) => {
