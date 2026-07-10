@@ -1,8 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { listings, userProfiles } from '$lib/server/db/schema';
-import { eq, desc, and, gt } from 'drizzle-orm';
+import { listings, userProfiles, userBlocks } from '$lib/server/db/schema';
+import { eq, desc, and, gt, or } from 'drizzle-orm';
 
 const VALID_RADII = [5, 10, 25, 50, 100];
 const VALID_NATURE = ['dating', 'fwb', 'one_time', 'platonic', 'open'];
@@ -51,9 +51,22 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 
 	const now = new Date();
 
+	// Build block set: exclude listings from users who blocked me or whom I blocked
+	const blockedUserIds = new Set<string>();
+	const userId = locals.user.id;
+	const blockRows = await db
+		.select({ blockerId: userBlocks.blockerId, blockedId: userBlocks.blockedId })
+		.from(userBlocks)
+		.where(or(eq(userBlocks.blockerId, userId), eq(userBlocks.blockedId, userId)))
+		.all();
+	for (const b of blockRows) {
+		blockedUserIds.add(b.blockerId === userId ? b.blockedId : b.blockerId);
+	}
+
 	const rows = await db
 		.select({
 			id: listings.id,
+			userId: listings.userId,
 			subject: listings.subject,
 			lookingForIdentity: listings.lookingForIdentity,
 			natureOfConnection: listings.natureOfConnection,
@@ -84,6 +97,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 
 	for (const row of rows) {
 		if (row.lat == null || row.lng == null) continue;
+		if (blockedUserIds.has(row.userId)) continue;
 
 		// Haversine distance in miles
 		const R = 3958.8;
