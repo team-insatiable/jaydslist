@@ -12,7 +12,10 @@
 	let renameValue = $state(data.albumName);
 	let submitting = $state<string | null>(null);
 	let uploading = $state(false);
+	let uploadProgress = $state<{ current: number; total: number } | null>(null);
 	let uploadError = $state('');
+
+	const MAX_BATCH = 10;
 
 	let cameraInputEl: HTMLInputElement | undefined = $state();
 	let libraryInputEl: HTMLInputElement | undefined = $state();
@@ -40,18 +43,25 @@
 	}
 
 	async function handleUpload(e: Event) {
-		const file = (e.target as HTMLInputElement).files?.[0];
-		if (!file) return;
+		const input = e.target as HTMLInputElement;
+		const files = Array.from(input.files ?? []).slice(0, MAX_BATCH);
+		if (!files.length) return;
 		uploadError = '';
 		uploading = true;
+		uploadProgress = files.length > 1 ? { current: 0, total: files.length } : null;
 		actionSheetOpen = false;
+		const albumId = data.isUncategorized ? undefined : data.albumId;
 		try {
-			await uploadPhotoToVault(file, data.isUncategorized ? undefined : data.albumId);
+			for (let i = 0; i < files.length; i++) {
+				if (uploadProgress) uploadProgress = { current: i + 1, total: files.length };
+				await uploadPhotoToVault(files[i], albumId);
+			}
 			await invalidateAll();
 		} catch (err) {
 			uploadError = err instanceof Error ? err.message : 'Upload failed. Try again.';
 		} finally {
 			uploading = false;
+			uploadProgress = null;
 			if (cameraInputEl) cameraInputEl.value = '';
 			if (libraryInputEl) libraryInputEl.value = '';
 		}
@@ -272,7 +282,11 @@
 				aria-label="Add photo"
 			>
 				{#if uploading}
-					<span class="spinner"></span>
+					{#if uploadProgress}
+						<span class="upload-count">{uploadProgress.current}/{uploadProgress.total}</span>
+					{:else}
+						<span class="spinner"></span>
+					{/if}
 				{:else}
 					<svg
 						width="28"
@@ -360,6 +374,7 @@
 	<input
 		type="file"
 		accept={SUPPORTED_IMAGE_TYPES.join(',')}
+		multiple
 		bind:this={libraryInputEl}
 		onchange={handleUpload}
 		style="display:none"
@@ -730,6 +745,12 @@
 	}
 
 	/* Spinner */
+	.upload-count {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: #aaa;
+	}
+
 	.spinner {
 		width: 18px;
 		height: 18px;

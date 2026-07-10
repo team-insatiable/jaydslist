@@ -4,6 +4,7 @@ import { getDb } from '$lib/server/db';
 import {
 	photoAlbums,
 	photoVault,
+	messages,
 	listingPhotos,
 	listings,
 	userProfiles
@@ -130,6 +131,7 @@ export const actions: Actions = {
 		// fail against the real (unconditional) FK constraint that's actually in
 		// the database.
 		await db.update(photoVault).set({ albumId: null }).where(eq(photoVault.albumId, id));
+		await db.update(messages).set({ albumId: null }).where(eq(messages.albumId, id));
 		await db.delete(photoAlbums).where(eq(photoAlbums.id, id));
 
 		return { success: true };
