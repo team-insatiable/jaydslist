@@ -8,6 +8,7 @@ import {
 	photoAlbums,
 	listingPhotos
 } from '$lib/server/db/schema';
+import { user as authUser } from '$lib/server/db/auth.schema';
 
 export async function createTestUser(
 	db: D1Database,
@@ -21,11 +22,17 @@ export async function createTestUser(
 	}> = {}
 ) {
 	const id = overrides.id ?? crypto.randomUUID();
+	const alias = overrides.alias ?? 'Test User';
+	// Insert auth user row first so FK constraints (e.g. user_blocks) are satisfied
+	await getDb(db)
+		.insert(authUser)
+		.values({ id, name: alias, email: `${id}@test.example`, emailVerified: false })
+		.onConflictDoNothing();
 	await getDb(db)
 		.insert(userProfiles)
 		.values({
 			id,
-			alias: overrides.alias ?? 'Test User',
+			alias,
 			identity: overrides.identity,
 			lat: overrides.lat,
 			lng: overrides.lng,
