@@ -10,6 +10,7 @@ declare global {
 		VAPID_CONTACT: string;
 		VAPID_PRIVATE_KEY: string;
 		EMAIL_FROM?: string;
+		INSTANCE_THEME?: string;
 	}
 
 	namespace App {
