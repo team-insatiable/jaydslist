@@ -521,8 +521,8 @@
 		</header>
 
 		{#if menuOpen}
-			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-			<div class="menu-backdrop" onclick={() => (menuOpen = false)}></div>
+			<button class="menu-backdrop" onclick={() => (menuOpen = false)} aria-label="Close menu"
+			></button>
 			<div class="more-flyout" transition:fly={{ y: -6, duration: 160 }}>
 				<button
 					class="flyout-tile"
@@ -646,8 +646,8 @@
 
 	<!-- Block confirm overlay -->
 	{#if blockConfirm}
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-		<div class="overlay-backdrop" onclick={() => (blockConfirm = false)}></div>
+		<button class="overlay-backdrop" onclick={() => (blockConfirm = false)} aria-label="Cancel"
+		></button>
 		<div class="block-overlay" transition:fly={{ y: 8, duration: 160 }}>
 			<p class="block-overlay-title">Block {data.otherAlias}?</p>
 			<p class="block-overlay-hint">They won't see your listings or be able to message you.</p>
@@ -690,8 +690,8 @@
 
 	<!-- Spam confirm overlay -->
 	{#if spamConfirm}
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-		<div class="overlay-backdrop" onclick={() => (spamConfirm = false)}></div>
+		<button class="overlay-backdrop" onclick={() => (spamConfirm = false)} aria-label="Cancel"
+		></button>
 		<div class="block-overlay" transition:fly={{ y: 8, duration: 160 }}>
 			<p class="block-overlay-title">Report as spam?</p>
 			<div class="block-overlay-actions">
@@ -718,8 +718,8 @@
 
 	<!-- Report bottom sheet -->
 	{#if showReportSheet}
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-		<div class="sheet-backdrop" onclick={() => (showReportSheet = false)}></div>
+		<button class="sheet-backdrop" onclick={() => (showReportSheet = false)} aria-label="Close"
+		></button>
 		<div class="bottom-sheet" transition:fly={{ y: 320, duration: 240, easing: cubicOut }}>
 			{#if reportDone}
 				<p class="sheet-done">Report submitted. Our moderation team will review it.</p>
@@ -777,8 +777,8 @@
 
 	<!-- Received Photos bottom sheet -->
 	{#if showReceivedPhotos}
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-		<div class="sheet-backdrop" onclick={() => (showReceivedPhotos = false)}></div>
+		<button class="sheet-backdrop" onclick={() => (showReceivedPhotos = false)} aria-label="Close"
+		></button>
 		<div class="bottom-sheet" transition:fly={{ y: 320, duration: 240, easing: cubicOut }}>
 			<p class="sheet-title">Photos from {data.otherAlias}</p>
 			{#if receivedPhotos.length === 0}
@@ -2030,6 +2030,13 @@
 		position: fixed;
 		inset: 0;
 		z-index: 48;
+		background: transparent;
+		border: none;
+		padding: 0;
+		cursor: default;
+		width: auto;
+		margin: 0;
+		border-radius: 0;
 	}
 
 	.more-flyout {
@@ -2091,6 +2098,12 @@
 		inset: 0;
 		background: rgba(0, 0, 0, 0.45);
 		z-index: 60;
+		border: none;
+		padding: 0;
+		cursor: default;
+		width: auto;
+		margin: 0;
+		border-radius: 0;
 	}
 
 	.block-overlay {
@@ -2158,6 +2171,12 @@
 		inset: 0;
 		background: rgba(0, 0, 0, 0.45);
 		z-index: 60;
+		border: none;
+		padding: 0;
+		cursor: default;
+		width: auto;
+		margin: 0;
+		border-radius: 0;
 	}
 
 	.bottom-sheet {
