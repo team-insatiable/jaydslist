@@ -15,6 +15,7 @@ import { queryDbblScore, isBlockedByDbbl, isDbblEnabled } from '$lib/server/dbbl
 import { hashPhoneForDbbl, hashEmailForDbbl } from '$lib/server/phone';
 import { decryptContact } from '$lib/server/crypto';
 import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
+import { getInstanceConfig } from '$lib/server/instance';
 import { sendPushNotification } from '$lib/server/push';
 
 const CONTACT_INFO_PATTERN = /(\+?[\d\s\-().]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/i;
@@ -191,7 +192,7 @@ export const actions: Actions = {
 
 		if (recentThreads.length >= dailyLimit) {
 			if (recentThreads.length >= dailyLimit * 3 && emailIsConfigured(env) && env.ADMIN_EMAILS) {
-				const origin = env.ORIGIN ?? 'https://jaydslist.com';
+				const origin = env.ORIGIN ?? getInstanceConfig(env).url;
 				await db
 					.update(userProfiles)
 					.set({ status: 'suspended' })
@@ -268,7 +269,7 @@ export const actions: Actions = {
 
 		// Notify poster — first message in a new thread, no cooldown needed
 		if (emailIsConfigured(env) || env.VAPID_PRIVATE_KEY) {
-			const origin = env.ORIGIN ?? 'https://jaydslist.com';
+			const origin = env.ORIGIN ?? getInstanceConfig(env).url;
 			const threadUrl = `${origin}/inbox/${threadId}`;
 			Promise.all([
 				db

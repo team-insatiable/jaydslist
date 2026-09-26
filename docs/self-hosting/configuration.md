@@ -17,6 +17,16 @@ Copy `.dev.vars.example` to `.dev.vars` for local work. For production, store se
 
 Set `INSTANCE_NAME`, `INSTANCE_TAGLINE`, `INSTANCE_URL`, `INSTANCE_LEGAL_EMAIL`, and `INSTANCE_SOURCE_URL` in your instance configuration. `INSTANCE_URL` is the public HTTPS URL used in policy links; it does not replace `ORIGIN`, which configures authentication. Keep the source URL pointing at the GitHub repository whose `main` branch contains the operator guide.
 
+For example, in your private `wrangler.jsonc` under `vars`:
+
+```jsonc
+"INSTANCE_NAME": "Your Community",
+"INSTANCE_TAGLINE": "Local connections, your way",
+"INSTANCE_URL": "https://your-instance.example"
+```
+
+Redeploy after changing these values. The name is used throughout the app, account pages, public-page footers, and transactional email text. The tagline appears in the app header and landing page metadata. Set `EMAIL_FROM` separately to your chosen sender name and verified email address; `INSTANCE_NAME` does not override an explicitly configured sender. The bundled logo artwork still belongs to the upstream visual identity; changing the name does not replace that artwork. Policy files should use `{{INSTANCE_NAME}}` rather than hardcoding a name.
+
 Overlay your own `content/about.md`, `content/rules.md`, `content/privacy.md`, and `content/terms.md` onto `src/lib/instance-content/` before building. These are public files, not secrets. The placeholders in the upstream checkout are not ready-to-use policies. See [instance policy content](deploy-cloudflare.md#instance-policy-content).
 
 ## Pre-launch beta waitlist

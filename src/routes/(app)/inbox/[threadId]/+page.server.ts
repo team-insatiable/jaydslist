@@ -19,6 +19,7 @@ import { eq, and, asc, ne, isNull, desc, gte, or } from 'drizzle-orm';
 import { DECLINE_PHRASES } from '$lib/server/decline-phrases';
 import { decryptContact } from '$lib/server/crypto';
 import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
+import { getInstanceConfig } from '$lib/server/instance';
 import { sendPushNotification } from '$lib/server/push';
 import { isKeyExchangeEligible } from '$lib/server/key-exchange';
 
@@ -343,7 +344,7 @@ export const actions: Actions = {
 				const adminEmails = env.ADMIN_EMAILS.split(',')
 					.map((e: string) => e.trim())
 					.filter(Boolean);
-				const origin = env.ORIGIN ?? 'https://jaydslist.com';
+				const origin = env.ORIGIN ?? getInstanceConfig(env).url;
 				sendAbuseAlertEmail(
 					env,
 					adminEmails,
@@ -438,7 +439,7 @@ export const actions: Actions = {
 			!thread.lastNotifiedAt || Date.now() - thread.lastNotifiedAt.getTime() > COOLDOWN_MS;
 		if (shouldNotify && (emailIsConfigured(env) || env.VAPID_PRIVATE_KEY)) {
 			const recipientId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
-			const origin = env.ORIGIN ?? 'https://jaydslist.com';
+			const origin = env.ORIGIN ?? getInstanceConfig(env).url;
 			const threadUrl = `${origin}/inbox/${params.threadId}`;
 
 			Promise.all([

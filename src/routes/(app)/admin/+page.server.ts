@@ -6,6 +6,7 @@ import { user } from '$lib/server/db/auth.schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { sendEmail, listingFlaggedEmail, userWarnedEmail } from '$lib/server/email';
 import { isDbblEnabled, reportBanToDbbl } from '$lib/server/dbbl';
+import { getInstanceConfig } from '$lib/server/instance';
 
 export const load: PageServerLoad = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -366,8 +367,8 @@ export const actions: Actions = {
 		if (warnedUser?.email) {
 			sendEmail(env, {
 				to: warnedUser.email,
-				subject: 'Warning issued on your Jaydslist account',
-				html: userWarnedEmail(notes)
+				subject: `Warning issued on your ${getInstanceConfig(env).name} account`,
+				html: userWarnedEmail(env, notes)
 			}).catch((e) => console.error('Failed to send warning email:', e));
 		}
 

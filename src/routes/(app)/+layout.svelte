@@ -98,7 +98,7 @@
 <!-- Desktop header -->
 <header class="site-header">
 	<nav>
-		<a href={resolve('/browse')} class="logo" aria-label="Jaydslist">
+		<a href={resolve('/browse')} class="logo" aria-label={data.instanceName}>
 			<svg
 				class="logo-img"
 				viewBox="0 0 1024 1024"
@@ -123,7 +123,7 @@
 					d="M596.492 273.733L725.422 273.643C751.035 273.666 777.843 273.069 803.325 273.684L803.407 293.069C786.399 294.603 769.188 299.313 757 311.734C736.452 332.674 739.489 365.063 739.499 391.582L739.495 467.519L739.522 732.505C767.174 732.76 798.616 726.984 822.308 712.482C851.286 694.744 873.761 666.105 885.435 634.302C891.377 618.112 895.837 597.984 899.897 581.064C906.082 581.08 912.268 581.057 918.453 580.997C918.396 616.858 916.984 652.281 915.955 688.125L913.646 758.038L586.609 758.209C595.222 751.831 605.104 746.495 613.513 739.861C752.694 630.052 747.797 379.432 593.929 284.501C587.701 280.658 581.093 277.412 574.589 274.135C581.891 274.065 589.192 273.931 596.492 273.733Z"
 				/>
 			</svg>
-			<span class="brand-wordmark">Jaydslist<span>personals, reimagined</span></span>
+			<span class="brand-wordmark">{data.instanceName}<span>{data.instanceTagline}</span></span>
 		</a>
 		<ul class="desktop-nav">
 			<li>
@@ -439,7 +439,8 @@
 
 <footer class="site-footer">
 	<small
-		>© {new Date().getFullYear()} Jaydslist &mdash; <a href={resolve('/about')}>About</a> &mdash;
+		>© {new Date().getFullYear()}
+		{data.instanceName} &mdash; <a href={resolve('/about')}>About</a> &mdash;
 		<a href={resolve('/rules')}>Rules</a> &mdash;
 		<a href={resolve('/terms')}>Terms</a> &mdash;
 		<a href={resolve('/privacy')}>Privacy</a></small

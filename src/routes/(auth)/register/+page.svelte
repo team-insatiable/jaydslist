@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { authClient } from '$lib/client/auth';
 	import { resolve } from '$app/paths';
+	let { data } = $props();
 
 	let email = $state('');
 	let password = $state('');
@@ -40,7 +41,7 @@
 <div class="auth-wrap">
 	<div class="auth-card">
 		<div class="auth-brand">
-			<span class="wordmark">Jaydslist</span>
+			<span class="wordmark">{data.instanceName}</span>
 		</div>
 
 		<div class="auth-header">

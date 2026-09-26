@@ -6,7 +6,7 @@
 {#if page.url.pathname !== '/'}
 	<header class="site-header">
 		<nav>
-			<a href={resolve('/')} class="logo" aria-label="Jaydslist">
+			<a href={resolve('/')} class="logo" aria-label={page.data.instanceName}>
 				<svg
 					class="logo-img"
 					viewBox="0 0 1024 1024"
@@ -33,7 +33,9 @@
 				</svg>
 			</a>
 			<div class="cta-group">
-				{#if (page.data as { user?: unknown }).user}
+				{#if page.data.prelaunchMode}
+					<a href={resolve('/#join-beta')} class="cta-primary">Join the beta</a>
+				{:else if (page.data as { user?: unknown }).user}
 					<a href={resolve('/browse')} class="cta-primary">Go to app</a>
 				{:else}
 					<a href={resolve('/login')} class="nav-action">Sign in</a>

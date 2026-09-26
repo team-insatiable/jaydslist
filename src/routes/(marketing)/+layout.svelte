@@ -6,9 +6,7 @@
 
 	let { children } = $props();
 
-	const instanceName = $derived(
-		(page.data as { instanceName?: string }).instanceName ?? 'Jaydslist'
-	);
+	const instanceName = $derived(page.data.instanceName);
 </script>
 
 <MarketingHeader />

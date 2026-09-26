@@ -1,3 +1,6 @@
+import { getInstanceConfig } from './instance';
+import { escapeEmailHtml } from './email-html';
+
 export interface SendEmailOptions {
 	to: string;
 	subject: string;
@@ -8,8 +11,6 @@ export interface SendEmailOptions {
 type EmailProvider = {
 	send(options: Required<SendEmailOptions>): Promise<void>;
 };
-
-const DEFAULT_FROM = 'Jaydslist <onboarding@resend.dev>';
 
 function toHex(value: ArrayBuffer) {
 	return Array.from(new Uint8Array(value), (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -134,7 +135,11 @@ export async function sendEmail(env: Env, options: SendEmailOptions): Promise<vo
 	if (!provider) return;
 
 	try {
-		await provider.send({ ...options, from: options.from ?? env.EMAIL_FROM ?? DEFAULT_FROM });
+		const name = getInstanceConfig(env).name.replace(/[\r\n<>"\\]/g, '');
+		await provider.send({
+			...options,
+			from: options.from ?? env.EMAIL_FROM ?? `${name} <onboarding@resend.dev>`
+		});
 	} catch (error) {
 		console.error('Email delivery failed:', error);
 	}
@@ -149,11 +154,13 @@ export function listingFlaggedEmail(subject: string, reason: string | null): str
 	`;
 }
 
-export function userWarnedEmail(reason: string | null): string {
+export function userWarnedEmail(env: Env, reason: string | null): string {
+	const instance = getInstanceConfig(env);
+	const rulesUrl = `${instance.url.replace(/\/$/, '')}/rules`;
 	return `
-		<p>Your account has received a warning from a Jaydslist moderator.</p>
-		${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-		<p>Please review the <a href="https://jaydslist.com/guidelines">community guidelines</a>. Further violations may result in account suspension.</p>
+		<p>Your account has received a warning from a ${escapeEmailHtml(instance.name)} moderator.</p>
+		${reason ? `<p><strong>Reason:</strong> ${escapeEmailHtml(reason)}</p>` : ''}
+		<p>Please review the <a href="${escapeEmailHtml(rulesUrl)}">community guidelines</a>. Further violations may result in account suspension.</p>
 		<p><em>If you believe this was in error, you can reply to this email.</em></p>
 	`;
 }
@@ -195,5 +202,9 @@ export async function sendAbuseAlertEmail(
 		<p><a href="${origin}/admin">Open admin panel</a></p>
 	`;
 	for (const email of adminEmails)
-		await sendEmail(env, { to: email, subject: `[Jaydslist] Auto-suspension: ${alias}`, html });
+		await sendEmail(env, {
+			to: email,
+			subject: `[${getInstanceConfig(env).name}] Auto-suspension: ${alias}`,
+			html
+		});
 }

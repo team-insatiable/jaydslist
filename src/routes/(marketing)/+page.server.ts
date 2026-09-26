@@ -4,6 +4,7 @@ import { betaWaitlist } from '$lib/server/db/schema';
 import { getDb } from '$lib/server/db';
 import { emailIsConfigured, sendEmail } from '$lib/server/email';
 import { getInstanceConfig } from '$lib/server/instance';
+import { escapeEmailHtml } from '$lib/server/email-html';
 import type { Actions, PageServerLoad } from './$types';
 
 const hash = async (value: string) =>
@@ -55,7 +56,7 @@ export const actions: Actions = {
 		await sendEmail(env, {
 			to: email,
 			subject: `Confirm your ${instance.name} beta signup`,
-			html: `<p>Confirm that you want beta updates from ${instance.name}.</p><p><a href="${confirmUrl}">Confirm beta signup</a></p><p>This link expires in 24 hours. If you did not request this, you can ignore this email.</p>`
+			html: `<p>Confirm that you want beta updates from ${escapeEmailHtml(instance.name)}.</p><p><a href="${escapeEmailHtml(confirmUrl.toString())}">Confirm beta signup</a></p><p>This link expires in 24 hours. If you did not request this, you can ignore this email.</p>`
 		});
 		return { submitted: true };
 	}

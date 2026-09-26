@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { emailIsConfigured, sendEmail } from './email';
+import { emailIsConfigured, sendEmail, sendAbuseAlertEmail, userWarnedEmail } from './email';
 
 const resendEnv = {
 	EMAIL_PROVIDER: 'resend',
@@ -10,6 +10,43 @@ const resendEnv = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('email providers', () => {
+	it('uses the instance name for the fallback sender', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+		await sendEmail({ RESEND_API_KEY: 'test', INSTANCE_NAME: 'Local Connections' } as Env, {
+			to: 'person@example.com',
+			subject: 'Hello',
+			html: '<p>Hello</p>'
+		});
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body).from).toBe(
+			'Local Connections <onboarding@resend.dev>'
+		);
+	});
+
+	it('uses the instance name in administrative alert subjects', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+		await sendAbuseAlertEmail(
+			{ ...resendEnv, INSTANCE_NAME: 'Local Connections' },
+			['admin@example.com'],
+			{ alias: 'Test', userId: 'test', reason: 'Test', count: 1 },
+			'https://community.example'
+		);
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body).subject).toBe(
+			'[Local Connections] Auto-suspension: Test'
+		);
+	});
+
+	it('uses the instance rules URL and escapes names in moderation email HTML', () => {
+		const html = userWarnedEmail(
+			{ INSTANCE_NAME: 'Local <Connections>', INSTANCE_URL: 'https://community.example/' } as Env,
+			'<script>test</script>'
+		);
+		expect(html).toContain('Local &lt;Connections&gt; moderator');
+		expect(html).toContain('href="https://community.example/rules"');
+		expect(html).toContain('&lt;script&gt;test&lt;/script&gt;');
+		expect(html).not.toContain('jaydslist.com');
+	});
 	it('keeps Resend available through the provider interface', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
 		vi.stubGlobal('fetch', fetchMock);
