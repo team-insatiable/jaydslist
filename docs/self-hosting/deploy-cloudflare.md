@@ -4,7 +4,7 @@ This application is designed for Cloudflare Workers. A self-hosted instance must
 
 ## Before you begin
 
-Have the items in the [production hoster checklist](README.md#production-hoster-checklist) ready: your Cloudflare account and domain, Twilio Verify, an email provider, and an operator email address. DBBL is optional.
+Have the items in the [production hoster checklist](README.md#production-hoster-checklist) ready: your Cloudflare account and domain, Twilio Verify and Lookup, an email provider, and an operator email address.
 
 ## 1. Fork and configure the project
 
@@ -30,7 +30,7 @@ content/terms.md
 
 During deployment, copy them over `src/lib/instance-content/` in the upstream checkout before
 building. The supplied upstream files are neutral placeholders, not legal policies. Your content
-may use `{{INSTANCE_NAME}}`, `{{INSTANCE_URL}}`, and `{{LEGAL_EMAIL}}`; the build replaces those
+may use `{{INSTANCE_NAME}}`, `{{INSTANCE_URL}}`, and `{{LEGAL_EMAIL}}`; the application replaces those
 with your configured instance values. Review Terms and Privacy content for your jurisdiction and
 actual data practices.
 
@@ -48,7 +48,7 @@ Update the matching placeholders in `wrangler.jsonc` with your database ID, KV n
 
 ## 3. Set application secrets
 
-Set every required secret from [Configuration](configuration.md). At a minimum, production needs `BETTER_AUTH_SECRET`, `CONTACT_ENCRYPTION_KEY`, Twilio credentials, `PHONE_PEPPER`, `ADMIN_EMAILS`, and your email-provider credentials. DBBL settings are optional and disabled by default.
+Set every required secret from [Configuration](configuration.md). At a minimum, production needs `BETTER_AUTH_SECRET`, `CONTACT_ENCRYPTION_KEY`, Twilio credentials, `PHONE_PEPPER`, `ADMIN_EMAILS`, and your email-provider credentials. Leave optional integrations disabled unless you deliberately configure and test them.
 
 Use interactive commands so values do not enter shell history:
 
@@ -72,7 +72,15 @@ Do not run `pnpm seed` against a production database.
 
 ## 5. Deploy and attach your domain
 
-Deploy the Worker using your normal release command. Then attach your controlled domain or subdomain in the Cloudflare Workers dashboard, set `ORIGIN` to its public HTTPS URL, and redeploy after changing that setting.
+After overlaying your instance configuration and policy files, build and deploy:
+
+```bash
+pnpm gen
+pnpm build
+pnpm exec wrangler deploy
+```
+
+Attach your domain or subdomain in the Cloudflare Workers dashboard. Set `ORIGIN` and `INSTANCE_URL` to its public HTTPS URL. `ORIGIN` controls authentication URLs; `INSTANCE_URL` supplies public policy links. Configure `INSTANCE_NAME`, `INSTANCE_TAGLINE`, `INSTANCE_LEGAL_EMAIL`, and `INSTANCE_SOURCE_URL` as well. Redeploy after changing configuration.
 
 ## 6. Validate before inviting users
 

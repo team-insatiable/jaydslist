@@ -1,6 +1,6 @@
 # Jaydslist
 
-A privacy-focused personals platform built for real connections. No algorithms, no ads, no dark patterns — just people.
+A privacy-focused, classifieds-style personals platform. No ads and no swipe-based feed — just people and their words.
 
 ## What it is
 
@@ -8,13 +8,13 @@ Jaydslist is a modern classifieds-style personals platform focused on casual enc
 
 ## Core values
 
-**Privacy first.** Your location is never exposed — listings show only a fuzzy region label. Contact information stays inside the platform until both parties explicitly consent to share it through contact exchange. Phone numbers are stored as one-way hashes.
+**Privacy first.** Listings show approximate distances and general areas, not precise coordinates. Contact information is shared through a mutual-consent exchange. The database stores both a peppered phone hash for duplicate-number checks and an encrypted phone number for contact exchange; it is not hash-only storage.
 
-**Real people only.** Every account requires phone verification. VoIP and virtual numbers are rejected at registration. Operators may opt into the DBBL Protocol, an open cross-platform reputation network, if it fits their community and privacy obligations.
+**Phone-verified access.** Registration uses email and password; phone verification is required to enter the application. Twilio Lookup rejects numbers classified as VoIP. Phone verification establishes access to a number—not someone's identity, age, or trustworthiness.
 
-**Quality over volume.** Messages are held to a minimum quality standard before delivery. Copy-paste openers, low-effort one-liners, and disrespectful content are blocked before the recipient ever sees them. Posters only see messages that passed.
+**Boundaries over volume.** First messages have a minimum length, a daily new-conversation limit, and checks for contact details that should use the exchange flow. Reporting and blocking tools support moderation. There is no general-purpose automated filter that reliably detects copied openers, disrespectful content, or spam.
 
-**Ad-free by design.** There are no ads, no promoted listings, no algorithmic feed manipulation. The platform is supported entirely by voluntary donations and an optional supporter tier. Free users have access to every core feature — paying is a way to support the project, not a requirement to use it.
+**Ad-free by design.** Browsing, posting, messaging, and contact exchange are available to free accounts. The current implementation gates photo albums/listing photos and privacy mode on supporter status, and supporter status changes some listing limits. This design is under review. Stripe billing, subscriptions, and donation collection are not implemented.
 
 **Built for users, not profit.** Every design decision prioritizes the person using the platform. There are no dark patterns, no engagement traps, no manufactured urgency. The goal is for people to connect and leave — not to maximize time on site.
 
@@ -52,7 +52,7 @@ data, but it deletes and recreates the local D1 database first.
    pnpm exec wrangler d1 migrations apply YOUR_DATABASE_NAME --remote
    ```
 
-4. Deploy the Worker and attach a domain you control. Set `ORIGIN` to that HTTPS URL.
+4. Supply your instance's About, Rules, Privacy, and Terms Markdown, then build and deploy the Worker and attach a domain you control. Set `ORIGIN` and `INSTANCE_URL` to that HTTPS URL.
 5. Before inviting users, test phone verification, photos, listings, messaging, password reset
    email, and administrator access.
 
@@ -66,7 +66,6 @@ For complete operator guidance, read the repository-hosted [self-hosting documen
 - [Better Auth](https://www.better-auth.com) — authentication
 - [Twilio](https://www.twilio.com) — phone verification
 - Custom CSS design system — styling and theming
-- [DBBL Protocol](https://github.com/the-dbbl-protocol/dbbl-api) — optional cross-platform reputation network
 
 ## Email delivery
 
