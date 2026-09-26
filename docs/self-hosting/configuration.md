@@ -4,14 +4,14 @@ Copy `.dev.vars.example` to `.dev.vars` for local work. For production, store se
 
 ## Core settings
 
-| Variable             | Purpose                                                           | Where                   |
-| -------------------- | ----------------------------------------------------------------- | ----------------------- |
-| `ENVIRONMENT`        | `development` locally; deployment environment label in production | local / Worker variable |
-| `ORIGIN`             | Public URL, such as `https://your-instance.example`               | local / secret          |
-| `BETTER_AUTH_SECRET` | High-entropy secret for auth state                                | secret                  |
-| `ADMIN_EMAILS`       | Comma-separated operator email addresses                          | secret                  |
-| `INSTANCE_THEME`     | Optional visual theme                                             | Worker variable         |
-| `INSTANCE_PRELAUNCH_MODE` | Set to `true` for a public beta waitlist landing page      | Worker variable         |
+| Variable                  | Purpose                                                           | Where                   |
+| ------------------------- | ----------------------------------------------------------------- | ----------------------- |
+| `ENVIRONMENT`             | `development` locally; deployment environment label in production | local / Worker variable |
+| `ORIGIN`                  | Public URL, such as `https://your-instance.example`               | local / secret          |
+| `BETTER_AUTH_SECRET`      | High-entropy secret for auth state                                | secret                  |
+| `ADMIN_EMAILS`            | Comma-separated operator email addresses                          | secret                  |
+| `INSTANCE_THEME`          | Optional visual theme                                             | Worker variable         |
+| `INSTANCE_PRELAUNCH_MODE` | Set to `true` for a public beta waitlist landing page             | Worker variable         |
 
 ## Pre-launch beta waitlist
 
