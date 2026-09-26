@@ -142,6 +142,11 @@
 {:else}
 	<a {href} class="card-link">
 		<article class="listing-card">
+			<div class="notice-label">
+				<span
+					>Personal / {listing.nature.map((n) => NATURE_LABELS[n] ?? n).join(' · ') || 'Open'}</span
+				><span aria-hidden="true">↗</span>
+			</div>
 			<div class="card-top">
 				{#if listing.trustTier !== 'new'}
 					<span
@@ -205,6 +210,19 @@
 {/if}
 
 <style>
+	.notice-label {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.75rem;
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--pico-primary);
+		padding-bottom: 1rem;
+		margin-bottom: 1rem;
+		border-bottom: 1px solid var(--pico-muted-border-color);
+	}
 	.card-link {
 		display: block;
 		text-decoration: none;
@@ -213,7 +231,11 @@
 
 	.listing-card {
 		margin-bottom: 0;
-		padding: 1.4rem;
+		padding: 1.75rem;
+		border-radius: 4px;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
 		transition:
 			border-color 0.15s,
 			box-shadow 0.15s;
@@ -259,8 +281,9 @@
 	}
 
 	.subject {
-		font-size: 1.1rem;
-		font-weight: 700;
+		font-size: 1.7rem;
+		font-family: Georgia, serif;
+		font-weight: 500;
 		letter-spacing: -0.025em;
 		color: var(--pico-color);
 		margin-bottom: 0.3rem;
@@ -281,6 +304,8 @@
 	}
 
 	.card-footer {
+		margin-top: auto;
+		padding-top: 1.25rem;
 		display: flex;
 		justify-content: space-between;
 		font-size: 0.75rem;

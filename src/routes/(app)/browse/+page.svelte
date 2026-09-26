@@ -5,6 +5,7 @@
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import ListingCard from '$lib/components/listings/ListingCard.svelte';
+	import AppPageIntro from '$lib/components/AppPageIntro.svelte';
 
 	let { data } = $props();
 
@@ -77,114 +78,185 @@
 		</div>
 	</div>
 {:else}
-	<div class="browse-header">
-		<div>
-			<p class="browse-eyebrow">The local board</p>
-			<h2>People nearby. Possibilities ahead.</h2>
-			<p class="subtitle">
-				{data.listings.length} listing{data.listings.length === 1 ? '' : 's'} within {data.radius} miles
-			</p>
-		</div>
-		<div class="browse-controls">
-			<select
-				name="nature"
-				aria-label="Nature of connection"
-				value={data.natureFilter ?? 'all'}
-				onchange={(e) => setFilter('nature', (e.currentTarget as HTMLSelectElement).value)}
-			>
-				<option value="all">All connections</option>
-				<option value="dating">Dating</option>
-				<option value="fwb">FWB</option>
-				<option value="one_time">NSA</option>
-				<option value="platonic">Platonic</option>
-				<option value="open">Open to anything</option>
-			</select>
-			<select
-				name="radius"
-				aria-label="Radius"
-				value={data.radius}
-				onchange={(e) => setFilter('radius', (e.currentTarget as HTMLSelectElement).value)}
-			>
-				<option value={5}>5 miles</option>
-				<option value={10}>10 miles</option>
-				<option value={25}>25 miles</option>
-				<option value={50}>50 miles</option>
-				<option value={100}>100 miles</option>
-			</select>
-			<div class="view-toggle">
-				<button
-					class="toggle-btn"
-					class:active={viewMode === 'card'}
-					onclick={() => setView('card')}
-					title="Card view"
-					aria-label="Card view"
+	<AppPageIntro
+		eyebrow="The local board / Personals"
+		title="Someone worth a few words."
+		description="Find your kind of connection. No swipe treadmill—just people nearby, saying what they're looking for."
+	/>
+	<div class="board-layout">
+		<aside class="filter-rail" aria-label="Listing filters">
+			<h2>Find your people</h2>
+			<p class="rail-intro">A little closer to what you have in mind.</p>
+			<div class="browse-controls">
+				<select
+					name="nature"
+					aria-label="Nature of connection"
+					value={data.natureFilter ?? 'all'}
+					onchange={(e) => setFilter('nature', (e.currentTarget as HTMLSelectElement).value)}
 				>
-					<svg
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-						<rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
-					</svg>
-				</button>
-				<button
-					class="toggle-btn"
-					class:active={viewMode === 'list'}
-					onclick={() => setView('list')}
-					title="List view"
-					aria-label="List view"
+					<option value="all">All connections</option>
+					<option value="dating">Dating</option>
+					<option value="fwb">FWB</option>
+					<option value="one_time">NSA</option>
+					<option value="platonic">Platonic</option>
+					<option value="open">Open to anything</option>
+				</select>
+				<select
+					name="radius"
+					aria-label="Radius"
+					value={data.radius}
+					onchange={(e) => setFilter('radius', (e.currentTarget as HTMLSelectElement).value)}
 				>
-					<svg
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
+					<option value={5}>5 miles</option>
+					<option value={10}>10 miles</option>
+					<option value={25}>25 miles</option>
+					<option value={50}>50 miles</option>
+					<option value={100}>100 miles</option>
+				</select>
+				<div class="view-toggle">
+					<button
+						class="toggle-btn"
+						class:active={viewMode === 'card'}
+						onclick={() => setView('card')}
+						title="Card view"
+						aria-label="Card view"
+						aria-pressed={viewMode === 'card'}
 					>
-						<line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line
-							x1="3"
-							y1="18"
-							x2="21"
-							y2="18"
-						/>
-					</svg>
-				</button>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+							<rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+						</svg>
+					</button>
+					<button
+						class="toggle-btn"
+						class:active={viewMode === 'list'}
+						onclick={() => setView('list')}
+						title="List view"
+						aria-label="List view"
+						aria-pressed={viewMode === 'list'}
+					>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line
+								x1="3"
+								y1="18"
+								x2="21"
+								y2="18"
+							/>
+						</svg>
+					</button>
+				</div>
 			</div>
-		</div>
-	</div>
+			<a class="post-invitation" href={resolve('/post')}
+				>Put your words on the board <span aria-hidden="true">↗</span></a
+			>
+			<p class="privacy-caption">Nearby, not pinpointed. Your exact location stays private.</p>
+		</aside>
+		<section class="board-results" aria-label="Nearby listings">
+			<div class="board-summary">
+				<span>{data.listings.length} listing{data.listings.length === 1 ? '' : 's'}</span><span
+					>Within {data.radius} miles</span
+				>
+			</div>
 
-	{#if data.listings.length === 0}
-		<div class="empty">
-			<p>No listings found in your area. Check back soon or try a wider radius.</p>
-		</div>
-	{:else}
-		<div class="listing-feed" class:list-mode={viewMode === 'list'}>
-			{#each feedItems as item (item.type === 'listing' ? item.listing.id : item.label)}
-				{#if item.type === 'separator'}
-					<div class="date-separator" class:list-sep={viewMode === 'list'}>
-						<span>{item.label}</span>
-					</div>
-				{:else}
-					<ListingCard listing={item.listing} compact={viewMode === 'list'} />
-				{/if}
-			{/each}
-		</div>
-	{/if}
+			{#if data.listings.length === 0}
+				<div class="empty">
+					<h2>A fresh page.</h2>
+					<p>
+						No listings here just yet. Try a wider radius—or be the first to start a connection.
+					</p>
+					<a href={resolve('/post')}>Write a listing →</a>
+				</div>
+			{:else}
+				<div class="listing-feed" class:list-mode={viewMode === 'list'}>
+					{#each feedItems as item (item.type === 'listing' ? item.listing.id : item.label)}
+						{#if item.type === 'separator'}
+							<div class="date-separator" class:list-sep={viewMode === 'list'}>
+								<span>{item.label}</span>
+							</div>
+						{:else}
+							<ListingCard listing={item.listing} compact={viewMode === 'list'} />
+						{/if}
+					{/each}
+				</div>
+			{/if}
+		</section>
+	</div>
 {/if}
 
 <style>
-	.browse-eyebrow {
-		text-transform: uppercase;
-		letter-spacing: 0.12em;
-		font-size: 0.65rem;
+	.board-layout {
+		display: grid;
+		grid-template-columns: 220px minmax(0, 1fr);
+		gap: 2.5rem;
+		align-items: start;
+	}
+	.filter-rail {
+		position: sticky;
+		top: 6rem;
+		padding-top: 0.4rem;
+	}
+	.filter-rail h2 {
+		font-family: Georgia, serif;
+		font-size: 1.45rem;
+		font-weight: 500;
+	}
+	.rail-intro,
+	.privacy-caption {
+		font-size: 0.8rem;
+		line-height: 1.7;
+		color: var(--pico-muted-color);
+		margin: 0.7rem 0 1.5rem;
+	}
+	.post-invitation {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-top: 2rem;
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--pico-muted-border-color);
+		font-size: 0.85rem;
 		font-weight: 700;
-		color: var(--pico-primary);
-		margin-bottom: 0.6rem;
+	}
+	.board-summary {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		padding: 0.5rem 0 1rem;
+		border-bottom: 1px solid var(--pico-muted-border-color);
+	}
+	.board-summary span:last-child {
+		color: var(--pico-muted-color);
+	}
+	@media (max-width: 800px) {
+		.board-layout {
+			grid-template-columns: 1fr;
+			gap: 1.5rem;
+		}
+		.filter-rail {
+			position: static;
+		}
+		.rail-intro,
+		.privacy-caption,
+		.post-invitation {
+			display: none;
+		}
 	}
 	/* Gate */
 	.gate-wrap {
@@ -226,28 +298,9 @@
 		margin-bottom: 0.4rem;
 	}
 
-	/* Browse header */
-	.browse-header {
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-		flex-wrap: wrap;
-	}
-
-	.browse-header h2 {
-		margin-bottom: 0.1rem;
-	}
-
-	.subtitle {
-		font-size: 0.875rem;
-		color: var(--pico-muted-color);
-		margin: 0;
-	}
-
 	.browse-controls {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 0.75rem;
 		align-items: stretch;
 		width: 100%;
@@ -258,7 +311,7 @@
 	}
 
 	.browse-controls select {
-		width: auto;
+		width: 100%;
 		font-size: 0.875rem;
 		padding: 0.4rem 2rem 0.4rem 0.75rem;
 	}
@@ -274,8 +327,8 @@
 	/* Date separators */
 	.date-separator {
 		grid-column: 1 / -1;
-		text-align: center;
-		padding: 0.6rem 0;
+		text-align: left;
+		padding: 1.5rem 0 0.3rem;
 		color: var(--pico-muted-color);
 		font-size: 0.72rem;
 		font-weight: 600;
@@ -284,17 +337,8 @@
 
 	.date-separator.list-sep {
 		padding: 0.5rem 1rem;
-		background: #1e293b;
-		border-bottom: 1px solid #334155;
-		color: #94a3b8;
-	}
-
-	@media (prefers-color-scheme: light) {
-		.date-separator.list-sep {
-			background: #e2e8f0;
-			border-bottom-color: #cbd5e1;
-			color: #64748b;
-		}
+		background: var(--pico-card-background-color);
+		border-bottom: 1px solid var(--pico-muted-border-color);
 	}
 
 	/* View toggle */
@@ -347,9 +391,18 @@
 		background: color-mix(in srgb, var(--pico-muted-border-color) 30%, transparent);
 	}
 
-	@media (min-width: 768px) {
+	@media (min-width: 1050px) {
 		.listing-feed:not(.list-mode) {
 			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+	@media (max-width: 800px) {
+		.browse-controls {
+			margin-top: 1rem;
+		}
+		.browse-controls select {
+			flex: 1;
+			min-width: 110px;
 		}
 	}
 </style>

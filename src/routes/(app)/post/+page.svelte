@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppPageIntro from '$lib/components/AppPageIntro.svelte';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -148,6 +149,11 @@
 </script>
 
 <div class="post-page">
+	<AppPageIntro
+		eyebrow="Put yourself out there"
+		title="Start with your words."
+		description="Say what you're looking for. The right connection starts with a little context."
+	/>
 	{#if data.hasActiveListing}
 		<div class="blocked-notice">
 			<p>You already have an active listing. Remove or let it expire before posting another.</p>
@@ -159,6 +165,15 @@
 				<div class="progress-step" class:done={i + 1 < step} class:active={i + 1 === step}></div>
 			{/each}
 		</div>
+		<p class="step-caption">
+			Step {step} of {STEPS} / {[
+				'Your audience',
+				'Your connection',
+				'Your words',
+				'Your boundaries',
+				'Ready for the board'
+			][step - 1]}
+		</p>
 
 		<!-- Step 1: Who you're looking for -->
 		{#if step === 1}
@@ -496,6 +511,20 @@
 </div>
 
 <style>
+	.step-caption {
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--pico-primary);
+		margin-bottom: 1.25rem;
+	}
+	.step {
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 4px;
+		padding: clamp(1.25rem, 4vw, 2.5rem);
+	}
 	.blocked-notice {
 		padding: 1.25rem 1.5rem;
 		background: color-mix(in srgb, var(--pico-primary) 8%, transparent);
@@ -514,7 +543,7 @@
 	}
 
 	.post-page {
-		max-width: 600px;
+		max-width: 800px;
 		margin-inline: auto;
 	}
 
@@ -541,8 +570,9 @@
 	}
 
 	.step h2 {
-		font-size: 1.25rem;
-		font-weight: 700;
+		font-size: 1.75rem;
+		font-family: Georgia, serif;
+		font-weight: 500;
 		margin-bottom: 0.35rem;
 	}
 

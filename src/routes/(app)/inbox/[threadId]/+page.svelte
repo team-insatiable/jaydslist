@@ -1972,7 +1972,7 @@
 
 <style>
 	.thread-page {
-		max-width: 640px;
+		max-width: 900px;
 		margin-inline: auto;
 		display: flex;
 		flex-direction: column;
@@ -1986,7 +1986,9 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 0.75rem 0 0.75rem;
+		padding: 1.25rem;
+		background: var(--pico-card-background-color);
+		border-top: 3px solid var(--pico-primary);
 		border-bottom: 1px solid var(--pico-muted-border-color);
 	}
 
@@ -2333,7 +2335,7 @@
 	.messages {
 		flex: 1;
 		overflow-y: auto;
-		padding: 1rem 0.75rem 1rem 0;
+		padding: 1.5rem 1rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;

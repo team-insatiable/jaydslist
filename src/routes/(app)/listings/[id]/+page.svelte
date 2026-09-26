@@ -583,7 +583,7 @@
 
 <style>
 	.detail-wrap {
-		max-width: 680px;
+		max-width: 900px;
 		margin: 0 auto;
 		padding: 1rem;
 	}
@@ -639,8 +639,9 @@
 	.detail-card {
 		background: var(--pico-card-background-color);
 		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 12px;
-		padding: 1.5rem;
+		border-radius: 4px;
+		border-top: 3px solid var(--pico-primary);
+		padding: clamp(1.25rem, 4vw, 3rem);
 	}
 
 	.detail-head {
@@ -675,8 +676,9 @@
 	}
 
 	.subject {
-		font-size: clamp(1.5rem, 3vw, 2.25rem);
-		font-weight: 700;
+		font-size: clamp(2rem, 4vw, 3.25rem);
+		font-family: Georgia, serif;
+		font-weight: 500;
 		line-height: 1.2;
 		text-wrap: balance;
 		margin-bottom: 1rem;
@@ -810,8 +812,8 @@
 	}
 
 	.listing-body {
-		font-size: 0.9375rem;
-		line-height: 1.65;
+		font-size: 1.05rem;
+		line-height: 1.85;
 		margin-bottom: 1.5rem;
 		color: var(--pico-color);
 	}

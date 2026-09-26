@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppPageIntro from '$lib/components/AppPageIntro.svelte';
 	import { resolve } from '$app/paths';
 	import { enhance } from '$app/forms';
 
@@ -52,8 +53,12 @@
 </script>
 
 <div class="page-wrap">
+	<AppPageIntro
+		eyebrow="Your words, out in the world"
+		title="My Listings"
+		description="Keep your posts fresh, see what's active, and make room for what comes next."
+	/>
 	<div class="page-head">
-		<h1>My Listings</h1>
 		<div class="head-actions">
 			{#if removedCount > 0}
 				<button
@@ -177,7 +182,7 @@
 
 <style>
 	.page-wrap {
-		max-width: 600px;
+		max-width: 900px;
 		margin: 0 auto;
 	}
 
@@ -186,12 +191,6 @@
 		align-items: center;
 		justify-content: space-between;
 		margin-bottom: 1.5rem;
-	}
-
-	.page-head h1 {
-		font-size: 1.3rem;
-		font-weight: 700;
-		margin: 0;
 	}
 
 	.head-actions {
