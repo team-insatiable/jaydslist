@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import BrandMark from '$lib/components/BrandMark.svelte';
 	let {
 		name,
 		submitted = false,
@@ -9,9 +10,10 @@
 
 <main class="beta-page">
 	<nav class="masthead" aria-label="Landing page">
-		<a class="wordmark" href={resolve('/')}
-			>{name}<span class="edition">personals, reimagined</span></a
-		>
+		<a class="wordmark" href={resolve('/')}>
+			<BrandMark size={44} />
+			<span>{name}<span class="edition">personals, reimagined</span></span>
+		</a>
 		<span class="beta-badge"><span aria-hidden="true"></span> Beta on the horizon</span>
 	</nav>
 
@@ -140,6 +142,9 @@
 		gap: 1rem;
 	}
 	.wordmark {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
 		color: var(--pico-color);
 		font-weight: 800;
 		font-size: 1.6rem;
