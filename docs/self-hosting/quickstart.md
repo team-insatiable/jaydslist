@@ -8,7 +8,7 @@ This runs Jaydslist locally with Cloudflare's local D1 emulator. It is for devel
 pnpm install
 ```
 
-If pnpm is already installed, you do not need Corepack. On Linux, install Bubblewrap if Codex reports it missing; it is a development-environment sandbox prerequisite, not an application dependency.
+The repository's CI uses Node.js 22 and pnpm 11. If pnpm is already installed, you do not need Corepack.
 
 ## 2. Create local configuration
 
@@ -16,7 +16,7 @@ If pnpm is already installed, you do not need Corepack. On Linux, install Bubble
 cp .dev.vars.example .dev.vars
 ```
 
-Set a high-entropy `BETTER_AUTH_SECRET`. For local phone verification, set a non-production `DEV_BYPASS_OTP`. Never deploy that bypass.
+Set `ENVIRONMENT=development`, `ORIGIN=http://localhost:5173`, and a high-entropy `BETTER_AUTH_SECRET`. Set `CONTACT_ENCRYPTION_KEY` to a base64-encoded 32-byte key and `PHONE_PEPPER` to a separate random secret. For local phone verification, set a non-production `DEV_BYPASS_OTP`; the bypass only works with `ENVIRONMENT=development`. Never deploy it.
 
 See [Configuration](configuration.md) for every integration and secret.
 

@@ -13,9 +13,15 @@ Copy `.dev.vars.example` to `.dev.vars` for local work. For production, store se
 | `INSTANCE_THEME`          | Optional visual theme                                             | Worker variable         |
 | `INSTANCE_PRELAUNCH_MODE` | Set to `true` for a public beta waitlist landing page             | Worker variable         |
 
+## Public identity and policies
+
+Set `INSTANCE_NAME`, `INSTANCE_TAGLINE`, `INSTANCE_URL`, `INSTANCE_LEGAL_EMAIL`, and `INSTANCE_SOURCE_URL` in your instance configuration. `INSTANCE_URL` is the public HTTPS URL used in policy links; it does not replace `ORIGIN`, which configures authentication. Keep the source URL pointing at the GitHub repository whose `main` branch contains the operator guide.
+
+Overlay your own `content/about.md`, `content/rules.md`, `content/privacy.md`, and `content/terms.md` onto `src/lib/instance-content/` before building. These are public files, not secrets. The placeholders in the upstream checkout are not ready-to-use policies. See [instance policy content](deploy-cloudflare.md#instance-policy-content).
+
 ## Pre-launch beta waitlist
 
-Set `INSTANCE_PRELAUNCH_MODE=true` to present a public landing page instead of the application. Visitors receive an expiring verification link and are added to the waitlist only after they confirm it. Signed-in administrators retain application access.
+Set `INSTANCE_PRELAUNCH_MODE=true` to present a public landing page instead of the application. Signup stores a pending record; visitors join the confirmed waitlist only after following the expiring email link. Signed-in administrators retain application access. About, Rules, Privacy, Terms, and Self-host remain public. This feature does not send a beta launch announcement or provide campaign management.
 
 This feature adds a D1 migration. Apply that migration before enabling the setting, and ensure your transactional email provider is configured.
 
@@ -40,7 +46,7 @@ For example:
 INSTANCE_THEME=jade
 ```
 
-An unknown or omitted value safely falls back to `default`. Visitor color mode is separate: people can choose system default, light, or dark mode with the control on the landing page; the selected instance theme remains the accent in every mode.
+An unknown or omitted value safely falls back to `default`. Visitor color mode is separate: the landing page has a two-state light/dark toggle. It follows the system initially; the first click selects the opposite mode, and the next clears that override. The override is stored in browser local storage; the instance theme remains the accent in either mode.
 
 ## Production integrations
 
@@ -49,16 +55,15 @@ An unknown or omitted value safely falls back to `default`. Visitor color mode i
 | Phone verification | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`, `PHONE_PEPPER`          |
 | Contact protection | `CONTACT_ENCRYPTION_KEY`                                                                        |
 | Cloudflare Images  | `CF_IMAGES_API_TOKEN` with Images Write permission, plus account values in Worker configuration |
-| Reputation checks  | Optional: `DBBL_ENABLED=true`, `DBBL_API_URL`, and `DBBL_API_KEY`                               |
 | Web push           | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CONTACT`                                        |
 
 Email is covered in [Email delivery](email.md).
 
-## Optional: DBBL reputation network
+## Advanced, opt-in integration: DBBL
 
 DBBL is disabled by default. When disabled, the application does not send phone or email hashes to DBBL, does not query reputation scores, does not enforce stored DBBL ratings, and does not report bans.
 
-To opt in, set both values:
+DBBL is not needed for a standard deployment and is not an identity or age verification service. The code still supports this opt-in integration. To enable it, configure all three values:
 
 ```dotenv
 DBBL_ENABLED=true
@@ -66,7 +71,17 @@ DBBL_API_URL=https://api.dbblprotocol.org
 DBBL_API_KEY=...
 ```
 
-Operators who enable it are responsible for deciding whether this cross-instance data sharing fits their community and privacy obligations.
+Enabled lookups send unpeppered phone and email hashes to the configured API during phone verification and before opening a new conversation. These are linkable identifiers, not anonymous data. Restricted/blacklisted results can block access. Lookup failures generally fail open, although an already-stored restricted rating can still block a new conversation. Administrative bans may send reports.
+
+Operators who enable it must decide whether these practices fit their community and publish accurate disclosures before enabling it.
+
+## Current limitations to disclose
+
+- Phone verification is not proof of identity or age. Registration starts with email and password; application access requires a verified number.
+- Phone storage includes a peppered hash and an encrypted phone number, plus a short-lived pending verification number in KV.
+- First-message checks enforce minimum length, new-conversation limits, and restrictions on contact details. There is no general automated spam/content-review engine.
+- Photo albums, listing photos, and privacy mode currently require supporter status. Supporter status also changes listing limits. This design is under review; billing and subscription checkout are not implemented.
+- There is no self-service account deletion, automatic retention purge, or waitlist campaign-management interface. Establish operator procedures instead of promising these as built-in features.
 
 ## Local-only setting
 

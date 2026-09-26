@@ -1,6 +1,6 @@
 # Email delivery
 
-Jaydslist uses one email interface for password resets, inbox notifications, moderation notices, and abuse alerts. Choose a provider with `EMAIL_PROVIDER`.
+Jaydslist uses one email interface for password resets, inbox notifications, moderation notices, abuse alerts, and beta waitlist confirmation. Choose a provider with `EMAIL_PROVIDER`.
 
 ## Amazon SES
 

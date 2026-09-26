@@ -22,8 +22,7 @@ You need all of these before a public launch:
 | Node.js and pnpm                  | Build, migrate, and deploy the application.                                                                              |
 | Cloudflare account                | Hosts the Worker and provides a D1 database, KV namespace, and Cloudflare Images account.                                |
 | Domain under your control         | Serves the public app and authenticates email. Point it at your Worker after deployment.                                 |
-| Twilio account and Verify service | Phone verification is required for real accounts.                                                                        |
-| DBBL API key                      | Optional. Only needed if the operator explicitly enables cross-instance reputation lookups and reporting.                |
+| Twilio account, Verify and Lookup | Phone verification and Lookup line-type intelligence support application access and VoIP checks.                         |
 | Amazon SES or Resend account      | Sends password resets, inbox notices, and moderation email.                                                              |
 | Operator email address            | Receives abuse alerts and is configured in `ADMIN_EMAILS`.                                                               |
 | Moderation and legal process      | You are responsible for your instance's rules, privacy notice, abuse handling, data retention, and local-law compliance. |
