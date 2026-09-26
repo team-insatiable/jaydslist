@@ -547,7 +547,7 @@ export const DEFAULT_CONFIG = {
 	THREAD_VELOCITY_TRUSTED_PER_DAY: '25',
 	INSTANCE_NAME: 'Jaydslist',
 	INSTANCE_TAGLINE: 'Real connections, real people',
-	INSTANCE_URL: 'https://jaydslist.com',
+	INSTANCE_URL: 'https://example.com',
 	VAULT_MAX_PHOTOS_PAID: '10',
 	LISTING_MAX_PHOTOS: '3',
 	PHASH_HAMMING_THRESHOLD: '10'

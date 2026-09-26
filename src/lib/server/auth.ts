@@ -5,6 +5,8 @@ import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db';
 import { userProfiles } from '$lib/server/db/schema';
 import { sendEmail } from '$lib/server/email';
+import { getInstanceConfig } from '$lib/server/instance';
+import { escapeEmailHtml } from '$lib/server/email-html';
 
 // env is passed in from event.platform.env (not read via $env/dynamic/private)
 // because that module only proxies Node's process.env — on Cloudflare Workers
@@ -19,8 +21,8 @@ export const createAuth = (env: Env) =>
 			sendResetPassword: async ({ user, url }) => {
 				await sendEmail(env, {
 					to: user.email,
-					subject: 'Reset your password',
-					html: `<p>Click the link below to reset your Jaydslist password. This link expires in 1 hour.</p><p><a href="${url}">Reset password</a></p><p>If you didn't request this, you can ignore this email.</p>`
+					subject: `Reset your ${getInstanceConfig(env).name} password`,
+					html: `<p>Click the link below to reset your ${escapeEmailHtml(getInstanceConfig(env).name)} password. This link expires in 1 hour.</p><p><a href="${escapeEmailHtml(url)}">Reset password</a></p><p>If you didn't request this, you can ignore this email.</p>`
 				});
 			}
 		},
