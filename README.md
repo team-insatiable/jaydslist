@@ -78,4 +78,4 @@ For SES, verify the sending address or domain in the chosen SES region and give 
 
 ## License
 
-The project's stated license is AGPL-3.0. This checkout does not currently include a `LICENSE` file; confirm the authoritative license terms before redistribution.
+[AGPL-3.0](LICENSE)
