@@ -2,8 +2,16 @@
 # In CI, this file is copied as-is to .dev.vars so `wrangler types` generates
 # the same Env interface (key names only matter for type generation, not values).
 ENVIRONMENT=development
+INSTANCE_THEME=default
+INSTANCE_NAME=Jaydslist
+INSTANCE_TAGLINE="Real connections, real people"
+INSTANCE_URL=http://localhost:5173
+INSTANCE_LEGAL_EMAIL=operator@example.com
+INSTANCE_SOURCE_URL=https://github.com/team-insatiable/jaydslist
 BETTER_AUTH_SECRET=
 ORIGIN=http://localhost:5173
+# Optional cross-instance reputation lookups and ban reporting. Disabled by default.
+DBBL_ENABLED=false
 DBBL_API_KEY=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
@@ -11,7 +19,15 @@ TWILIO_VERIFY_SERVICE_SID=
 PHONE_PEPPER=
 CONTACT_ENCRYPTION_KEY=
 DEV_BYPASS_OTP=
+# Transactional email. Choose `resend` or `ses`.
+EMAIL_PROVIDER=resend
+EMAIL_FROM="Jaydslist <noreply@example.com>"
 RESEND_API_KEY=
+# Amazon SES (only required when EMAIL_PROVIDER=ses)
+SES_ACCESS_KEY_ID=
+SES_SECRET_ACCESS_KEY=
+SES_REGION=us-east-1
+# SES_SESSION_TOKEN= # only for temporary AWS credentials
 ADMIN_EMAILS=
 CF_IMAGES_API_TOKEN=
 VAPID_PRIVATE_KEY=

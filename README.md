@@ -8,9 +8,9 @@ Jaydslist is a modern classifieds-style personals platform focused on casual enc
 
 ## Core values
 
-**Privacy first.** Your location is never exposed — listings show only a fuzzy region label. Contact information stays inside the platform until both parties explicitly consent to share it via the key exchange system. Phone numbers are stored as one-way hashes.
+**Privacy first.** Your location is never exposed — listings show only a fuzzy region label. Contact information stays inside the platform until both parties explicitly consent to share it through contact exchange. Phone numbers are stored as one-way hashes.
 
-**Real people only.** Every account requires phone verification. VoIP and virtual numbers are rejected at registration. Accounts are cross-referenced against the DBBL Protocol, an open reputation network for identifying bad actors across platforms.
+**Real people only.** Every account requires phone verification. VoIP and virtual numbers are rejected at registration. Operators may opt into the DBBL Protocol, an open cross-platform reputation network, if it fits their community and privacy obligations.
 
 **Quality over volume.** Messages are held to a minimum quality standard before delivery. Copy-paste openers, low-effort one-liners, and disrespectful content are blocked before the recipient ever sees them. Posters only see messages that passed.
 
@@ -27,8 +27,17 @@ Jaydslist is a modern classifieds-style personals platform focused on casual enc
 - [Cloudflare D1](https://developers.cloudflare.com/d1/) + [Drizzle ORM](https://orm.drizzle.team) — database
 - [Better Auth](https://www.better-auth.com) — authentication
 - [Twilio](https://www.twilio.com) — phone verification
-- [Pico CSS](https://picocss.com) — styling
-- [DBBL Protocol](https://github.com/the-dbbl-protocol/dbbl-api) — cross-platform reputation network
+- Custom CSS design system — styling and theming
+- [DBBL Protocol](https://github.com/the-dbbl-protocol/dbbl-api) — optional cross-platform reputation network
+
+## Email delivery
+
+Transactional email is selected by `EMAIL_PROVIDER` in `.dev.vars` locally and Worker secrets in production. Both providers use the same application interface.
+
+- `resend`: set `RESEND_API_KEY` and `EMAIL_FROM`.
+- `ses`: set `SES_ACCESS_KEY_ID`, `SES_SECRET_ACCESS_KEY`, `SES_REGION`, and `EMAIL_FROM`. `SES_SESSION_TOKEN` is optional for temporary AWS credentials.
+
+For SES, verify the sending address or domain in the chosen SES region and give the IAM identity only the `ses:SendEmail` permission. New SES accounts remain in the SES sandbox until AWS grants production access; sandbox accounts can send only to verified recipients. Never put the AWS secret key in `wrangler.jsonc`; use `wrangler secret put` for each secret.
 
 ## License
 

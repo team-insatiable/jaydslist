@@ -18,7 +18,7 @@ import {
 import { eq, and, asc, ne, isNull, desc, gte, or } from 'drizzle-orm';
 import { DECLINE_PHRASES } from '$lib/server/decline-phrases';
 import { decryptContact } from '$lib/server/crypto';
-import { sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
+import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
 import { sendPushNotification } from '$lib/server/push';
 import { isKeyExchangeEligible } from '$lib/server/key-exchange';
 
@@ -339,12 +339,13 @@ export const actions: Actions = {
 				.where(eq(userProfiles.id, userId))
 				.get();
 			await db.update(userProfiles).set({ status: 'suspended' }).where(eq(userProfiles.id, userId));
-			if (env.RESEND_API_KEY && env.ADMIN_EMAILS) {
+			if (emailIsConfigured(env) && env.ADMIN_EMAILS) {
 				const adminEmails = env.ADMIN_EMAILS.split(',')
 					.map((e: string) => e.trim())
 					.filter(Boolean);
 				const origin = env.ORIGIN ?? 'https://jaydslist.com';
 				sendAbuseAlertEmail(
+					env,
 					adminEmails,
 					{
 						alias: senderProfile?.alias ?? userId,
@@ -353,8 +354,7 @@ export const actions: Actions = {
 						count: recentFlood.length,
 						threadUrl: `${origin}/inbox/${params.threadId}`
 					},
-					origin,
-					env.RESEND_API_KEY
+					origin
 				).catch((err: unknown) => console.error('Abuse alert email failed:', err));
 			}
 			return fail(429, { error: 'Your account has been suspended due to unusual activity.' });
@@ -436,7 +436,7 @@ export const actions: Actions = {
 		const COOLDOWN_MS = 15 * 60 * 1000;
 		const shouldNotify =
 			!thread.lastNotifiedAt || Date.now() - thread.lastNotifiedAt.getTime() > COOLDOWN_MS;
-		if (shouldNotify && (env.RESEND_API_KEY || env.VAPID_PRIVATE_KEY)) {
+		if (shouldNotify && (emailIsConfigured(env) || env.VAPID_PRIVATE_KEY)) {
 			const recipientId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
 			const origin = env.ORIGIN ?? 'https://jaydslist.com';
 			const threadUrl = `${origin}/inbox/${params.threadId}`;
@@ -459,14 +459,14 @@ export const actions: Actions = {
 					const fromAlias = senderProfile?.alias ?? 'Someone';
 					const preview = body;
 
-					if (recipientUser?.email && env.RESEND_API_KEY) {
+					if (recipientUser?.email && emailIsConfigured(env)) {
 						await sendNewMessageEmail(
+							env,
 							recipientUser.email,
 							fromAlias,
 							thread.listingSubject,
 							preview,
-							threadUrl,
-							env.RESEND_API_KEY
+							threadUrl
 						);
 					}
 

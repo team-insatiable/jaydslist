@@ -939,7 +939,7 @@
 		{/if}
 	</div>
 
-	<!-- Key Exchange -->
+	<!-- Contact exchange -->
 	{#if data.thread.status === 'open'}
 		{#if data.exchange?.status === 'accepted'}
 			<div class="exchange-card accepted">
@@ -2037,6 +2037,11 @@
 		width: auto;
 		margin: 0;
 		border-radius: 0;
+	}
+
+	.menu-backdrop:hover:not(:disabled) {
+		background: transparent;
+		border-color: transparent;
 	}
 
 	.more-flyout {
@@ -3492,7 +3497,7 @@
 		flex-shrink: 0;
 	}
 
-	/* Key exchange */
+	/* Contact exchange */
 	.exchange-card,
 	.exchange-offer {
 		flex-shrink: 0;

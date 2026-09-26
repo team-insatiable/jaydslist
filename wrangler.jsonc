@@ -1,6 +1,8 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "jaydslist",
+	// Copy this file for an instance deployment and replace every placeholder
+	// binding with resources from that operator's Cloudflare account.
+	"name": "jaydslist-instance",
 	"compatibility_date": "2026-05-07",
 	"compatibility_flags": ["nodejs_als"],
 	"main": ".svelte-kit/cloudflare/_worker.js",
@@ -13,27 +15,21 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "jaydslist-d1",
-			"database_id": "7d069c9b-aa0d-4012-baa3-e53797b62f3b",
+			"database_name": "jaydslist-instance-d1",
+			"database_id": "00000000-0000-0000-0000-000000000000",
 			"migrations_dir": "drizzle"
 		}
 	],
 	"kv_namespaces": [
 		{
 			"binding": "PHONE_VERIFICATION_KV",
-			"id": "6ef4963300594e1c950e8a9c681c7698"
+			"id": "00000000000000000000000000000000"
 		}
 	],
 	"vars": {
 		"ENVIRONMENT": "production",
-		"DBBL_API_URL": "https://api.dbblprotocol.org",
-		"CF_IMAGES_ACCOUNT_ID": "2144e074fdf03e2888d83e6815af8b96",
-		"CF_IMAGES_ACCOUNT_HASH": "8VjAau7ob8PpQADLz9tf3Q",
-		"VAPID_PUBLIC_KEY": "BLktrgMdWP8hfYMXeIHNyaXoSS-GrDZQrbGDdHtEpM0re4zkfzyxhkLYwSJ5ny0KPmJFAlOpAkTp9K6dOZtwDl8",
-		"VAPID_CONTACT": "mailto:admin@jaydslist.com",
-		"INSTANCE_THEME": "rose"
-		// CF_IMAGES_API_TOKEN goes in .dev.vars (secret)
-		// VAPID_PRIVATE_KEY goes in .dev.vars (secret)
-		// ADMIN_EMAILS goes in .dev.vars (comma-separated list of admin email addresses)
+		"INSTANCE_THEME": "default"
+		// Set instance identity, DBBL endpoint, Cloudflare Images account values,
+		// and VAPID public values in the operator's deployment configuration.
 	}
 }

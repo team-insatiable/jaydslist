@@ -4,7 +4,7 @@
 	let { data } = $props();
 
 	const EFFECTIVE_DATE = 'July 4, 2026';
-	const CONTACT_EMAIL = 'legal@jaydslist.com';
+	const CONTACT_EMAIL = data.legalEmail;
 	const GOVERNING_STATE = 'California';
 </script>
 
@@ -55,13 +55,15 @@
 	<h2>3. What This Service Is — and Isn't</h2>
 	<p>
 		{data.instanceName} is a personals platform for adults to connect with other adults. We verify phone
-		numbers and check submitted phone numbers against a cross-platform reputation service (see our
-		<a href={resolve('/privacy')}>Privacy Policy</a>
-		for how that works), but we do <strong>not</strong> run criminal background checks, and we do not
-		verify anyone's identity, health, age (beyond the phone check), or any other claim a user makes about
-		themselves. You are solely responsible for the decisions you make about who you meet, communicate
-		with, or share information with, both online and in person. Use your own judgment — meet in public
-		first, tell a friend where you're going, and trust your instincts if something feels off.
+		numbers{#if data.dbblEnabled}
+			and check submitted phone numbers against a cross-platform reputation service (see our <a
+				href={resolve('/privacy')}>Privacy Policy</a
+			> for how that works){/if}, but we do
+		<strong>not</strong> run criminal background checks, and we do not verify anyone's identity, health,
+		age (beyond the phone check), or any other claim a user makes about themselves. You are solely responsible
+		for the decisions you make about who you meet, communicate with, or share information with, both online
+		and in person. Use your own judgment — meet in public first, tell a friend where you're going, and
+		trust your instincts if something feels off.
 	</p>
 	<p>
 		We are not responsible for the conduct of any user, on or off the Service, and we do not
@@ -115,13 +117,13 @@
 		obligation to store, back up, or return Your Content once removed.
 	</p>
 
-	<h2>6. Messaging and Key Exchange</h2>
+	<h2>6. Messaging and Contact Exchange</h2>
 	<p>
 		Messaging on the Service is tied to a specific listing — there is no free-form direct messaging.
 		Neither party sees the other's verified contact information unless both sides opt in through the
-		Service's key exchange feature. Either party can revoke a completed exchange at any time, which
-		hides the shared information going forward (it does not undo anything the other person already
-		saw or recorded).
+		Service's contact exchange feature. Either party can revoke a completed exchange at any time,
+		which hides the shared information going forward (it does not undo anything the other person
+		already saw or recorded).
 	</p>
 	<p>
 		If a listing expires or is removed, its associated message threads keep a snapshot of the
@@ -139,13 +141,14 @@
 		suspected CSAM anywhere on the Service, report it immediately to {CONTACT_EMAIL}.
 	</p>
 
-	<h2>8. Reporting, Moderation, and the DBBL Protocol</h2>
+	<h2>8. Reporting and Moderation</h2>
 	<p>
 		We rely on user reports and our own moderation to enforce these Terms. We may warn, suspend, or
-		ban an account, and we may report confirmed policy violations — such as a confirmed ban for
-		harassment, spam, or a fake profile — to <strong>the DBBL Protocol</strong>, an independent,
-		cross-platform reputation service that other participating platforms also use to flag repeat bad
-		actors. See our <a href={resolve('/privacy')}>Privacy Policy</a> for what we share and when.
+		ban an account{#if data.dbblEnabled}, and we may report confirmed policy violations — such as a
+			confirmed ban for harassment, spam, or a fake profile — to <strong>the DBBL Protocol</strong>,
+			an independent cross-platform reputation service that other participating platforms also use
+			to flag repeat bad actors. See our <a href={resolve('/privacy')}>Privacy Policy</a> for what we
+			share and when{/if}.
 	</p>
 	<p>
 		Moderation decisions are made at our sole discretion. We're not obligated to act on any report,
@@ -162,8 +165,8 @@
 
 	<h2>10. Free Tier and Supporter Tier</h2>
 	<p>
-		Every core feature of the Service — browsing, posting, messaging, and key exchange — is free and
-		fully functional. We don't paywall core functionality and we don't run ads.
+		Every core feature of the Service — browsing, posting, messaging, and contact exchange — is free
+		and fully functional. We don't paywall core functionality and we don't run ads.
 	</p>
 	<p>
 		We offer an optional, pay-what-you-want “Supporter” subscription (billed via Stripe) that adds

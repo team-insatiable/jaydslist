@@ -10,7 +10,19 @@ declare global {
 		VAPID_CONTACT: string;
 		VAPID_PRIVATE_KEY: string;
 		EMAIL_FROM?: string;
+		/** `resend` or `ses`. Omit only when using the legacy Resend configuration. */
+		EMAIL_PROVIDER?: 'resend' | 'ses';
+		SES_ACCESS_KEY_ID?: string;
+		SES_SECRET_ACCESS_KEY?: string;
+		SES_REGION?: string;
+		SES_SESSION_TOKEN?: string;
+		DBBL_ENABLED?: string;
 		INSTANCE_THEME?: string;
+		INSTANCE_NAME?: string;
+		INSTANCE_TAGLINE?: string;
+		INSTANCE_URL?: string;
+		INSTANCE_LEGAL_EMAIL?: string;
+		INSTANCE_SOURCE_URL?: string;
 	}
 
 	namespace App {

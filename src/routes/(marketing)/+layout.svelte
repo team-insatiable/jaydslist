@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import MarketingHeader from '$lib/components/MarketingHeader.svelte';
+	import ColorModeToggle from '$lib/components/ColorModeToggle.svelte';
 
 	let { children } = $props();
 
@@ -12,13 +13,18 @@
 
 <MarketingHeader />
 
+{#if page.url.pathname === '/'}
+	<ColorModeToggle />
+{/if}
+
 {@render children()}
 
-<footer class="site-footer">
+<footer class="site-footer" class:landing-footer={page.url.pathname === '/'}>
 	<small>
 		© {new Date().getFullYear()}
 		{instanceName} &mdash;
 		<a href={resolve('/about')}>About</a> &mdash;
+		<a href={resolve('/self-host')}>Self-host</a> &mdash;
 		<a href={resolve('/rules')}>Rules</a> &mdash;
 		<a href={resolve('/terms')}>Terms</a> &mdash;
 		<a href={resolve('/privacy')}>Privacy</a>
@@ -32,6 +38,11 @@
 		color: var(--pico-muted-color);
 		border-top: 1px solid var(--pico-muted-border-color);
 		margin-top: 2rem;
+	}
+
+	.site-footer.landing-footer {
+		border-top: 0;
+		margin-top: 0;
 	}
 
 	.site-footer a {

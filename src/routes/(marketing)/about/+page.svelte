@@ -11,7 +11,9 @@
 		},
 		{
 			title: 'Real accounts only',
-			body: "Phone-verified accounts only — no anonymous signups, no social login. New accounts are checked against a cross-platform reputation system so repeat bad actors can't just start fresh.",
+			body: data.dbblEnabled
+				? 'Phone-verified accounts only — no anonymous signups, no social login. This instance also checks new accounts against a cross-platform reputation system.'
+				: 'Phone-verified accounts only — no anonymous signups and no social login.',
 			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`
 		},
 		{

@@ -11,12 +11,13 @@ test('an anonymous visitor sees the landing page instead of being redirected to 
 
 	expect(page.url()).toMatch(/\/$/);
 	await expect(page.getByRole('heading', { name: 'Jaydslist', exact: true })).toBeVisible();
-	await expect(page.locator('.site-header a', { hasText: 'Sign in' })).toBeVisible();
-	await expect(page.locator('.site-header a', { hasText: 'Create account' })).toBeVisible();
+	const landingPage = page.locator('main');
+	await expect(landingPage.getByRole('link', { name: 'Sign in' })).toBeVisible();
+	await expect(landingPage.getByRole('link', { name: 'Create free account' })).toBeVisible();
 
 	await Promise.all([
 		page.waitForURL((url) => url.pathname === '/login'),
-		page.locator('.site-header a', { hasText: 'Sign in' }).click()
+		landingPage.getByRole('link', { name: 'Sign in' }).click()
 	]);
 });
 
@@ -31,4 +32,35 @@ test('a logged-in visitor to / is redirected straight to /browse', async ({ page
 
 	await page.goto('/');
 	await page.waitForURL((url) => url.pathname === '/browse');
+});
+
+test('the landing page has a single set of account actions and supports color-mode choices', async ({
+	page
+}) => {
+	await page.goto('/');
+	await page.evaluate(() => localStorage.removeItem('jaydslist-color-scheme'));
+	await page.reload();
+
+	await expect(page.locator('header.site-header')).toHaveCount(0);
+	await expect(page.getByRole('link', { name: 'Sign in' })).toHaveCount(1);
+
+	const colorModeButton = page.getByRole('button', { name: 'Choose color mode' });
+	await colorModeButton.click();
+	await expect(colorModeButton).toHaveAttribute('aria-expanded', 'true');
+	await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+	await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+
+	await page.reload();
+	await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+
+	await colorModeButton.click();
+	await expect(colorModeButton).toHaveAttribute('aria-expanded', 'true');
+	await page.getByRole('menuitemradio', { name: 'System default' }).click();
+	await expect(page.locator('html')).not.toHaveAttribute('data-color-scheme');
+
+	await Promise.all([
+		page.waitForURL((url) => url.pathname === '/self-host'),
+		page.getByRole('contentinfo').getByRole('link', { name: 'Self-host' }).click()
+	]);
+	await expect(page.getByRole('heading', { name: 'Run your own Jaydslist' })).toBeVisible();
 });

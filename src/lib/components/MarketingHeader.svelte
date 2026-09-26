@@ -3,14 +3,9 @@
 	import { page } from '$app/state';
 </script>
 
-<header class="site-header">
-	<nav>
-		<!-- the landing page already has a large logo in its hero, so skip a
-		     redundant one here — but every other marketing page (terms, privacy)
-		     needs a way back to it -->
-		{#if page.url.pathname === resolve('/')}
-			<span></span>
-		{:else}
+{#if page.url.pathname !== '/'}
+	<header class="site-header">
+		<nav>
 			<a href={resolve('/')} class="logo" aria-label="Jaydslist">
 				<svg
 					class="logo-img"
@@ -37,17 +32,17 @@
 					/>
 				</svg>
 			</a>
-		{/if}
-		<div class="cta-group">
-			{#if (page.data as { user?: unknown }).user}
-				<a href={resolve('/browse')} class="cta-primary">Go to app</a>
-			{:else}
-				<a href={resolve('/login')} class="nav-action">Sign in</a>
-				<a href={resolve('/register')} class="cta-primary">Create account</a>
-			{/if}
-		</div>
-	</nav>
-</header>
+			<div class="cta-group">
+				{#if (page.data as { user?: unknown }).user}
+					<a href={resolve('/browse')} class="cta-primary">Go to app</a>
+				{:else}
+					<a href={resolve('/login')} class="nav-action">Sign in</a>
+					<a href={resolve('/register')} class="cta-primary">Create account</a>
+				{/if}
+			</div>
+		</nav>
+	</header>
+{/if}
 
 <style>
 	.site-header {

@@ -29,12 +29,13 @@
 <div class="auth-wrap">
 	<div class="auth-card">
 		<div class="auth-brand">
+			<span class="brand-mark" aria-hidden="true">J</span>
 			<span class="wordmark">Jaydslist</span>
 		</div>
 
 		<div class="auth-header">
 			<h1>Welcome back</h1>
-			<p>Sign in to your account</p>
+			<p>Pick up where you left off.</p>
 		</div>
 
 		{#if error}
@@ -67,6 +68,7 @@
 						id="email"
 						type="email"
 						placeholder="you@example.com"
+						autocomplete="email"
 						bind:value={email}
 						disabled={loading}
 					/>
@@ -91,6 +93,7 @@
 						id="password"
 						type="password"
 						placeholder="Your password"
+						autocomplete="current-password"
 						bind:value={password}
 						disabled={loading}
 					/>
@@ -126,13 +129,32 @@
 	.auth-card {
 		background: var(--pico-card-background-color);
 		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 12px;
+		border-radius: 16px;
 		padding: 2.5rem;
+		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+		border-top: 3px solid var(--pico-primary);
 	}
 
 	.auth-brand {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.55rem;
 		text-align: center;
 		margin-bottom: 1.75rem;
+	}
+
+	.brand-mark {
+		display: inline-grid;
+		place-items: center;
+		width: 1.7rem;
+		height: 1.7rem;
+		border-radius: 0.55rem;
+		background: var(--pico-primary);
+		color: #fff;
+		font-size: 0.9rem;
+		font-weight: 800;
+		box-shadow: 0 5px 12px color-mix(in srgb, var(--pico-primary) 30%, transparent);
 	}
 
 	.wordmark {
@@ -204,6 +226,7 @@
 	.input-wrap input {
 		padding-left: 2.5rem;
 		margin-bottom: 0;
+		border-radius: 9px;
 	}
 
 	.auth-error {
@@ -240,13 +263,19 @@
 		background: var(--pico-primary);
 		color: #fff;
 		border: none;
-		border-radius: 8px;
+		border-radius: 9px;
 		cursor: pointer;
-		transition: background 0.15s;
+		box-shadow: 0 8px 18px color-mix(in srgb, var(--pico-primary) 24%, transparent);
+		transition:
+			background 0.15s,
+			transform 0.15s,
+			box-shadow 0.15s;
 	}
 
 	.submit-btn:hover:not(:disabled) {
 		background: var(--pico-primary-hover);
+		transform: translateY(-1px);
+		box-shadow: 0 11px 22px color-mix(in srgb, var(--pico-primary) 28%, transparent);
 	}
 
 	.submit-btn:disabled {

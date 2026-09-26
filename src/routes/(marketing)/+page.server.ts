@@ -1,12 +1,13 @@
 import { redirect } from '@sveltejs/kit';
-import { DEFAULT_CONFIG } from '$lib/server/db/schema';
+import { getInstanceConfig } from '$lib/server/instance';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, platform }) => {
 	if (locals.user) throw redirect(302, '/browse');
+	const instance = getInstanceConfig(platform?.env);
 
 	return {
-		instanceName: DEFAULT_CONFIG.INSTANCE_NAME,
-		instanceTagline: DEFAULT_CONFIG.INSTANCE_TAGLINE
+		instanceName: instance.name,
+		instanceTagline: instance.tagline
 	};
 };

@@ -16,6 +16,14 @@ interface DbblEnv {
 	DBBL_API_KEY: string;
 }
 
+/**
+ * DBBL participation is intentionally opt-in. An API key alone must never enable
+ * cross-instance lookups or ban reporting for a self-hosted instance.
+ */
+export function isDbblEnabled(env: { DBBL_ENABLED?: string; DBBL_API_KEY?: string }): boolean {
+	return env.DBBL_ENABLED === 'true' && Boolean(env.DBBL_API_KEY);
+}
+
 export interface DbblScore {
 	score: number | null;
 	rating: string | null;

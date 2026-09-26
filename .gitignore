@@ -31,3 +31,6 @@ vite.config.ts.timestamp-*
 
 # Claude Code local settings (personal overrides)
 .claude/settings.local.json
+
+# Local agent/session notes (never part of the upstream project)
+.agent-notes/

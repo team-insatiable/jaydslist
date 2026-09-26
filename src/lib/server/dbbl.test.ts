@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { isBlockedByDbbl, queryDbblScore, reportBanToDbbl } from './dbbl';
+import { isBlockedByDbbl, isDbblEnabled, queryDbblScore, reportBanToDbbl } from './dbbl';
 import { encryptContact } from './crypto';
 
 const TEST_ENV = {
@@ -10,6 +10,15 @@ const TEST_ENV = {
 
 beforeEach(() => {
 	vi.restoreAllMocks();
+});
+
+describe('isDbblEnabled', () => {
+	it('requires explicit opt-in and an API key', () => {
+		expect(isDbblEnabled({ DBBL_ENABLED: 'true', DBBL_API_KEY: 'key' })).toBe(true);
+		expect(isDbblEnabled({ DBBL_API_KEY: 'key' })).toBe(false);
+		expect(isDbblEnabled({ DBBL_ENABLED: 'false', DBBL_API_KEY: 'key' })).toBe(false);
+		expect(isDbblEnabled({ DBBL_ENABLED: 'true' })).toBe(false);
+	});
 });
 
 // ── isBlockedByDbbl ───────────────────────────────────────────────────────────
