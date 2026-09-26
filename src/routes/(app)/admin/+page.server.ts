@@ -5,7 +5,7 @@ import { reports, moderationActions, userProfiles, listings } from '$lib/server/
 import { user } from '$lib/server/db/auth.schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { sendEmail, listingFlaggedEmail, userWarnedEmail } from '$lib/server/email';
-import { reportBanToDbbl } from '$lib/server/dbbl';
+import { isDbblEnabled, reportBanToDbbl } from '$lib/server/dbbl';
 
 export const load: PageServerLoad = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -154,7 +154,7 @@ export const actions: Actions = {
 				.get(),
 			db.select({ email: user.email }).from(user).where(eq(user.id, targetUserId)).get()
 		]);
-		if (bannedProfile?.encryptedPhone && bannedUser?.email) {
+		if (isDbblEnabled(env) && bannedProfile?.encryptedPhone && bannedUser?.email) {
 			reportBanToDbbl({
 				encryptedPhone: bannedProfile.encryptedPhone,
 				email: bannedUser.email,
@@ -246,11 +246,10 @@ export const actions: Actions = {
 			.where(eq(user.id, listing.userId))
 			.get();
 		if (owner?.email) {
-			sendEmail({
+			sendEmail(env, {
 				to: owner.email,
 				subject: 'Your listing has been suspended',
-				html: listingFlaggedEmail(listing.subject, notes),
-				apiKey: env.RESEND_API_KEY
+				html: listingFlaggedEmail(listing.subject, notes)
 			}).catch((e) => console.error('Failed to send suspension email:', e));
 		}
 
@@ -311,7 +310,7 @@ export const actions: Actions = {
 				.get(),
 			db.select({ email: user.email }).from(user).where(eq(user.id, listing.userId)).get()
 		]);
-		if (bannedProfile?.encryptedPhone && bannedUser?.email) {
+		if (isDbblEnabled(env) && bannedProfile?.encryptedPhone && bannedUser?.email) {
 			reportBanToDbbl({
 				encryptedPhone: bannedProfile.encryptedPhone,
 				email: bannedUser.email,
@@ -365,11 +364,10 @@ export const actions: Actions = {
 			.where(eq(user.id, targetUserId))
 			.get();
 		if (warnedUser?.email) {
-			sendEmail({
+			sendEmail(env, {
 				to: warnedUser.email,
 				subject: 'Warning issued on your Jaydslist account',
-				html: userWarnedEmail(notes),
-				apiKey: env.RESEND_API_KEY
+				html: userWarnedEmail(notes)
 			}).catch((e) => console.error('Failed to send warning email:', e));
 		}
 

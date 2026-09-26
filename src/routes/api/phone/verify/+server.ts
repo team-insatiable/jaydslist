@@ -6,7 +6,7 @@ import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { encryptContact } from '$lib/server/crypto';
 import { hashPhoneLocal, hashPhoneForDbbl, hashEmailForDbbl } from '$lib/server/phone';
-import { isBlockedByDbbl } from '$lib/server/dbbl';
+import { isBlockedByDbbl, isDbblEnabled } from '$lib/server/dbbl';
 
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
@@ -41,49 +41,52 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 	// Two separate hashes — local uses pepper for DB security, DBBL uses plain E.164 for cross-platform consistency
 	const phoneHash = await hashPhoneLocal(pendingPhone, env.PHONE_PEPPER ?? 'default-pepper');
-	const dbblPhoneHash = await hashPhoneForDbbl(pendingPhone);
-	const dbblEmailHash = await hashEmailForDbbl(locals.user.email);
+	const dbblEnabled = isDbblEnabled(env);
 
 	// Query DBBL with both signals in one request — entity model resolves them server-side
 	let dbblRiskScore: number | null = null;
 	let dbblRiskRating: string | null = null;
 	let dbblConfidence: string | null = null;
 
-	try {
-		const params = new URLSearchParams({
-			phoneHash: dbblPhoneHash,
-			emailHash: dbblEmailHash
-		});
-		const res = await fetch(`${env.DBBL_API_URL}/v1/scores?${params}`, {
-			headers: { Authorization: `Bearer ${env.DBBL_API_KEY}` }
-		});
+	if (dbblEnabled) {
+		try {
+			const dbblPhoneHash = await hashPhoneForDbbl(pendingPhone);
+			const dbblEmailHash = await hashEmailForDbbl(locals.user.email);
+			const params = new URLSearchParams({
+				phoneHash: dbblPhoneHash,
+				emailHash: dbblEmailHash
+			});
+			const res = await fetch(`${env.DBBL_API_URL}/v1/scores?${params}`, {
+				headers: { Authorization: `Bearer ${env.DBBL_API_KEY}` }
+			});
 
-		if (!res.ok) {
-			console.error('DBBL non-OK:', res.status);
-		} else {
-			const data = await res.json<{
-				status: 'found' | 'no_data';
-				score: number | null;
-				rating: string | null;
-				confidence: string | null;
-			}>();
+			if (!res.ok) {
+				console.error('DBBL non-OK:', res.status);
+			} else {
+				const data = await res.json<{
+					status: 'found' | 'no_data';
+					score: number | null;
+					rating: string | null;
+					confidence: string | null;
+				}>();
 
-			if (data.status === 'found') {
-				dbblRiskScore = data.score ?? null;
-				dbblRiskRating = data.rating ?? null;
-				dbblConfidence = data.confidence ?? null;
+				if (data.status === 'found') {
+					dbblRiskScore = data.score ?? null;
+					dbblRiskRating = data.rating ?? null;
+					dbblConfidence = data.confidence ?? null;
+				}
 			}
-		}
 
-		if (isBlockedByDbbl(dbblRiskRating)) {
-			return json(
-				{ error: 'Account registration is not permitted at this time.' },
-				{ status: 403 }
-			);
+			if (isBlockedByDbbl(dbblRiskRating)) {
+				return json(
+					{ error: 'Account registration is not permitted at this time.' },
+					{ status: 403 }
+				);
+			}
+		} catch (err) {
+			// DBBL down — fail open, log and continue
+			console.error('DBBL check failed, failing open:', err);
 		}
-	} catch (err) {
-		// DBBL down — fail open, log and continue
-		console.error('DBBL check failed, failing open:', err);
 	}
 
 	const db = getDb(env.DB);
@@ -100,7 +103,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			dbblRiskScore,
 			dbblRiskRating,
 			dbblConfidence,
-			dbblLastCheckedAt: new Date()
+			dbblLastCheckedAt: dbblEnabled ? new Date() : null
 		})
 		.where(eq(userProfiles.id, locals.user.id));
 

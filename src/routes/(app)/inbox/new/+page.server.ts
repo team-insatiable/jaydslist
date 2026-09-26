@@ -11,10 +11,10 @@ import {
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
 import { eq, and, gte } from 'drizzle-orm';
-import { queryDbblScore, isBlockedByDbbl } from '$lib/server/dbbl';
+import { queryDbblScore, isBlockedByDbbl, isDbblEnabled } from '$lib/server/dbbl';
 import { hashPhoneForDbbl, hashEmailForDbbl } from '$lib/server/phone';
 import { decryptContact } from '$lib/server/crypto';
-import { sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
+import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
 import { sendPushNotification } from '$lib/server/push';
 
 const CONTACT_INFO_PATTERN = /(\+?[\d\s\-().]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/i;
@@ -125,11 +125,12 @@ export const actions: Actions = {
 			.where(eq(userProfiles.id, userId))
 			.get();
 
-		if (isBlockedByDbbl(initiatorProfile?.dbblRiskRating)) {
+		const dbblEnabled = isDbblEnabled(env);
+		if (dbblEnabled && isBlockedByDbbl(initiatorProfile?.dbblRiskRating)) {
 			return fail(403, { error: 'Your account is not permitted to send messages at this time.' });
 		}
 
-		if (initiatorProfile?.encryptedPhone) {
+		if (dbblEnabled && initiatorProfile?.encryptedPhone) {
 			try {
 				const phone = await decryptContact(
 					initiatorProfile.encryptedPhone,
@@ -189,7 +190,7 @@ export const actions: Actions = {
 			.all();
 
 		if (recentThreads.length >= dailyLimit) {
-			if (recentThreads.length >= dailyLimit * 3 && env.RESEND_API_KEY && env.ADMIN_EMAILS) {
+			if (recentThreads.length >= dailyLimit * 3 && emailIsConfigured(env) && env.ADMIN_EMAILS) {
 				const origin = env.ORIGIN ?? 'https://jaydslist.com';
 				await db
 					.update(userProfiles)
@@ -199,6 +200,7 @@ export const actions: Actions = {
 					.map((e: string) => e.trim())
 					.filter(Boolean);
 				sendAbuseAlertEmail(
+					env,
 					adminEmails,
 					{
 						alias: initiatorTier?.alias ?? userId,
@@ -206,8 +208,7 @@ export const actions: Actions = {
 						reason: 'Daily thread velocity exceeded 3x cap',
 						count: recentThreads.length
 					},
-					origin,
-					env.RESEND_API_KEY
+					origin
 				).catch((err: unknown) => console.error('Abuse alert email failed:', err));
 				return fail(429, { error: 'Your account has been suspended due to unusual activity.' });
 			}
@@ -266,7 +267,7 @@ export const actions: Actions = {
 		}
 
 		// Notify poster — first message in a new thread, no cooldown needed
-		if (env.RESEND_API_KEY || env.VAPID_PRIVATE_KEY) {
+		if (emailIsConfigured(env) || env.VAPID_PRIVATE_KEY) {
 			const origin = env.ORIGIN ?? 'https://jaydslist.com';
 			const threadUrl = `${origin}/inbox/${threadId}`;
 			Promise.all([
@@ -289,14 +290,14 @@ export const actions: Actions = {
 						.where(eq(conversationThreads.id, threadId));
 
 					const fromAlias = senderProfile?.alias ?? 'Someone';
-					if (posterUser?.email && env.RESEND_API_KEY) {
+					if (posterUser?.email && emailIsConfigured(env)) {
 						await sendNewMessageEmail(
+							env,
 							posterUser.email,
 							fromAlias,
 							listing.subject,
 							body,
-							threadUrl,
-							env.RESEND_API_KEY
+							threadUrl
 						);
 					}
 					if (env.VAPID_PRIVATE_KEY && env.VAPID_PUBLIC_KEY && env.VAPID_CONTACT) {

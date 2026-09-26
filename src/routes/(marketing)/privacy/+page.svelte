@@ -4,7 +4,7 @@
 	let { data } = $props();
 
 	const EFFECTIVE_DATE = 'July 4, 2026';
-	const CONTACT_EMAIL = 'legal@jaydslist.com';
+	const CONTACT_EMAIL = data.legalEmail;
 </script>
 
 <svelte:head>
@@ -30,10 +30,11 @@
 			plain text).
 		</li>
 		<li>
-			<strong>Phone number:</strong> collected to verify you're a real person and check for VoIP/virtual
-			numbers. We normalize and SHA-256 hash your number before checking it against the DBBL Protocol
-			(Section 3) — we do not store your raw phone number alongside your account beyond what's needed
-			to complete verification.
+			<strong>Phone number:</strong> collected to verify you're a real person and check for
+			VoIP/virtual numbers. {#if data.dbblEnabled}We normalize and SHA-256 hash your number before
+				checking it against the DBBL Protocol (Section 3).
+			{/if}We do not store your raw phone number alongside your account beyond what's needed to
+			complete verification.
 		</li>
 		<li>
 			<strong>Location:</strong> your device's coordinates (via your browser's location permission), used
@@ -74,41 +75,43 @@
 		We do not use your data for interest-based or third-party advertising, because we don't run ads.
 	</p>
 
-	<h2>3. The DBBL Protocol (Cross-Platform Reputation Check)</h2>
-	<p>
-		The DBBL Protocol is an independent, cross-platform reputation service — think of it as a shared
-		blocklist that participating personals/social platforms use to flag repeat bad actors, similar
-		in spirit to an email spam list. We query it in two situations:
-	</p>
-	<ul>
-		<li>
-			<strong>At registration,</strong> after your phone number passes carrier verification, we send only
-			the SHA-256 hash of your normalized phone number (never the raw number) and receive back a risk
-			rating (clear, flagged, cautioned, restricted, or blacklisted).
-		</li>
-		<li>
-			<strong>Before the first message in a new thread,</strong> we re-check in case a rating has worsened
-			since registration.
-		</li>
-	</ul>
-	<p>
-		If your confirmed rating comes back “restricted” or “blacklisted,” we may deny registration or
-		the action in question. A “cautioned” rating doesn't block you, but flags your account for
-		closer internal review. We cache the result (rating, score, and check timestamp) on your
-		account.
-	</p>
-	<p>
-		Separately, if a moderator confirms a ban against your account for a serious violation
-		(harassment, spam, a fake profile, unsolicited explicit content, or an unsolicited-DM pattern),
-		we report that violation category to the DBBL Protocol so other participating platforms can see
-		it too. We do not report anything about accounts that are merely reported, warned, or under
-		review — only confirmed bans.
-	</p>
-	<p>
-		If the DBBL Protocol check itself fails or is unreachable, we don't block you — an outage on our
-		end or theirs never prevents you from using the Service. (A returned “restricted” or
-		“blacklisted” rating still can, as described above.)
-	</p>
+	{#if data.dbblEnabled}
+		<h2>3. The DBBL Protocol (Cross-Platform Reputation Check)</h2>
+		<p>
+			The DBBL Protocol is an independent, cross-platform reputation service — think of it as a
+			shared blocklist that participating personals/social platforms use to flag repeat bad actors,
+			similar in spirit to an email spam list. We query it in two situations:
+		</p>
+		<ul>
+			<li>
+				<strong>At registration,</strong> after your phone number passes carrier verification, we send
+				only the SHA-256 hash of your normalized phone number (never the raw number) and receive back
+				a risk rating (clear, flagged, cautioned, restricted, or blacklisted).
+			</li>
+			<li>
+				<strong>Before the first message in a new thread,</strong> we re-check in case a rating has worsened
+				since registration.
+			</li>
+		</ul>
+		<p>
+			If your confirmed rating comes back “restricted” or “blacklisted,” we may deny registration or
+			the action in question. A “cautioned” rating doesn't block you, but flags your account for
+			closer internal review. We cache the result (rating, score, and check timestamp) on your
+			account.
+		</p>
+		<p>
+			Separately, if a moderator confirms a ban against your account for a serious violation
+			(harassment, spam, a fake profile, unsolicited explicit content, or an unsolicited-DM
+			pattern), we report that violation category to the DBBL Protocol so other participating
+			platforms can see it too. We do not report anything about accounts that are merely reported,
+			warned, or under review — only confirmed bans.
+		</p>
+		<p>
+			If the DBBL Protocol check itself fails or is unreachable, we don't block you — an outage on
+			our end or theirs never prevents you from using the Service. (A returned “restricted” or
+			“blacklisted” rating still can, as described above.)
+		</p>
+	{/if}
 
 	<h2>4. Who Else We Share Data With</h2>
 	<p>
@@ -119,9 +122,11 @@
 	<ul>
 		<li><strong>Cloudflare</strong> — hosting, database, and photo storage/delivery.</li>
 		<li><strong>Twilio</strong> — phone number verification and carrier/VoIP lookup.</li>
-		<li><strong>Resend</strong> — transactional email (account and moderation notifications).</li>
+		<li><strong>Transactional email provider</strong> — account and moderation notifications.</li>
 		<li><strong>Stripe</strong> — Supporter tier payment processing.</li>
-		<li><strong>The DBBL Protocol</strong> — as described in Section 3.</li>
+		{#if data.dbblEnabled}<li>
+				<strong>The DBBL Protocol</strong> — as described in Section 3.
+			</li>{/if}
 	</ul>
 	<p>
 		We may also disclose information if required by law, subpoena, or valid legal process, or where
@@ -134,7 +139,7 @@
 		Other users never see your exact location, phone number, or email address. They see your listing
 		content, your fuzzy location label, an approximate distance, and your trust tier. Your verified
 		phone number and email are only revealed to another user if you both explicitly agree through
-		the key-exchange feature, and only for as long as neither of you revokes it.
+		the contact exchange feature, and only for as long as neither of you revokes it.
 	</p>
 
 	<h2>6. Data Retention and Deletion</h2>

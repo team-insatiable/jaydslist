@@ -1,9 +1,13 @@
-import { DEFAULT_CONFIG } from '$lib/server/db/schema';
+import { getInstanceConfig } from '$lib/server/instance';
+import { isDbblEnabled } from '$lib/server/dbbl';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ platform }) => {
+	const instance = getInstanceConfig(platform?.env);
 	return {
-		instanceName: DEFAULT_CONFIG.INSTANCE_NAME,
-		instanceUrl: DEFAULT_CONFIG.INSTANCE_URL
+		instanceName: instance.name,
+		instanceUrl: instance.url,
+		legalEmail: instance.legalEmail,
+		dbblEnabled: isDbblEnabled(platform?.env ?? {})
 	};
 };

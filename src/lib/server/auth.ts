@@ -17,12 +17,10 @@ export const createAuth = (env: Env) =>
 		emailAndPassword: {
 			enabled: true,
 			sendResetPassword: async ({ user, url }) => {
-				await sendEmail({
+				await sendEmail(env, {
 					to: user.email,
 					subject: 'Reset your password',
-					html: `<p>Click the link below to reset your Jaydslist password. This link expires in 1 hour.</p><p><a href="${url}">Reset password</a></p><p>If you didn't request this, you can ignore this email.</p>`,
-					apiKey: env.RESEND_API_KEY,
-					from: env.EMAIL_FROM
+					html: `<p>Click the link below to reset your Jaydslist password. This link expires in 1 hour.</p><p><a href="${url}">Reset password</a></p><p>If you didn't request this, you can ignore this email.</p>`
 				});
 			}
 		},

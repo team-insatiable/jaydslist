@@ -13,6 +13,10 @@ type DeclineEvent = Parameters<typeof actions.decline>[0];
 type PauseEvent = Parameters<typeof actions.pauseListing>[0];
 type ReportEvent = Parameters<typeof actions.report>[0];
 type BlockEvent = Parameters<typeof actions.blockUser>[0];
+type OfferExchangeEvent = Parameters<typeof actions.offerExchange>[0];
+type AcceptExchangeEvent = Parameters<typeof actions.acceptExchange>[0];
+type DeclineExchangeEvent = Parameters<typeof actions.declineExchange>[0];
+type RevokeExchangeEvent = Parameters<typeof actions.revokeExchange>[0];
 
 function fakeEvent(overrides: { threadId: string; userId: string; body: string }): SendEvent {
 	const form = new FormData();
@@ -74,6 +78,15 @@ function fakeBlockEvent(overrides: { threadId: string; userId: string }): BlockE
 		locals: { user: { id: overrides.userId, email: 'test@example.com' } },
 		platform: { env }
 	} as unknown as BlockEvent;
+}
+
+function fakeExchangeEvent<T>(overrides: { threadId: string; userId: string }): T {
+	return {
+		params: { threadId: overrides.threadId },
+		request: new Request('http://localhost/inbox/x', { method: 'POST' }),
+		locals: { user: { id: overrides.userId, email: 'test@example.com' } },
+		platform: { env }
+	} as T;
 }
 
 describe('inbox/[threadId] send action', () => {
@@ -235,6 +248,96 @@ describe('inbox/[threadId] decline action', () => {
 			fakeDeclineEvent({ threadId, userId: posterId, phraseId: 'not_looking' })
 		);
 		expect(result?.status).toBe(400);
+	});
+});
+
+describe('inbox/[threadId] contact exchange actions', () => {
+	let posterId: string;
+	let initiatorId: string;
+	let threadId: string;
+
+	beforeEach(async () => {
+		posterId = await createTestUser(env.DB, { alias: 'Poster' });
+		initiatorId = await createTestUser(env.DB, { alias: 'Initiator' });
+		const listingId = await createTestListing(env.DB, posterId);
+		threadId = await createTestThread(env.DB, { listingId, initiatorId, posterId });
+	});
+
+	it('offers, accepts, and revokes contact sharing after both people have participated', async () => {
+		await createTestMessage(env.DB, { threadId, senderId: initiatorId });
+		await createTestMessage(env.DB, { threadId, senderId: posterId });
+
+		expect(
+			await actions.offerExchange(
+				fakeExchangeEvent<OfferExchangeEvent>({ threadId, userId: initiatorId })
+			)
+		).toEqual({ success: true });
+
+		let exchange = await env.DB.prepare('SELECT status FROM key_exchanges WHERE thread_id = ?')
+			.bind(threadId)
+			.first<{ status: string }>();
+		expect(exchange?.status).toBe('offered');
+
+		expect(
+			await actions.acceptExchange(
+				fakeExchangeEvent<AcceptExchangeEvent>({ threadId, userId: posterId })
+			)
+		).toEqual({ success: true });
+
+		exchange = await env.DB.prepare('SELECT status FROM key_exchanges WHERE thread_id = ?')
+			.bind(threadId)
+			.first<{ status: string }>();
+		expect(exchange?.status).toBe('accepted');
+
+		expect(
+			await actions.revokeExchange(
+				fakeExchangeEvent<RevokeExchangeEvent>({ threadId, userId: initiatorId })
+			)
+		).toEqual({ success: true });
+
+		exchange = await env.DB.prepare('SELECT status FROM key_exchanges WHERE thread_id = ?')
+			.bind(threadId)
+			.first<{ status: string }>();
+		expect(exchange?.status).toBe('revoked');
+	});
+
+	it('rejects offers that are premature or from someone outside the thread', async () => {
+		const strangerId = await createTestUser(env.DB, { alias: 'Stranger' });
+
+		const premature = await actions.offerExchange(
+			fakeExchangeEvent<OfferExchangeEvent>({ threadId, userId: initiatorId })
+		);
+		expect(premature?.status).toBe(400);
+
+		const outsider = await actions.offerExchange(
+			fakeExchangeEvent<OfferExchangeEvent>({ threadId, userId: strangerId })
+		);
+		expect(outsider?.status).toBe(403);
+	});
+
+	it('lets the recipient decline an offer and rejects acceptance by anyone else', async () => {
+		await createTestMessage(env.DB, { threadId, senderId: initiatorId });
+		await createTestMessage(env.DB, { threadId, senderId: posterId });
+		await actions.offerExchange(
+			fakeExchangeEvent<OfferExchangeEvent>({ threadId, userId: initiatorId })
+		);
+
+		const strangerId = await createTestUser(env.DB, { alias: 'Stranger' });
+		const outsiderAccept = await actions.acceptExchange(
+			fakeExchangeEvent<AcceptExchangeEvent>({ threadId, userId: strangerId })
+		);
+		expect(outsiderAccept?.status).toBe(403);
+
+		expect(
+			await actions.declineExchange(
+				fakeExchangeEvent<DeclineExchangeEvent>({ threadId, userId: posterId })
+			)
+		).toEqual({ success: true });
+
+		const exchange = await env.DB.prepare('SELECT status FROM key_exchanges WHERE thread_id = ?')
+			.bind(threadId)
+			.first<{ status: string }>();
+		expect(exchange?.status).toBe('declined');
 	});
 });
 

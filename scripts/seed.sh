@@ -6,10 +6,10 @@ echo "Wiping local D1..."
 rm -rf .wrangler/state/v3/d1/miniflare-D1DatabaseObject
 
 echo "Applying migrations..."
-npx wrangler d1 migrations apply jaydslist-d1 --local
+pnpm exec wrangler d1 migrations apply DB --local
 
 echo "Generating seed SQL..."
-npx tsx scripts/seed.ts > /tmp/jdl_seed_full.sql
+pnpm exec tsx scripts/seed.ts > /tmp/jdl_seed_full.sql
 
 grep "^INSERT OR IGNORE INTO user "                    /tmp/jdl_seed_full.sql > /tmp/jdl_seed_users.sql
 grep "^INSERT OR IGNORE INTO account "                 /tmp/jdl_seed_full.sql > /tmp/jdl_seed_accounts.sql
@@ -19,21 +19,21 @@ grep "^INSERT OR IGNORE INTO conversation_threads "    /tmp/jdl_seed_full.sql > 
 grep "^INSERT OR IGNORE INTO messages "                /tmp/jdl_seed_full.sql > /tmp/jdl_seed_messages.sql
 
 echo "Inserting users..."
-npx wrangler d1 execute jaydslist-d1 --local --file /tmp/jdl_seed_users.sql
+pnpm exec wrangler d1 execute DB --local --file /tmp/jdl_seed_users.sql
 
 echo "Inserting accounts..."
-npx wrangler d1 execute jaydslist-d1 --local --file /tmp/jdl_seed_accounts.sql
+pnpm exec wrangler d1 execute DB --local --file /tmp/jdl_seed_accounts.sql
 
 echo "Inserting profiles..."
-npx wrangler d1 execute jaydslist-d1 --local --file /tmp/jdl_seed_profiles.sql
+pnpm exec wrangler d1 execute DB --local --file /tmp/jdl_seed_profiles.sql
 
 echo "Inserting listings..."
-npx wrangler d1 execute jaydslist-d1 --local --file /tmp/jdl_seed_listings.sql
+pnpm exec wrangler d1 execute DB --local --file /tmp/jdl_seed_listings.sql
 
 echo "Inserting threads..."
-npx wrangler d1 execute jaydslist-d1 --local --file /tmp/jdl_seed_threads.sql
+pnpm exec wrangler d1 execute DB --local --file /tmp/jdl_seed_threads.sql
 
 echo "Inserting messages..."
-npx wrangler d1 execute jaydslist-d1 --local --file /tmp/jdl_seed_messages.sql
+pnpm exec wrangler d1 execute DB --local --file /tmp/jdl_seed_messages.sql
 
 echo "Done. Login with alice@example.com or bob@example.com / Password01"

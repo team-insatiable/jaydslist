@@ -35,7 +35,7 @@ function sq(s: string | null): string {
 }
 
 export default function globalSetup() {
-	execSync('npx wrangler d1 migrations apply jaydslist-d1 --local', { stdio: 'inherit' });
+	execSync('pnpm exec wrangler d1 migrations apply DB --local', { stdio: 'inherit' });
 
 	const now = Math.floor(Date.now() / 1000);
 	const nowMs = Date.now();
@@ -83,6 +83,8 @@ DELETE FROM listings WHERE user_id = (SELECT id FROM user WHERE email = 'keirock
 
 	const tmpPath = '/tmp/jdl-e2e-seed.sql';
 	writeFileSync(tmpPath, sql);
-	execSync(`npx wrangler d1 execute jaydslist-d1 --local --file=${tmpPath}`, { stdio: 'inherit' });
+	execSync(`pnpm exec wrangler d1 execute DB --local --file=${tmpPath}`, {
+		stdio: 'inherit'
+	});
 	unlinkSync(tmpPath);
 }

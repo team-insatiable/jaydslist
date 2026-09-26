@@ -35,7 +35,7 @@
 			title: 'Respect privacy',
 			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`,
 			rules: [
-				"Don't ask for or share contact info outside of the key-exchange feature — it exists so both sides consent before anything is revealed.",
+				"Don't ask for or share contact info outside of the contact exchange feature — it exists so both sides consent before anything is revealed.",
 				"Don't screenshot or repost someone else's listing, messages, or photos elsewhere."
 			]
 		},
@@ -92,11 +92,13 @@
 				anything serious enough on its own (like content involving a minor), typically results in an
 				immediate suspension or ban with no further warning.
 			</p>
-			<p>
-				Confirmed bans for serious violations are reported to the <strong>DBBL Protocol</strong>, a
-				cross-platform reputation system — see our <a href={resolve('/privacy')}>Privacy Policy</a> for
-				details.
-			</p>
+			{#if data.dbblEnabled}
+				<p>
+					Confirmed bans for serious violations are reported to the <strong>DBBL Protocol</strong>,
+					a cross-platform reputation system — see our
+					<a href={resolve('/privacy')}>Privacy Policy</a> for details.
+				</p>
+			{/if}
 			<p class="report-cta">
 				If someone breaks these rules with you, report it. Reports are reviewed, not ignored.
 			</p>

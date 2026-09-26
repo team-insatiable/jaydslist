@@ -1,0 +1,75 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { emailIsConfigured, sendEmail } from './email';
+
+const resendEnv = {
+	EMAIL_PROVIDER: 'resend',
+	RESEND_API_KEY: 're_test_key',
+	EMAIL_FROM: 'Jaydslist <noreply@example.com>'
+} as Env;
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('email providers', () => {
+	it('keeps Resend available through the provider interface', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		await sendEmail(resendEnv, {
+			to: 'person@example.com',
+			subject: 'Hello',
+			html: '<p>Hello</p>'
+		});
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'https://api.resend.com/emails',
+			expect.objectContaining({
+				method: 'POST',
+				headers: expect.objectContaining({ Authorization: 'Bearer re_test_key' })
+			})
+		);
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+			from: 'Jaydslist <noreply@example.com>',
+			to: ['person@example.com'],
+			subject: 'Hello',
+			html: '<p>Hello</p>'
+		});
+	});
+
+	it('signs Amazon SES API requests and sends a simple HTML email', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+		const env = {
+			EMAIL_PROVIDER: 'ses',
+			EMAIL_FROM: 'Jaydslist <noreply@example.com>',
+			SES_ACCESS_KEY_ID: 'AKIDEXAMPLE',
+			SES_SECRET_ACCESS_KEY: 'secret'
+		} as Env;
+
+		await sendEmail(env, { to: 'person@example.com', subject: 'Hello', html: '<p>Hello</p>' });
+
+		const [url, request] = fetchMock.mock.calls[0];
+		expect(url).toBe('https://email.us-east-1.amazonaws.com/v2/email/outbound-emails');
+		expect(request.headers).toMatchObject({
+			'content-type': 'application/json',
+			host: 'email.us-east-1.amazonaws.com',
+			Authorization: expect.stringContaining('Credential=AKIDEXAMPLE/')
+		});
+		expect(JSON.parse(request.body)).toMatchObject({
+			FromEmailAddress: 'Jaydslist <noreply@example.com>',
+			Destination: { ToAddresses: ['person@example.com'] },
+			Content: { Simple: { Subject: { Data: 'Hello' }, Body: { Html: { Data: '<p>Hello</p>' } } } }
+		});
+	});
+
+	it('does not enable delivery for incomplete or unsupported provider configuration', () => {
+		expect(emailIsConfigured({ EMAIL_PROVIDER: 'ses' } as Env)).toBe(false);
+		expect(
+			emailIsConfigured({
+				EMAIL_PROVIDER: 'ses',
+				SES_ACCESS_KEY_ID: 'key',
+				SES_SECRET_ACCESS_KEY: 'secret'
+			} as Env)
+		).toBe(false);
+		expect(emailIsConfigured({ EMAIL_PROVIDER: 'other' } as unknown as Env)).toBe(false);
+	});
+});

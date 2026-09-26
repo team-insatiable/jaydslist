@@ -8,9 +8,9 @@ Jaydslist is a modern classifieds-style personals platform focused on casual enc
 
 ## Core values
 
-**Privacy first.** Your location is never exposed — listings show only a fuzzy region label. Contact information stays inside the platform until both parties explicitly consent to share it via the key exchange system. Phone numbers are stored as one-way hashes.
+**Privacy first.** Your location is never exposed — listings show only a fuzzy region label. Contact information stays inside the platform until both parties explicitly consent to share it through contact exchange. Phone numbers are stored as one-way hashes.
 
-**Real people only.** Every account requires phone verification. VoIP and virtual numbers are rejected at registration. Accounts are cross-referenced against the DBBL Protocol, an open reputation network for identifying bad actors across platforms.
+**Real people only.** Every account requires phone verification. VoIP and virtual numbers are rejected at registration. Operators may opt into the DBBL Protocol, an open cross-platform reputation network, if it fits their community and privacy obligations.
 
 **Quality over volume.** Messages are held to a minimum quality standard before delivery. Copy-paste openers, low-effort one-liners, and disrespectful content are blocked before the recipient ever sees them. Posters only see messages that passed.
 
@@ -20,6 +20,44 @@ Jaydslist is a modern classifieds-style personals platform focused on casual enc
 
 **Open source.** Jaydslist is AGPL licensed. The code is public, the data model is transparent, and operators can run their own instances.
 
+## Self-hosting
+
+Jaydslist is designed for independent Cloudflare Workers deployments. Each operator supplies
+their own domain, Cloudflare account, D1 database, KV namespace, Cloudflare Images account,
+Twilio Verify service, email provider, and moderation/legal process. Do not reuse another
+instance's resource IDs or secrets.
+
+### Run locally
+
+```bash
+pnpm install
+cp .dev.vars.example .dev.vars
+pnpm exec wrangler d1 migrations apply DB --local
+pnpm dev
+```
+
+Set a high-entropy `BETTER_AUTH_SECRET` in `.dev.vars`. For local phone verification only,
+set a non-production `DEV_BYPASS_OTP`; never deploy that bypass. `pnpm seed` can add sample
+data, but it deletes and recreates the local D1 database first.
+
+### Deploy your own instance
+
+1. Replace the placeholder Worker name, D1 ID, KV ID, Images account ID, delivery hash, and
+   public instance values in `wrangler.jsonc` with resources from your Cloudflare account.
+2. Copy the applicable settings from `.dev.vars.example` to Worker variables and set every
+   secret interactively with `pnpm exec wrangler secret put NAME`.
+3. Apply migrations to **your** remote D1 database:
+
+   ```bash
+   pnpm exec wrangler d1 migrations apply YOUR_DATABASE_NAME --remote
+   ```
+
+4. Deploy the Worker and attach a domain you control. Set `ORIGIN` to that HTTPS URL.
+5. Before inviting users, test phone verification, photos, listings, messaging, password reset
+   email, and administrator access.
+
+For complete operator guidance, read the repository-hosted [self-hosting documentation](docs/self-hosting/README.md): [quickstart](docs/self-hosting/quickstart.md), [configuration](docs/self-hosting/configuration.md), [Cloudflare deployment](docs/self-hosting/deploy-cloudflare.md), [email](docs/self-hosting/email.md), and [operations](docs/self-hosting/operations.md).
+
 ## Tech stack
 
 - [SvelteKit](https://kit.svelte.dev) — full-stack web framework
@@ -27,8 +65,17 @@ Jaydslist is a modern classifieds-style personals platform focused on casual enc
 - [Cloudflare D1](https://developers.cloudflare.com/d1/) + [Drizzle ORM](https://orm.drizzle.team) — database
 - [Better Auth](https://www.better-auth.com) — authentication
 - [Twilio](https://www.twilio.com) — phone verification
-- [Pico CSS](https://picocss.com) — styling
-- [DBBL Protocol](https://github.com/the-dbbl-protocol/dbbl-api) — cross-platform reputation network
+- Custom CSS design system — styling and theming
+- [DBBL Protocol](https://github.com/the-dbbl-protocol/dbbl-api) — optional cross-platform reputation network
+
+## Email delivery
+
+Transactional email is selected by `EMAIL_PROVIDER` in `.dev.vars` locally and Worker secrets in production. Both providers use the same application interface.
+
+- `resend`: set `RESEND_API_KEY` and `EMAIL_FROM`.
+- `ses`: set `SES_ACCESS_KEY_ID`, `SES_SECRET_ACCESS_KEY`, `SES_REGION`, and `EMAIL_FROM`. `SES_SESSION_TOKEN` is optional for temporary AWS credentials.
+
+For SES, verify the sending address or domain in the chosen SES region and give the IAM identity only the `ses:SendEmail` permission. New SES accounts remain in the SES sandbox until AWS grants production access; sandbox accounts can send only to verified recipients. Never put the AWS secret key in `wrangler.jsonc`; use `wrangler secret put` for each secret.
 
 ## License
 

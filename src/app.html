@@ -5,6 +5,16 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<meta name="text-scale" content="scale" />
+		<script>
+			try {
+				const colorScheme = localStorage.getItem('jaydslist-color-scheme');
+				if (colorScheme === 'light' || colorScheme === 'dark') {
+					document.documentElement.dataset.colorScheme = colorScheme;
+				}
+			} catch {
+				// Storage can be unavailable in private browsing contexts.
+			}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
