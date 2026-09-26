@@ -16,6 +16,24 @@ pnpm install
 
 Choose a Worker name and replace every placeholder binding in `wrangler.jsonc` with resources from your own Cloudflare account.
 
+## Instance policy content
+
+Create a private instance-configuration repository alongside your fork. It must contain these
+four public Markdown files:
+
+```text
+content/about.md
+content/rules.md
+content/privacy.md
+content/terms.md
+```
+
+During deployment, copy them over `src/lib/instance-content/` in the upstream checkout before
+building. The supplied upstream files are neutral placeholders, not legal policies. Your content
+may use `{{INSTANCE_NAME}}`, `{{INSTANCE_URL}}`, and `{{LEGAL_EMAIL}}`; the build replaces those
+with your configured instance values. Review Terms and Privacy content for your jurisdiction and
+actual data practices.
+
 ## 2. Provision your Cloudflare resources
 
 Create these resources in **your** Cloudflare account:

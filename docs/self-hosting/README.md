@@ -31,3 +31,10 @@ You need all of these before a public launch:
 Cloudflare Images must be enabled and its API token needs **Images Write** permission because user photos are uploaded through the Images API. [Cloudflare Images direct uploads](https://developers.cloudflare.com/images/storage/upload-images/direct-creator-upload/)
 
 Keep secrets out of git. Use `.dev.vars` locally and Worker secrets in production.
+
+## Instance-owned public content
+
+Each instance must supply its own About page, Community Rules, Privacy Policy, and Terms of Use.
+These pages are not upstream configuration and should not be copied from another operator. The
+deployment configuration repository overlays four Markdown files at build time; see
+[Deploy on Cloudflare](deploy-cloudflare.md#instance-policy-content).
