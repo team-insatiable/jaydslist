@@ -1,16 +1,10 @@
-<svelte:head>
-
-<title>Deploy on Cloudflare · Jaydslist docs</title>
-<meta name="description" content="Provision and deploy an independent Jaydslist instance on Cloudflare." />
-</svelte:head>
-
 # Deploy on Cloudflare
 
 This application is designed for Cloudflare Workers. A self-hosted instance must use **its own** Cloudflare resources and secrets; never deploy with the resource IDs from this repository's `wrangler.jsonc`.
 
 ## Before you begin
 
-Have the items in the [production hoster checklist](/docs) ready: your Cloudflare account and domain, Twilio Verify, an email provider, and an operator email address. DBBL is optional.
+Have the items in the [production hoster checklist](README.md#production-hoster-checklist) ready: your Cloudflare account and domain, Twilio Verify, an email provider, and an operator email address. DBBL is optional.
 
 ## 1. Fork and configure the project
 
@@ -36,7 +30,7 @@ Update the matching placeholders in `wrangler.jsonc` with your database ID, KV n
 
 ## 3. Set application secrets
 
-Set every required secret from [Configuration](/docs/configuration). At a minimum, production needs `BETTER_AUTH_SECRET`, `CONTACT_ENCRYPTION_KEY`, Twilio credentials, `PHONE_PEPPER`, `ADMIN_EMAILS`, and your email-provider credentials. DBBL settings are optional and disabled by default.
+Set every required secret from [Configuration](configuration.md). At a minimum, production needs `BETTER_AUTH_SECRET`, `CONTACT_ENCRYPTION_KEY`, Twilio credentials, `PHONE_PEPPER`, `ADMIN_EMAILS`, and your email-provider credentials. DBBL settings are optional and disabled by default.
 
 Use interactive commands so values do not enter shell history:
 

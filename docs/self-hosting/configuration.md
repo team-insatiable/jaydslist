@@ -1,19 +1,13 @@
-<svelte:head>
-
-<title>Configuration · Jaydslist docs</title>
-<meta name="description" content="Environment configuration for Jaydslist." />
-</svelte:head>
-
 # Configuration
 
-Copy `.dev.vars.example` to `.dev.vars` for local work. For production, store secrets with `wrangler secret put NAME`; never commit them to `wrangler.jsonc`. Self-hosters must also replace every D1, KV, and Images account identifier in `wrangler.jsonc` with resources from their own Cloudflare account; see [Deploy on Cloudflare](/docs/deploy-cloudflare).
+Copy `.dev.vars.example` to `.dev.vars` for local work. For production, store secrets with `wrangler secret put NAME`; never commit them to `wrangler.jsonc`. Self-hosters must also replace every D1, KV, and Images account identifier in `wrangler.jsonc` with resources from their own Cloudflare account; see [Deploy on Cloudflare](deploy-cloudflare.md).
 
 ## Core settings
 
 | Variable             | Purpose                                                           | Where                   |
 | -------------------- | ----------------------------------------------------------------- | ----------------------- |
 | `ENVIRONMENT`        | `development` locally; deployment environment label in production | local / Worker variable |
-| `ORIGIN`             | Public URL, such as `https://jaydslist.net`                       | local / secret          |
+| `ORIGIN`             | Public URL, such as `https://your-instance.example`               | local / secret          |
 | `BETTER_AUTH_SECRET` | High-entropy secret for auth state                                | secret                  |
 | `ADMIN_EMAILS`       | Comma-separated operator email addresses                          | secret                  |
 | `INSTANCE_THEME`     | Optional visual theme                                             | Worker variable         |
@@ -51,7 +45,7 @@ An unknown or omitted value safely falls back to `default`. Visitor color mode i
 | Reputation checks  | Optional: `DBBL_ENABLED=true`, `DBBL_API_URL`, and `DBBL_API_KEY`                               |
 | Web push           | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CONTACT`                                        |
 
-Email is covered in [Email delivery](/docs/email).
+Email is covered in [Email delivery](email.md).
 
 ## Optional: DBBL reputation network
 

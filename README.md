@@ -56,9 +56,7 @@ data, but it deletes and recreates the local D1 database first.
 5. Before inviting users, test phone verification, photos, listings, messaging, password reset
    email, and administrator access.
 
-The deployed application also serves these guides at `/docs`, `/docs/quickstart`,
-`/docs/configuration`, `/docs/deploy-cloudflare`, and `/docs/email` after the revision that
-contains them has been deployed.
+For complete operator guidance, read the repository-hosted [self-hosting documentation](docs/self-hosting/README.md): [quickstart](docs/self-hosting/quickstart.md), [configuration](docs/self-hosting/configuration.md), [Cloudflare deployment](docs/self-hosting/deploy-cloudflare.md), [email](docs/self-hosting/email.md), and [operations](docs/self-hosting/operations.md).
 
 ## Tech stack
 

@@ -1,19 +1,17 @@
-<svelte:head>
-
-<title>Self-hosting documentation · Jaydslist</title>
-<meta name="description" content="Documentation for running an independent Jaydslist instance." />
-</svelte:head>
-
 # Self-hosting Jaydslist
 
-Jaydslist is an AGPL-licensed, Cloudflare-native personals platform. These guides cover local setup and the production services supported by this repository.
+These are the canonical operator guides for running an independent Jaydslist instance. They
+live in the repository so they are available before an instance exists. The supported production
+target is Cloudflare Workers.
 
 ## Start here
 
-1. Follow the [quickstart](/docs/quickstart) to run the app locally with D1 and sample data.
-2. Use the [Cloudflare deployment guide](/docs/deploy-cloudflare) to provision your own infrastructure.
-3. Read the [configuration reference](/docs/configuration) before connecting production services.
-4. Configure [email delivery](/docs/email) before inviting real users.
+1. Follow the [quickstart](quickstart.md) to run the app locally with D1 and sample data.
+2. Use the [Cloudflare deployment guide](deploy-cloudflare.md) to provision your own
+   infrastructure.
+3. Read the [configuration reference](configuration.md) before connecting production services.
+4. Configure [email delivery](email.md) before inviting real users.
+5. Establish the processes in [operations and upgrades](operations.md) before public launch.
 
 ## Production hoster checklist
 
@@ -33,7 +31,3 @@ You need all of these before a public launch:
 Cloudflare Images must be enabled and its API token needs **Images Write** permission because user photos are uploaded through the Images API. [Cloudflare Images direct uploads](https://developers.cloudflare.com/images/storage/upload-images/direct-creator-upload/)
 
 Keep secrets out of git. Use `.dev.vars` locally and Worker secrets in production.
-
-## Deployment support
-
-Cloudflare Workers is the supported production target. The repository includes Worker configuration, D1 migrations, and the application build. Other hosting targets are not yet documented or tested as supported deployments.

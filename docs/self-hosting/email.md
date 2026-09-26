@@ -1,9 +1,3 @@
-<svelte:head>
-
-<title>Email delivery · Jaydslist docs</title>
-<meta name="description" content="Configure Resend or Amazon SES for Jaydslist transactional email." />
-</svelte:head>
-
 # Email delivery
 
 Jaydslist uses one email interface for password resets, inbox notifications, moderation notices, and abuse alerts. Choose a provider with `EMAIL_PROVIDER`.

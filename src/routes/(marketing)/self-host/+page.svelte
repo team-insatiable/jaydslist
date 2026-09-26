@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
-
 	let { data } = $props();
 </script>
 
@@ -17,19 +15,17 @@
 			{data.instanceName} is AGPL-licensed software. You can inspect how it works, contribute to the project,
 			or run an independent instance for your own community.
 		</p>
-		<a class="source-link" href="https://github.com/team-insatiable/jaydslist"
-			>View the source on GitHub</a
-		>
+		<a class="source-link" href={data.sourceUrl}>View the source repository</a>
 	</section>
 
 	<section class="next-steps" aria-labelledby="next-steps-heading">
 		<h2 id="next-steps-heading">Getting started</h2>
 		<p>
-			The repository includes the application, database migrations, local development setup, and
-			deployment configuration. Start with the self-hosting documentation for local setup,
-			production configuration, and email delivery.
+			The repository contains the application, database migrations, local development setup, and
+			canonical operator documentation. Read the self-hosting guide there before creating or
+			deploying an instance.
 		</p>
-		<a class="docs-link" href={resolve('/docs/quickstart')}>Read the self-hosting docs</a>
+		<a class="docs-link" href={data.sourceUrl}>Open the source repository</a>
 	</section>
 </main>
 

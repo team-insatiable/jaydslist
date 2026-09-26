@@ -1,9 +1,3 @@
-<svelte:head>
-
-<title>Quickstart · Jaydslist docs</title>
-<meta name="description" content="Run Jaydslist locally with Cloudflare D1." />
-</svelte:head>
-
 # Quickstart
 
 This runs Jaydslist locally with Cloudflare's local D1 emulator. It is for development and evaluation, not production.
@@ -24,7 +18,7 @@ cp .dev.vars.example .dev.vars
 
 Set a high-entropy `BETTER_AUTH_SECRET`. For local phone verification, set a non-production `DEV_BYPASS_OTP`. Never deploy that bypass.
 
-See [Configuration](/docs/configuration) for every integration and secret.
+See [Configuration](configuration.md) for every integration and secret.
 
 ## 3. Create the local database
 
