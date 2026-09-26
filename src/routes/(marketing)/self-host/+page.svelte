@@ -25,7 +25,7 @@
 			canonical operator documentation. Read the self-hosting guide there before creating or
 			deploying an instance.
 		</p>
-		<a class="docs-link" href={data.sourceUrl}>Open the source repository</a>
+		<a class="docs-link" href={data.docsUrl}>Read the self-hosting guide →</a>
 	</section>
 </main>
 

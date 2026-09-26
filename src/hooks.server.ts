@@ -54,7 +54,9 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 		const publicPath =
 			event.url.pathname === '/' ||
 			event.url.pathname === '/beta/confirm' ||
-			['/about', '/rules', '/terms', '/privacy', '/login'].includes(event.url.pathname) ||
+			['/about', '/rules', '/terms', '/privacy', '/self-host', '/login'].includes(
+				event.url.pathname
+			) ||
 			event.url.pathname.startsWith('/api/auth/');
 		if (!isAdmin && !publicPath) throw redirect(303, '/');
 	}
