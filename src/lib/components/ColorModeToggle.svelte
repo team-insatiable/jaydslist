@@ -7,6 +7,7 @@
 	let colorMode = $state<ColorMode>('system');
 	let colorScheme = $state<ColorScheme>('light');
 	let menuOpen = $state(false);
+	let hydrated = $state(false);
 
 	function systemColorScheme(): ColorScheme {
 		return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -29,6 +30,7 @@
 		const saved = localStorage.getItem('jaydslist-color-scheme');
 		colorMode = saved === 'light' || saved === 'dark' ? saved : 'system';
 		applyColorMode();
+		hydrated = true;
 
 		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 		const syncSystemMode = () => {
@@ -57,6 +59,7 @@
 		aria-expanded={menuOpen}
 		aria-haspopup="menu"
 		aria-label="Choose color mode"
+		data-hydrated={hydrated ? 'true' : undefined}
 	>
 		{#if colorScheme === 'dark'}
 			<svg

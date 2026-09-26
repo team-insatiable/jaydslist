@@ -45,6 +45,7 @@ test('the landing page has a single set of account actions and supports color-mo
 	await expect(page.getByRole('link', { name: 'Sign in' })).toHaveCount(1);
 
 	const colorModeButton = page.getByRole('button', { name: 'Choose color mode' });
+	await expect(colorModeButton).toHaveAttribute('data-hydrated', 'true');
 	await colorModeButton.click();
 	await expect(colorModeButton).toHaveAttribute('aria-expanded', 'true');
 	await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
