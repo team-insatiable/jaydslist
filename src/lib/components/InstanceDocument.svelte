@@ -1,113 +1,17 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	type Variant = 'document' | 'about' | 'rules';
-	type Block =
-		| { type: 'heading'; level: number; content: string; id: string }
-		| { type: 'paragraph'; content: string }
-		| { type: 'list'; items: string[] };
-
+	import { parseMarkdown, renderMarkdown, type Block, type Variant } from '$lib/document-markdown';
 	let {
 		title,
 		content,
 		variant = 'document'
 	}: { title: string; content: string; variant?: Variant } = $props();
-
-	function escapeHtml(value: string) {
-		return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-	}
-
-	function inline(value: string) {
-		return escapeHtml(value)
-			.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-			.replace(/\*(.+?)\*/g, '<em>$1</em>')
-			.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g, '<a href="$2">$1</a>');
-	}
-
-	function parseMarkdown(markdown: string) {
-		const blocks: Block[] = [];
-		let paragraph: string[] = [];
-		let list: string[] = [];
-		const flushParagraph = () => {
-			if (paragraph.length) blocks.push({ type: 'paragraph', content: paragraph.join(' ') });
-			paragraph = [];
-		};
-		const flushList = () => {
-			if (list.length) blocks.push({ type: 'list', items: list });
-			list = [];
-		};
-
-		for (const rawLine of markdown.trim().split('\n')) {
-			const line = rawLine.trim();
-			if (!line) {
-				flushParagraph();
-				flushList();
-				continue;
-			}
-			const heading = /^(#{1,3})\s+(.+)$/.exec(line);
-			if (heading) {
-				flushParagraph();
-				flushList();
-				blocks.push({
-					type: 'heading',
-					level: heading[1].length,
-					content: heading[2],
-					id: `section-${blocks.length}`
-				});
-				continue;
-			}
-			const item = /^[-*]\s+(.+)$/.exec(line);
-			if (item) {
-				flushParagraph();
-				list.push(item[1]);
-				continue;
-			}
-			flushList();
-			paragraph.push(line);
-		}
-		flushParagraph();
-		flushList();
-		return blocks;
-	}
-
-	function renderBlock(block: Block) {
-		if (block.type === 'paragraph') return `<p>${inline(block.content)}</p>`;
-		if (block.type === 'list')
-			return `<ul>${block.items.map((item) => `<li>${inline(item)}</li>`).join('')}</ul>`;
-		return `<h${block.level} id="${block.id}">${inline(block.content)}</h${block.level}>`;
-	}
-
-	function renderFeaturePage(blocks: Block[], pageVariant: Exclude<Variant, 'document'>) {
-		const titleIndex = blocks.findIndex((block) => block.type === 'heading' && block.level === 1);
-		const titleBlock = titleIndex >= 0 ? blocks[titleIndex] : undefined;
-		const possibleLead = titleIndex >= 0 ? blocks[titleIndex + 1] : undefined;
-		const lead = possibleLead?.type === 'paragraph' ? possibleLead : undefined;
-		const sections: Block[][] = [];
-		let current: Block[] | undefined;
-
-		for (const block of blocks.slice(titleIndex + (lead ? 2 : 1))) {
-			if (block.type === 'heading' && block.level === 2) {
-				current = [block];
-				sections.push(current);
-			} else if (current) current.push(block);
-		}
-
-		const sectionHtml = sections
-			.map((section, index) => {
-				const enforcement =
-					pageVariant === 'rules' && index === sections.length - 1 ? ' is-enforcement' : '';
-				return `<section class="${pageVariant}-section${enforcement}">${section.map(renderBlock).join('')}</section>`;
-			})
-			.join('');
-		return `<header class="feature-hero">${titleBlock ? renderBlock(titleBlock) : ''}${lead ? renderBlock(lead) : ''}</header><div class="${pageVariant}-grid">${sectionHtml}</div>`;
-	}
-
-	function renderMarkdown(markdown: string, pageVariant: Variant) {
-		const blocks = parseMarkdown(markdown);
-		if (pageVariant === 'about' || pageVariant === 'rules')
-			return renderFeaturePage(blocks, pageVariant);
-		return blocks.map(renderBlock).join('\n');
-	}
+	let hydrated = $state(false);
+	onMount(() => {
+		hydrated = true;
+	});
 
 	const html = $derived(renderMarkdown(content, variant));
 	const sections = $derived(
@@ -150,7 +54,11 @@
 				</nav>
 			{/if}
 		</aside>
-		<article class:feature-content={variant !== 'document'} class="document-content">
+		<article
+			data-hydrated={hydrated}
+			class:feature-content={variant !== 'document'}
+			class="document-content"
+		>
 			<!-- Instance Markdown is escaped and rendered by renderMarkdown above. -->
 			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 			{@html html}
@@ -195,7 +103,7 @@
 	.feature-content :global(.about-grid),
 	.feature-content :global(.rules-grid) {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
 		gap: 1.25rem;
 		margin-top: 2.25rem;
 	}
@@ -268,6 +176,8 @@
 		font-weight: 700;
 	}
 	.document-rail .contents {
+		max-height: 55vh;
+		overflow-y: auto;
 		margin-top: 2rem;
 		padding-top: 1.5rem;
 		border-top: 1px solid var(--pico-muted-border-color);
@@ -286,6 +196,28 @@
 	.document-content {
 		min-width: 0;
 		overflow-wrap: anywhere;
+		font-size: 1.05rem;
+	}
+	.document-content :global(p) {
+		max-width: 70ch;
+	}
+	.feature-content {
+		padding: 0;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+	}
+	.document-content :global(p),
+	.document-content :global(ul),
+	.document-content :global(ol) {
+		margin-block: 0 1.25rem;
+	}
+	.document-content :global(ul),
+	.document-content :global(ol) {
+		padding-left: 1.6rem;
+	}
+	.document-content :global(li) {
+		padding-left: 0.25rem;
 	}
 	.document-content:not(.feature-content) {
 		background: var(--pico-card-background-color);
