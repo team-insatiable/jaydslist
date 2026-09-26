@@ -4,6 +4,7 @@ export type InstanceConfig = {
 	url: string;
 	legalEmail: string;
 	sourceUrl: string;
+	prelaunchMode: boolean;
 };
 
 const defaults: InstanceConfig = {
@@ -11,13 +12,14 @@ const defaults: InstanceConfig = {
 	tagline: 'Real connections, real people',
 	url: 'https://example.com',
 	legalEmail: 'operator@example.com',
-	sourceUrl: 'https://github.com/team-insatiable/jaydslist'
+	sourceUrl: 'https://github.com/team-insatiable/jaydslist',
+	prelaunchMode: false
 };
 
 function value(env: Partial<Env> | undefined, key: keyof InstanceConfig): string {
 	const envKey = `INSTANCE_${key === 'name' ? 'NAME' : key === 'tagline' ? 'TAGLINE' : key === 'url' ? 'URL' : key === 'legalEmail' ? 'LEGAL_EMAIL' : 'SOURCE_URL'}`;
 	const candidate = (env as Record<string, string | undefined> | undefined)?.[envKey]?.trim();
-	return candidate || defaults[key];
+	return candidate || String(defaults[key]);
 }
 
 /**
@@ -31,6 +33,7 @@ export function getInstanceConfig(env?: Partial<Env>): InstanceConfig {
 		tagline: value(env, 'tagline'),
 		url: value(env, 'url'),
 		legalEmail: value(env, 'legalEmail'),
-		sourceUrl: value(env, 'sourceUrl')
+		sourceUrl: value(env, 'sourceUrl'),
+		prelaunchMode: env?.INSTANCE_PRELAUNCH_MODE === 'true'
 	};
 }

@@ -30,6 +30,8 @@ declare global {
 		INSTANCE_URL?: string;
 		INSTANCE_LEGAL_EMAIL?: string;
 		INSTANCE_SOURCE_URL?: string;
+		/** Set to true to show the public beta landing page instead of the app. */
+		INSTANCE_PRELAUNCH_MODE?: string;
 	}
 
 	namespace App {

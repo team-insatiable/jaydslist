@@ -571,4 +571,20 @@ export const userBlocks = sqliteTable(
 	})
 );
 
+export const betaWaitlist = sqliteTable(
+	'beta_waitlist',
+	{
+		id: text('id').primaryKey(),
+		email: text('email').notNull().unique(),
+		status: text('status').notNull().default('pending'),
+		confirmationTokenHash: text('confirmation_token_hash'),
+		confirmationExpiresAt: integer('confirmation_expires_at', { mode: 'timestamp' }),
+		confirmedAt: integer('confirmed_at', { mode: 'timestamp' }),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
+	},
+	(table) => ({ statusIdx: index('beta_waitlist_status_idx').on(table.status) })
+);
+
 export * from './auth.schema';
