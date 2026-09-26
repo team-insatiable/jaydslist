@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { authClient } from '$lib/client/auth';
 	import { resolve } from '$app/paths';
+	import BrandMark from '$lib/components/BrandMark.svelte';
 	let { data } = $props();
 
 	let email = $state('');
@@ -30,7 +31,7 @@
 <div class="auth-wrap">
 	<div class="auth-card">
 		<div class="auth-brand">
-			<span class="brand-mark" aria-hidden="true">{data.instanceName.slice(0, 1)}</span>
+			<BrandMark size={40} />
 			<span class="wordmark">{data.instanceName}</span>
 		</div>
 
@@ -143,19 +144,6 @@
 		gap: 0.55rem;
 		text-align: center;
 		margin-bottom: 1.75rem;
-	}
-
-	.brand-mark {
-		display: inline-grid;
-		place-items: center;
-		width: 1.7rem;
-		height: 1.7rem;
-		border-radius: 0.55rem;
-		background: var(--pico-primary);
-		color: #fff;
-		font-size: 0.9rem;
-		font-weight: 800;
-		box-shadow: 0 5px 12px color-mix(in srgb, var(--pico-primary) 30%, transparent);
 	}
 
 	.wordmark {

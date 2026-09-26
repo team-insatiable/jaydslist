@@ -2,6 +2,7 @@
 	import '$lib/styles/tokens.css';
 	import '$lib/styles/base.css';
 	import { getThemeStyle } from '$lib/themes';
+	import favicon from '$lib/assets/logo.svg';
 
 	let { data, children } = $props();
 
@@ -9,6 +10,7 @@
 </script>
 
 <svelte:head>
+	<link rel="icon" href={favicon} type="image/svg+xml" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
