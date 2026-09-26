@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { invalidate } from '$app/navigation';
+	import SiteFooter from '$lib/components/SiteFooter.svelte';
 
 	let { children, data } = $props();
 
@@ -437,15 +438,7 @@
 	</a>
 </nav>
 
-<footer class="site-footer">
-	<small
-		>© {new Date().getFullYear()}
-		{data.instanceName} &mdash; <a href={resolve('/about')}>About</a> &mdash;
-		<a href={resolve('/rules')}>Rules</a> &mdash;
-		<a href={resolve('/terms')}>Terms</a> &mdash;
-		<a href={resolve('/privacy')}>Privacy</a></small
-	>
-</footer>
+<SiteFooter variant="app" />
 
 <style>
 	.brand-wordmark {
@@ -890,20 +883,5 @@
 		min-width: 15px;
 		height: 15px;
 		font-size: 0.6rem;
-	}
-
-	/* ── Footer — hidden on mobile ── */
-	.site-footer {
-		padding-block: 1.5rem;
-		border-top: 1px solid var(--pico-muted-border-color);
-		text-align: center;
-		color: var(--pico-muted-color);
-		display: none;
-	}
-
-	@media (min-width: 960px) {
-		.site-footer {
-			display: block;
-		}
 	}
 </style>
