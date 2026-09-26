@@ -1,10 +1,8 @@
 import { getInstanceConfig } from '$lib/server/instance';
-import { isDbblEnabled } from '$lib/server/dbbl';
+import { getInstanceDocument } from '$lib/server/instance-content';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ platform }) => {
-	return {
-		instanceName: getInstanceConfig(platform?.env).name,
-		dbblEnabled: isDbblEnabled(platform?.env ?? {})
-	};
+	const instance = getInstanceConfig(platform?.env);
+	return { title: `About ${instance.name}`, content: getInstanceDocument(platform?.env, 'about') };
 };
