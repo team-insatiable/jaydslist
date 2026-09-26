@@ -54,6 +54,7 @@ test('the landing page has a single set of account actions and supports color-mo
 	await page.reload();
 	await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
 
+	await expect(colorModeButton).toHaveAttribute('data-hydrated', 'true');
 	await colorModeButton.click();
 	await expect(colorModeButton).toHaveAttribute('aria-expanded', 'true');
 	await page.getByRole('menuitemradio', { name: 'System default' }).click();
