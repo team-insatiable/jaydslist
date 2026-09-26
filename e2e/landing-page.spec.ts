@@ -34,7 +34,7 @@ test('a logged-in visitor to / is redirected straight to /browse', async ({ page
 	await page.waitForURL((url) => url.pathname === '/browse');
 });
 
-test('the landing page has a single set of account actions and supports color-mode choices', async ({
+test('the landing page has a single set of account actions and a two-state color-mode toggle', async ({
 	page
 }) => {
 	await page.goto('/');
@@ -44,20 +44,20 @@ test('the landing page has a single set of account actions and supports color-mo
 	await expect(page.locator('header.site-header')).toHaveCount(0);
 	await expect(page.getByRole('link', { name: 'Sign in' })).toHaveCount(1);
 
-	const colorModeButton = page.getByRole('button', { name: 'Choose color mode' });
+	const colorModeButton = page.locator('.color-mode-toggle');
 	await expect(colorModeButton).toHaveAttribute('data-hydrated', 'true');
+	const systemIsDark = await page.evaluate(
+		() => matchMedia('(prefers-color-scheme: dark)').matches
+	);
+	const override = systemIsDark ? 'light' : 'dark';
 	await colorModeButton.click();
-	await expect(colorModeButton).toHaveAttribute('aria-expanded', 'true');
-	await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
-	await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+	await expect(page.locator('html')).toHaveAttribute('data-color-scheme', override);
 
 	await page.reload();
-	await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+	await expect(page.locator('html')).toHaveAttribute('data-color-scheme', override);
 
 	await expect(colorModeButton).toHaveAttribute('data-hydrated', 'true');
 	await colorModeButton.click();
-	await expect(colorModeButton).toHaveAttribute('aria-expanded', 'true');
-	await page.getByRole('menuitemradio', { name: 'System default' }).click();
 	await expect(page.locator('html')).not.toHaveAttribute('data-color-scheme');
 
 	await Promise.all([
