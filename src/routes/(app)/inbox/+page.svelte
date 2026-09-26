@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppPageIntro from '$lib/components/AppPageIntro.svelte';
 	import { resolve } from '$app/paths';
 
 	let { data } = $props();
@@ -16,8 +17,11 @@
 </script>
 
 <div class="inbox-page">
-	<h1>Inbox</h1>
-	<p class="inbox-intro">Good connections start with a conversation.</p>
+	<AppPageIntro
+		eyebrow="Beyond the listing"
+		title="Inbox"
+		description="Good connections start with a few honest words. Pick up where you left off."
+	/>
 
 	{#if data.threads.length === 0}
 		<div class="empty">
@@ -50,19 +54,9 @@
 </div>
 
 <style>
-	.inbox-intro {
-		margin: 0.6rem 0 1.8rem;
-		color: var(--pico-muted-color);
-	}
 	.inbox-page {
-		max-width: 600px;
+		max-width: 900px;
 		margin-inline: auto;
-	}
-
-	h1 {
-		font-size: 1.5rem;
-		font-weight: 700;
-		margin-bottom: 1.25rem;
 	}
 
 	.empty {
@@ -85,8 +79,8 @@
 	.thread-row {
 		list-style: none;
 		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 10px;
-		margin-bottom: 0.6rem;
+		border-radius: 4px;
+		margin-bottom: 1rem;
 		background: var(--pico-card-background-color);
 		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 		transition: border-color 0.15s;
@@ -98,7 +92,7 @@
 
 	.thread-link {
 		display: block;
-		padding: 1.3rem 1.4rem;
+		padding: 1.75rem;
 		text-decoration: none;
 		color: inherit;
 	}
@@ -112,8 +106,9 @@
 	}
 
 	.listing-subject {
-		font-weight: 700;
-		font-size: 1rem;
+		font-weight: 500;
+		font-size: 1.45rem;
+		font-family: Georgia, serif;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;

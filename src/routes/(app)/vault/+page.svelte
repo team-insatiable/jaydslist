@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppPageIntro from '$lib/components/AppPageIntro.svelte';
 	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -49,9 +50,11 @@
 </script>
 
 <div class="albums-page">
-	<header class="albums-header">
-		<h1>My Albums</h1>
-	</header>
+	<AppPageIntro
+		eyebrow="Share on your terms"
+		title="My Albums"
+		description="A private place for your photos. You choose what to share, and with whom."
+	/>
 
 	{#if !data.isSupporter}
 		<div class="supporter-gate">
@@ -270,14 +273,6 @@
 <style>
 	.albums-page {
 		padding-bottom: 2rem;
-	}
-
-	.albums-header {
-		margin-bottom: 1rem;
-	}
-
-	.albums-header h1 {
-		margin: 0;
 	}
 
 	.supporter-gate {

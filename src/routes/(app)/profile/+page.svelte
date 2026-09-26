@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppPageIntro from '$lib/components/AppPageIntro.svelte';
 	import { enhance } from '$app/forms';
 	import { SvelteSet } from 'svelte/reactivity';
 
@@ -189,7 +190,11 @@
 </script>
 
 <div class="profile-page">
-	<h1>Your Profile</h1>
+	<AppPageIntro
+		eyebrow="Your corner of the board"
+		title="Your Profile"
+		description="A little about you. A lot of control over how you connect."
+	/>
 
 	{#if !data.isComplete}
 		<div class="notice">
@@ -199,7 +204,12 @@
 	{/if}
 
 	<!-- About You -->
-	<section class="card">
+	<nav class="profile-sections" aria-label="Profile sections">
+		<a href="#about-you">About you</a><a href="#location">Location</a><a href="#preferences"
+			>Connections</a
+		><a href="#privacy">Privacy</a>
+	</nav>
+	<section class="card" id="about-you">
 		<h2>About you</h2>
 
 		{#if profileError}
@@ -345,7 +355,7 @@
 	</section>
 
 	<!-- Location -->
-	<section class="card">
+	<section class="card" id="location">
 		<h2>Your location</h2>
 		<p class="muted">
 			Coordinates are stored privately and never shared. Only your general area is shown publicly.
@@ -381,7 +391,7 @@
 	</section>
 
 	<!-- Looking For -->
-	<section class="card">
+	<section class="card" id="preferences">
 		<h2>Looking for</h2>
 		<p class="muted">
 			Your preferences for browsing. You can still view any listing, but these help filter your
@@ -478,7 +488,7 @@
 	</section>
 
 	<!-- Privacy Mode -->
-	<section class="card">
+	<section class="card" id="privacy">
 		<h2>Privacy mode</h2>
 		{#if !data.profile?.isSupporter}
 			<div class="supporter-badge">
@@ -569,15 +579,20 @@
 </div>
 
 <style>
-	.profile-page {
-		max-width: 560px;
-		margin-inline: auto;
+	.profile-sections {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.5rem;
+		margin-bottom: 1.5rem;
+		font-size: 0.8rem;
+		font-weight: 600;
 	}
-
-	h1 {
-		font-size: 1.5rem;
-		font-weight: 700;
-		margin-bottom: 1.25rem;
+	.card {
+		scroll-margin-top: 6rem;
+	}
+	.profile-page {
+		max-width: 800px;
+		margin-inline: auto;
 	}
 
 	.notice {
@@ -593,15 +608,16 @@
 	.card {
 		background: var(--pico-card-background-color);
 		border: 1px solid var(--pico-muted-border-color);
-		border-radius: 10px;
-		padding: 1.5rem;
-		margin-bottom: 1.25rem;
+		border-radius: 4px;
+		padding: clamp(1.25rem, 4vw, 2.5rem);
+		margin-bottom: 1.5rem;
 	}
 
 	h2 {
-		font-size: 1rem;
-		font-weight: 600;
-		margin-bottom: 1rem;
+		font-size: 1.6rem;
+		font-family: Georgia, serif;
+		font-weight: 500;
+		margin-bottom: 1.5rem;
 	}
 
 	.field {

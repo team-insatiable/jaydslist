@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppPageIntro from '$lib/components/AppPageIntro.svelte';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 
@@ -17,6 +18,11 @@
 </script>
 
 <div class="compose-page">
+	<AppPageIntro
+		eyebrow="A connection starts here"
+		title="Make the first hello count."
+		description="Something in their listing caught your eye. Tell them what it was."
+	/>
 	<a href={resolve(`/listings/${data.listing.id}`)} class="back-link">
 		<svg
 			width="16"
@@ -100,7 +106,7 @@
 
 <style>
 	.compose-page {
-		max-width: 560px;
+		max-width: 800px;
 		margin-inline: auto;
 	}
 

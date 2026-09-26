@@ -123,6 +123,7 @@
 					d="M596.492 273.733L725.422 273.643C751.035 273.666 777.843 273.069 803.325 273.684L803.407 293.069C786.399 294.603 769.188 299.313 757 311.734C736.452 332.674 739.489 365.063 739.499 391.582L739.495 467.519L739.522 732.505C767.174 732.76 798.616 726.984 822.308 712.482C851.286 694.744 873.761 666.105 885.435 634.302C891.377 618.112 895.837 597.984 899.897 581.064C906.082 581.08 912.268 581.057 918.453 580.997C918.396 616.858 916.984 652.281 915.955 688.125L913.646 758.038L586.609 758.209C595.222 751.831 605.104 746.495 613.513 739.861C752.694 630.052 747.797 379.432 593.929 284.501C587.701 280.658 581.093 277.412 574.589 274.135C581.891 274.065 589.192 273.931 596.492 273.733Z"
 				/>
 			</svg>
+			<span class="brand-wordmark">Jaydslist<span>personals, reimagined</span></span>
 		</a>
 		<ul class="desktop-nav">
 			<li>
@@ -446,6 +447,21 @@
 </footer>
 
 <style>
+	.brand-wordmark {
+		font-size: 1.4rem;
+		font-weight: 800;
+		letter-spacing: -0.05em;
+		line-height: 1.1;
+	}
+	.brand-wordmark span {
+		display: block;
+		font-size: 0.55rem;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--pico-muted-color);
+		margin-top: 0.3rem;
+	}
 	:global(body) {
 		display: flex;
 		flex-direction: column;
@@ -455,7 +471,7 @@
 	:global(main) {
 		flex: 1;
 		width: 100%;
-		max-width: 1100px;
+		max-width: 1240px;
 		margin-inline: auto;
 		padding: 1.5rem 1rem;
 		padding-bottom: calc(1.5rem + 64px + env(safe-area-inset-bottom, 8px));
@@ -482,11 +498,12 @@
 		justify-content: space-between;
 		height: 64px;
 		padding-inline: 1rem;
-		max-width: 1100px;
+		max-width: 1240px;
 		margin-inline: auto;
 	}
 
 	.logo {
+		gap: 0.6rem;
 		text-decoration: none !important;
 		flex-shrink: 0;
 		display: flex;
@@ -516,11 +533,11 @@
 
 	.nav-link {
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
 		align-items: center;
-		gap: 0.2rem;
-		font-size: 0.65rem;
-		font-weight: 500;
+		gap: 0.5rem;
+		font-size: 0.8rem;
+		font-weight: 600;
 		color: var(--pico-muted-color);
 		text-decoration: none;
 		padding: 0.35rem 0.5rem;
@@ -546,6 +563,7 @@
 
 	.nav-link.active {
 		color: var(--pico-primary);
+		background: color-mix(in srgb, var(--pico-primary) 8%, transparent);
 	}
 
 	.nav-icon-wrap {
