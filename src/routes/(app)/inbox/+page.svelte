@@ -17,6 +17,7 @@
 
 <div class="inbox-page">
 	<h1>Inbox</h1>
+	<p class="inbox-intro">Good connections start with a conversation.</p>
 
 	{#if data.threads.length === 0}
 		<div class="empty">
@@ -49,6 +50,10 @@
 </div>
 
 <style>
+	.inbox-intro {
+		margin: 0.6rem 0 1.8rem;
+		color: var(--pico-muted-color);
+	}
 	.inbox-page {
 		max-width: 600px;
 		margin-inline: auto;
@@ -93,7 +98,7 @@
 
 	.thread-link {
 		display: block;
-		padding: 1rem 1.125rem;
+		padding: 1.3rem 1.4rem;
 		text-decoration: none;
 		color: inherit;
 	}
@@ -107,8 +112,8 @@
 	}
 
 	.listing-subject {
-		font-weight: 600;
-		font-size: 0.9rem;
+		font-weight: 700;
+		font-size: 1rem;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;

@@ -472,7 +472,7 @@
 		position: sticky;
 		top: 0;
 		z-index: 100;
-		background: var(--pico-background-color);
+		background: var(--pico-card-background-color);
 		border-bottom: 1px solid var(--pico-muted-border-color);
 	}
 
@@ -480,7 +480,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 56px;
+		height: 64px;
 		padding-inline: 1rem;
 		max-width: 1100px;
 		margin-inline: auto;
@@ -696,7 +696,7 @@
 	/* ── Drawer ── */
 	.drawer {
 		position: fixed;
-		top: 56px;
+		top: 64px;
 		right: 0;
 		left: auto;
 		width: min(280px, 80vw);

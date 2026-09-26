@@ -213,13 +213,16 @@
 
 	.listing-card {
 		margin-bottom: 0;
-		padding: 1rem 1.25rem;
-		transition: border-color 0.15s;
+		padding: 1.4rem;
+		transition:
+			border-color 0.15s,
+			box-shadow 0.15s;
 		cursor: pointer;
 	}
 
 	.listing-card:hover {
 		border-color: var(--pico-primary);
+		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
 	}
 
 	.card-top {
@@ -256,8 +259,9 @@
 	}
 
 	.subject {
-		font-size: 0.975rem;
-		font-weight: 600;
+		font-size: 1.1rem;
+		font-weight: 700;
+		letter-spacing: -0.025em;
 		color: var(--pico-color);
 		margin-bottom: 0.3rem;
 		line-height: 1.35;

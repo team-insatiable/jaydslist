@@ -27,4 +27,13 @@
 				transparent 24rem
 			);
 	}
+
+	.auth-page :global(.auth-card) {
+		border-top: 3px solid var(--pico-primary);
+		box-shadow: 0 20px 65px rgba(0, 0, 0, 0.08);
+	}
+
+	.auth-page :global(.auth-header h1) {
+		letter-spacing: -0.045em;
+	}
 </style>

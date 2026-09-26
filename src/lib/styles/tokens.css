@@ -1,5 +1,6 @@
 /* ── Brand + typography (same in both modes) ── */
 :root {
+	color-scheme: light dark;
 	--pico-primary: #2563eb;
 	--pico-primary-hover: #1d4ed8;
 	--pico-primary-focus: rgba(37, 99, 235, 0.25);
@@ -18,8 +19,8 @@
 @media (prefers-color-scheme: dark) {
 	:root {
 		--pico-background-color: #131720;
-		--pico-color: #c2c7d0;
-		--pico-muted-color: #7b8495;
+		--pico-color: #e3e6ec;
+		--pico-muted-color: #a0a9b8;
 		--pico-muted-border-color: #202632;
 		--pico-card-background-color: #181c25;
 		--pico-muted-background-color: #202632;
@@ -52,9 +53,10 @@
 
 /* A saved visitor preference overrides the system default. */
 :root[data-color-scheme='dark'] {
+	color-scheme: dark;
 	--pico-background-color: #131720;
-	--pico-color: #c2c7d0;
-	--pico-muted-color: #7b8495;
+	--pico-color: #e3e6ec;
+	--pico-muted-color: #a0a9b8;
 	--pico-muted-border-color: #202632;
 	--pico-card-background-color: #181c25;
 	--pico-muted-background-color: #202632;
@@ -67,6 +69,7 @@
 }
 
 :root[data-color-scheme='light'] {
+	color-scheme: light;
 	--pico-background-color: #f0f2f5;
 	--pico-color: #373c44;
 	--pico-muted-color: #646b79;
