@@ -48,7 +48,7 @@ An unknown or omitted value safely falls back to `default`. Visitor color mode i
 | Phone verification | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`, `PHONE_PEPPER`          |
 | Contact protection | `CONTACT_ENCRYPTION_KEY`                                                                        |
 | Cloudflare Images  | `CF_IMAGES_API_TOKEN` with Images Write permission, plus account values in Worker configuration |
-| Reputation checks  | Optional: `DBBL_ENABLED=true` and `DBBL_API_KEY`                                                |
+| Reputation checks  | Optional: `DBBL_ENABLED=true`, `DBBL_API_URL`, and `DBBL_API_KEY`                               |
 | Web push           | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CONTACT`                                        |
 
 Email is covered in [Email delivery](/docs/email).
@@ -61,6 +61,7 @@ To opt in, set both values:
 
 ```dotenv
 DBBL_ENABLED=true
+DBBL_API_URL=https://api.dbblprotocol.org
 DBBL_API_KEY=...
 ```
 

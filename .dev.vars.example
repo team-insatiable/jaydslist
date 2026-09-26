@@ -12,6 +12,7 @@ BETTER_AUTH_SECRET=
 ORIGIN=http://localhost:5173
 # Optional cross-instance reputation lookups and ban reporting. Disabled by default.
 DBBL_ENABLED=false
+DBBL_API_URL=https://api.dbblprotocol.org
 DBBL_API_KEY=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
@@ -29,5 +30,10 @@ SES_SECRET_ACCESS_KEY=
 SES_REGION=us-east-1
 # SES_SESSION_TOKEN= # only for temporary AWS credentials
 ADMIN_EMAILS=
+# Cloudflare Images identifiers are non-secret instance configuration.
+CF_IMAGES_ACCOUNT_ID=
+CF_IMAGES_ACCOUNT_HASH=
 CF_IMAGES_API_TOKEN=
+VAPID_PUBLIC_KEY=
+VAPID_CONTACT=mailto:operator@example.com
 VAPID_PRIVATE_KEY=
