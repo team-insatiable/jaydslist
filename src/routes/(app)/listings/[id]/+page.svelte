@@ -675,10 +675,11 @@
 	}
 
 	.subject {
-		font-size: 1.3rem;
+		font-size: clamp(1.5rem, 3vw, 2.25rem);
 		font-weight: 700;
-		line-height: 1.3;
-		margin-bottom: 0.75rem;
+		line-height: 1.2;
+		text-wrap: balance;
+		margin-bottom: 1rem;
 	}
 
 	.poster-meta {

@@ -2363,10 +2363,10 @@
 	}
 
 	.bubble {
-		padding: 0.6rem 0.875rem;
+		padding: 0.8rem 1rem;
 		border-radius: 16px;
-		font-size: 0.9rem;
-		line-height: 1.45;
+		font-size: 0.95rem;
+		line-height: 1.6;
 		word-break: break-word;
 	}
 

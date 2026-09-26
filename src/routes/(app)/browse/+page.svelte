@@ -79,7 +79,8 @@
 {:else}
 	<div class="browse-header">
 		<div>
-			<h2>Casual Encounters</h2>
+			<p class="browse-eyebrow">The local board</p>
+			<h2>People nearby. Possibilities ahead.</h2>
 			<p class="subtitle">
 				{data.listings.length} listing{data.listings.length === 1 ? '' : 's'} within {data.radius} miles
 			</p>
@@ -177,6 +178,14 @@
 {/if}
 
 <style>
+	.browse-eyebrow {
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		font-size: 0.65rem;
+		font-weight: 700;
+		color: var(--pico-primary);
+		margin-bottom: 0.6rem;
+	}
 	/* Gate */
 	.gate-wrap {
 		display: flex;

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import BetaLanding from '$lib/components/BetaLanding.svelte';
 
 	let { data, form } = $props();
 
@@ -35,38 +36,11 @@
 </svelte:head>
 
 {#if data.prelaunchMode}
-	<main class="beta-landing">
-		<section>
-			<p class="eyebrow">Coming soon</p>
-			<h1>A calmer way to connect.</h1>
-			<p class="beta-tagline">
-				{data.instanceName} is building a privacy-first, ad-free personals community for real people.
-			</p>
-			<form method="POST" action="?/joinBeta">
-				<label for="beta-email">Get beta updates</label>
-				<div class="beta-form">
-					<input
-						id="beta-email"
-						name="email"
-						type="email"
-						autocomplete="email"
-						placeholder="you@example.com"
-						required
-					/>
-					<button type="submit">Join the beta</button>
-				</div>
-			</form>
-			{#if form?.submitted}<p class="success">Check your inbox to confirm your signup.</p>{/if}
-			{#if form?.error}<p class="error">{form.error}</p>{/if}
-			<p class="beta-note">
-				We’ll only use your email for beta and launch updates. You’ll confirm before being added.
-			</p>
-		</section>
-	</main>
+	<BetaLanding name={data.instanceName} submitted={form?.submitted} error={form?.error} />
 {:else}
 	<main class="landing-page">
 		<section class="hero">
-			<p class="eyebrow">A calmer way to connect</p>
+			<p class="eyebrow">Old-school personals. New-school standards.</p>
 			<svg
 				class="hero-logo"
 				viewBox="0 0 1024 1024"
@@ -94,7 +68,8 @@
 			<h1>{data.instanceName}</h1>
 			<p class="tagline">{data.instanceTagline}</p>
 			<p class="subhead">
-				Privacy-first personals. No ads, no paywalled features, and it's open source.
+				The spirit of Craigslist personals, with better boundaries. No ads. Free posting and
+				messaging. Open source.
 			</p>
 			<div class="hero-cta">
 				<a href={resolve('/register')} class="cta-primary">Create free account</a>
@@ -141,63 +116,6 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-	}
-
-	.beta-landing {
-		min-height: calc(100vh - 12rem);
-		display: grid;
-		place-items: center;
-		padding: 3rem 1.5rem;
-		text-align: center;
-		background: radial-gradient(
-			circle at 50% 0%,
-			color-mix(in srgb, var(--pico-primary) 16%, transparent),
-			transparent 52%
-		);
-	}
-	.beta-landing section {
-		max-width: 42rem;
-	}
-	.beta-landing h1 {
-		font-size: clamp(2.5rem, 7vw, 4.5rem);
-		letter-spacing: -0.04em;
-	}
-	.beta-tagline {
-		font-size: 1.2rem;
-		color: var(--pico-muted-color);
-		line-height: 1.7;
-	}
-	.beta-landing form {
-		margin: 2rem auto 1rem;
-		max-width: 31rem;
-		text-align: left;
-	}
-	.beta-form {
-		display: flex;
-		gap: 0.6rem;
-	}
-	.beta-form input {
-		margin: 0;
-	}
-	.beta-form button {
-		white-space: nowrap;
-	}
-	.beta-note,
-	.success,
-	.error {
-		font-size: 0.9rem;
-		color: var(--pico-muted-color);
-	}
-	.success {
-		color: var(--pico-primary);
-	}
-	.error {
-		color: var(--pico-del-color, #b42318);
-	}
-	@media (max-width: 480px) {
-		.beta-form {
-			flex-direction: column;
-		}
 	}
 
 	.hero {
