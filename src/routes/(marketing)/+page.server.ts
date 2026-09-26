@@ -56,7 +56,7 @@ export const actions: Actions = {
 		await sendEmail(env, {
 			to: email,
 			subject: `Confirm your ${instance.name} beta signup`,
-			html: `<p>Confirm that you want beta updates from ${escapeEmailHtml(instance.name)}.</p><p><a href="${escapeEmailHtml(confirmUrl)}">Confirm beta signup</a></p><p>This link expires in 24 hours. If you did not request this, you can ignore this email.</p>`
+			html: `<p>Confirm that you want beta updates from ${escapeEmailHtml(instance.name)}.</p><p><a href="${escapeEmailHtml(confirmUrl.toString())}">Confirm beta signup</a></p><p>This link expires in 24 hours. If you did not request this, you can ignore this email.</p>`
 		});
 		return { submitted: true };
 	}
