@@ -3,4 +3,4 @@
 	let { data } = $props();
 </script>
 
-<InstanceDocument title={data.title} content={data.content} />
+<InstanceDocument title={data.title} content={data.content} variant="rules" />
