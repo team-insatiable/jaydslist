@@ -20,6 +20,46 @@ Jaydslist is a modern classifieds-style personals platform focused on casual enc
 
 **Open source.** Jaydslist is AGPL licensed. The code is public, the data model is transparent, and operators can run their own instances.
 
+## Self-hosting
+
+Jaydslist is designed for independent Cloudflare Workers deployments. Each operator supplies
+their own domain, Cloudflare account, D1 database, KV namespace, Cloudflare Images account,
+Twilio Verify service, email provider, and moderation/legal process. Do not reuse another
+instance's resource IDs or secrets.
+
+### Run locally
+
+```bash
+pnpm install
+cp .dev.vars.example .dev.vars
+pnpm exec wrangler d1 migrations apply DB --local
+pnpm dev
+```
+
+Set a high-entropy `BETTER_AUTH_SECRET` in `.dev.vars`. For local phone verification only,
+set a non-production `DEV_BYPASS_OTP`; never deploy that bypass. `pnpm seed` can add sample
+data, but it deletes and recreates the local D1 database first.
+
+### Deploy your own instance
+
+1. Replace the placeholder Worker name, D1 ID, KV ID, Images account ID, delivery hash, and
+   public instance values in `wrangler.jsonc` with resources from your Cloudflare account.
+2. Copy the applicable settings from `.dev.vars.example` to Worker variables and set every
+   secret interactively with `pnpm exec wrangler secret put NAME`.
+3. Apply migrations to **your** remote D1 database:
+
+   ```bash
+   pnpm exec wrangler d1 migrations apply YOUR_DATABASE_NAME --remote
+   ```
+
+4. Deploy the Worker and attach a domain you control. Set `ORIGIN` to that HTTPS URL.
+5. Before inviting users, test phone verification, photos, listings, messaging, password reset
+   email, and administrator access.
+
+The deployed application also serves these guides at `/docs`, `/docs/quickstart`,
+`/docs/configuration`, `/docs/deploy-cloudflare`, and `/docs/email` after the revision that
+contains them has been deployed.
+
 ## Tech stack
 
 - [SvelteKit](https://kit.svelte.dev) — full-stack web framework
