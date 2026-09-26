@@ -5,6 +5,7 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { getDb } from '$lib/server/db';
 import { userProfiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { redirect } from '@sveltejs/kit';
 
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	if (!event.platform?.env?.DB)
@@ -42,6 +43,20 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 				.where(eq(userProfiles.id, session.user.id))
 				.run();
 		}
+	}
+
+	if (event.platform.env.INSTANCE_PRELAUNCH_MODE === 'true') {
+		const admins = (event.platform.env.ADMIN_EMAILS ?? '')
+			.split(',')
+			.map((email) => email.trim().toLowerCase())
+			.filter(Boolean);
+		const isAdmin = !!event.locals.user && admins.includes(event.locals.user.email.toLowerCase());
+		const publicPath =
+			event.url.pathname === '/' ||
+			event.url.pathname === '/beta/confirm' ||
+			['/about', '/rules', '/terms', '/privacy', '/login'].includes(event.url.pathname) ||
+			event.url.pathname.startsWith('/api/auth/');
+		if (!isAdmin && !publicPath) throw redirect(303, '/');
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });

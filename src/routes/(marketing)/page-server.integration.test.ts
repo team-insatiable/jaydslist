@@ -18,7 +18,8 @@ describe('marketing page load', () => {
 		const result = await load(fakeEvent(undefined));
 		expect(result).toEqual({
 			instanceName: 'Jaydslist',
-			instanceTagline: 'Real connections, real people'
+			instanceTagline: 'Real connections, real people',
+			prelaunchMode: false
 		});
 	});
 });

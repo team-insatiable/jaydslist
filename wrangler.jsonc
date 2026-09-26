@@ -35,6 +35,7 @@
 		"INSTANCE_URL": "https://your-instance.example",
 		"INSTANCE_LEGAL_EMAIL": "operator@your-instance.example",
 		"INSTANCE_SOURCE_URL": "https://github.com/team-insatiable/jaydslist",
+		"INSTANCE_PRELAUNCH_MODE": "false",
 		"DBBL_API_URL": "https://api.dbblprotocol.org",
 		"CF_IMAGES_ACCOUNT_ID": "YOUR_CLOUDFLARE_ACCOUNT_ID",
 		"CF_IMAGES_ACCOUNT_HASH": "YOUR_IMAGES_DELIVERY_HASH",

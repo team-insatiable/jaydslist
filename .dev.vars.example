@@ -8,6 +8,7 @@ INSTANCE_TAGLINE="Real connections, real people"
 INSTANCE_URL=http://localhost:5173
 INSTANCE_LEGAL_EMAIL=operator@example.com
 INSTANCE_SOURCE_URL=https://github.com/team-insatiable/jaydslist
+INSTANCE_PRELAUNCH_MODE=false
 BETTER_AUTH_SECRET=
 ORIGIN=http://localhost:5173
 # Optional cross-instance reputation lookups and ban reporting. Disabled by default.
