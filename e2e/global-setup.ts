@@ -1,13 +1,13 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { randomBytes, scryptSync } from 'node:crypto';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { E2E_CONFIG, E2E_STATE } from './local-environment.js';
 
-// Unlike scripts/seed.sh (which wipes the whole local D1 file), this setup
-// mutates rows in place via plain SQL upserts. Wiping the underlying sqlite
-// file while a Cloudflare dev server (pnpm dev / miniflare) has it open
-// leaves that server's D1 binding pointing at a stale/invalid file handle —
-// confirmed to break login with a 500 on an already-running dev server.
-// Upsert-only writes are safe regardless of whether a server is already up.
+// The browser server and seed commands use the same dedicated local D1 state.
+// Upserts preserve the open database handle when Playwright starts its server
+// before global setup. Normal development data is never seeded or reset here.
 //
 // Every dependent insert resolves the owning user's id via a `SELECT ...
 // FROM user WHERE email = ...` subquery rather than a hardcoded constant,
@@ -35,7 +35,23 @@ function sq(s: string | null): string {
 }
 
 export default function globalSetup() {
-	execSync('pnpm exec wrangler d1 migrations apply DB --local', { stdio: 'inherit' });
+	execFileSync(
+		'pnpm',
+		[
+			'exec',
+			'wrangler',
+			'd1',
+			'migrations',
+			'apply',
+			'DB',
+			'--local',
+			'--config',
+			E2E_CONFIG,
+			'--persist-to',
+			E2E_STATE
+		],
+		{ stdio: 'inherit' }
+	);
 
 	const now = Math.floor(Date.now() / 1000);
 	const nowMs = Date.now();
@@ -81,10 +97,29 @@ DELETE FROM listing_requirements WHERE listing_id IN (SELECT id FROM listings WH
 DELETE FROM listings WHERE user_id = (SELECT id FROM user WHERE email = 'keirockjd@gmail.com');
 `;
 
-	const tmpPath = '/tmp/jdl-e2e-seed.sql';
-	writeFileSync(tmpPath, sql);
-	execSync(`pnpm exec wrangler d1 execute DB --local --file=${tmpPath}`, {
-		stdio: 'inherit'
-	});
-	unlinkSync(tmpPath);
+	const seedDirectory = mkdtempSync(join(tmpdir(), 'jaydslist-e2e-seed-'));
+	try {
+		const seedPath = join(seedDirectory, 'seed.sql');
+		writeFileSync(seedPath, sql);
+		execFileSync(
+			'pnpm',
+			[
+				'exec',
+				'wrangler',
+				'd1',
+				'execute',
+				'DB',
+				'--local',
+				'--config',
+				E2E_CONFIG,
+				'--persist-to',
+				E2E_STATE,
+				'--file',
+				seedPath
+			],
+			{ stdio: 'inherit' }
+		);
+	} finally {
+		rmSync(seedDirectory, { recursive: true, force: true });
+	}
 }

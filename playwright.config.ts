@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { E2E_ORIGIN } from './e2e/local-environment.js';
 
 export default defineConfig({
 	testDir: 'e2e',
@@ -7,14 +8,15 @@ export default defineConfig({
 	retries: process.env.CI ? 1 : 0,
 	timeout: 20_000,
 	use: {
-		baseURL: 'http://localhost:5173',
+		baseURL: E2E_ORIGIN,
 		trace: 'retain-on-failure'
 	},
 	projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
 	webServer: {
-		command: 'pnpm dev',
-		url: 'http://localhost:5173',
-		reuseExistingServer: !process.env.CI,
+		command: 'pnpm dev --host localhost --port 5174 --strictPort',
+		env: { JAYDSLIST_E2E: '1' },
+		url: E2E_ORIGIN,
+		reuseExistingServer: false,
 		timeout: 60_000
 	}
 });

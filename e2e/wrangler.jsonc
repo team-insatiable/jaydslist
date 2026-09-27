@@ -1,0 +1,31 @@
+{
+	"$schema": "../node_modules/wrangler/config-schema.json",
+	// Local browser tests only. These resource names and signing text are
+	// synthetic fixtures, not deployment bindings or production credentials.
+	"name": "jaydslist-local-e2e",
+	"compatibility_date": "2026-05-07",
+	"compatibility_flags": ["nodejs_als"],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "jaydslist-local-e2e-d1",
+			"database_id": "local-e2e-d1",
+			"migrations_dir": "../drizzle"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "PHONE_VERIFICATION_KV",
+			"id": "local-e2e-kv"
+		}
+	],
+	"vars": {
+		"ENVIRONMENT": "development",
+		"ORIGIN": "http://localhost:5174",
+		"INSTANCE_NAME": "Jaydslist",
+		"INSTANCE_URL": "http://localhost:5174",
+		"INSTANCE_PRELAUNCH_MODE": "false",
+		"DBBL_ENABLED": "false",
+		"BETTER_AUTH_SECRET": "synthetic-browser-test-signing-text-not-for-deployment"
+	}
+}
