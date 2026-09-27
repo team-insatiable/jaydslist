@@ -239,6 +239,18 @@ describe('inbox/[threadId] decline action', () => {
 		);
 		expect(result?.status).toBe(400);
 	});
+	it('rejects a decline after the poster has replied', async () => {
+		await createTestMessage(env.DB, { threadId, senderId: initiatorId });
+		await createTestMessage(env.DB, { threadId, senderId: posterId });
+		const result = await actions.decline(
+			fakeDeclineEvent({ threadId, userId: posterId, phraseId: 'not_looking' })
+		);
+		expect(result).toMatchObject({ status: 400 });
+		const thread = await env.DB.prepare('SELECT status FROM conversation_threads WHERE id = ?')
+			.bind(threadId)
+			.first<{ status: string }>();
+		expect(thread?.status).toBe('open');
+	});
 
 	it('closes the thread and inserts the decline message', async () => {
 		const result = await actions.decline(
