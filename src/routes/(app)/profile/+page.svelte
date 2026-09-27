@@ -6,6 +6,11 @@
 
 	let { data } = $props();
 
+	// Read server values when this page opens; live form drafts must not reset on data refresh.
+	function initialProfile() {
+		return data.profile;
+	}
+
 	const identityOptions = [
 		{ value: 'man', label: 'Man' },
 		{ value: 'woman', label: 'Woman' },
@@ -45,18 +50,10 @@
 	const radiusOptions = [5, 10, 25, 50, 100];
 
 	// About you
-	let identity = $state('');
-	let bodyType = $state('');
-	let coupleComposition = $state('');
-	let dateOfBirth = $state('');
-
-	$effect(() => {
-		identity = data.profile?.identity ?? '';
-		bodyType = data.profile?.bodyType ?? '';
-		coupleComposition = data.profile?.coupleComposition ?? '';
-		dateOfBirth = data.profile?.dateOfBirthValue ?? '';
-		privacyMode = data.profile?.privacyMode ?? false;
-	});
+	let identity = $state(initialProfile()?.identity ?? '');
+	let bodyType = $state(initialProfile()?.bodyType ?? '');
+	let coupleComposition = $state(initialProfile()?.coupleComposition ?? '');
+	let dateOfBirth = $state(initialProfile()?.dateOfBirthValue ?? '');
 
 	function derivedAge(dob: string): number | null {
 		if (!dob) return null;
@@ -85,13 +82,8 @@
 	let aliasError = $state('');
 
 	// Location
-	let locationSet = $state(false);
-	let browseRadius = $state(25);
-
-	$effect(() => {
-		locationSet = data.profile?.locationSet ?? false;
-		browseRadius = data.profile?.browseRadius ?? 25;
-	});
+	let locationSet = $state(initialProfile()?.locationSet ?? false);
+	let browseRadius = $state(initialProfile()?.browseRadius ?? 25);
 	let locationSaving = $state(false);
 	let locationError = $state('');
 	let locationStatus = $state('');
@@ -137,17 +129,13 @@
 	onMount(() => {
 		hydrated = true;
 	});
-	let allowNsfw = $derived(data.profile?.allowNsfw ? 'yes' : 'no');
+	let allowNsfw = $state(initialProfile()?.allowNsfw ? 'yes' : 'no');
 	// Seeking preferences
-	let seekingIdentity: Set<string> = $state(new Set());
-	let seekingBodyType: Set<string> = $state(new Set());
-	let seekingNature: Set<string> = $state(new Set());
-
-	$effect(() => {
-		seekingIdentity = new Set(data.profile?.seekingIdentity ?? []);
-		seekingBodyType = new Set(data.profile?.seekingBodyType ?? []);
-		seekingNature = new Set(data.profile?.seekingNatureOfConnection ?? []);
-	});
+	let seekingIdentity: Set<string> = $state(new Set(initialProfile()?.seekingIdentity ?? []));
+	let seekingBodyType: Set<string> = $state(new Set(initialProfile()?.seekingBodyType ?? []));
+	let seekingNature: Set<string> = $state(
+		new Set(initialProfile()?.seekingNatureOfConnection ?? [])
+	);
 	let prefSaving = $state(false);
 	let prefSaved = $state(false);
 	let prefError = $state('');
@@ -160,7 +148,7 @@
 	}
 
 	// Privacy mode
-	let privacyMode = $state(false);
+	let privacyMode = $state(initialProfile()?.privacyMode ?? false);
 	let privacySaving = $state(false);
 	let privacyError = $state('');
 
@@ -237,13 +225,13 @@
 					if (result.type === 'success') profileSaved = true;
 					else if (result.type === 'failure')
 						profileError = (result.data?.error as string) ?? 'Something went wrong';
-					await update();
+					await update({ reset: false });
 				};
 			}}
 		>
 			<div class="field">
 				<label for="identity">I identify as</label>
-				<select id="identity" name="identity" bind:value={identity} required>
+				<select id="identity" name="identity" bind:value={identity} disabled={!hydrated} required>
 					<option value="" disabled>Select…</option>
 					{#each identityOptions as opt (opt.value)}
 						<option value={opt.value}>{opt.label}</option>
@@ -258,6 +246,7 @@
 						id="coupleComposition"
 						name="coupleComposition"
 						bind:value={coupleComposition}
+						disabled={!hydrated}
 						required
 					>
 						<option value="" disabled>Select…</option>
@@ -271,7 +260,7 @@
 			{#if identity !== 'couple'}
 				<div class="field">
 					<label for="bodyType">Body type</label>
-					<select id="bodyType" name="bodyType" bind:value={bodyType}>
+					<select id="bodyType" name="bodyType" bind:value={bodyType} disabled={!hydrated}>
 						<option value="">Prefer not to say</option>
 						{#each bodyTypeOptions as opt (opt.value)}
 							<option value={opt.value}>{opt.label}</option>
@@ -290,6 +279,7 @@
 						min={minDob}
 						max={maxDob}
 						bind:value={dateOfBirth}
+						disabled={!hydrated}
 						required
 					/>
 				</div>
@@ -349,7 +339,7 @@
 					if (result.type === 'success') aliasSaved = true;
 					else if (result.type === 'failure')
 						aliasError = (result.data?.error as string) ?? 'Something went wrong';
-					await update();
+					await update({ reset: false, invalidateAll: false });
 				};
 			}}
 		>
@@ -434,7 +424,7 @@
 					if (result.type === 'success') prefSaved = true;
 					else if (result.type === 'failure')
 						prefError = (result.data?.error as string) ?? 'Something went wrong';
-					await update();
+					await update({ reset: false, invalidateAll: false });
 				};
 			}}
 		>
