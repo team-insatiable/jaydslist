@@ -163,6 +163,11 @@
 	const receivedPhotos = $derived(
 		data.messages.filter((m) => !m.isMine && m.cfImageUrl && m.expiringState !== 'expired')
 	);
+	const canDecline = $derived(
+		data.thread.role === 'poster' &&
+			data.messages.some((message) => !message.isMine) &&
+			!data.messages.some((message) => message.isMine)
+	);
 
 	let spamFormEl = $state<HTMLFormElement | null>(null);
 
@@ -1240,15 +1245,16 @@
 			{#if photoError}
 				<p class="send-error">{photoError}</p>
 			{/if}
-			{#if data.thread.role === 'poster'}
+			{#if canDecline}
 				<div class="decline-strip">
+					<span>Not interested?</span>
 					<button
 						type="button"
 						class="decline-open-btn"
 						onclick={() => (declineOpen = true)}
 						disabled={declineWorking}
 					>
-						Not interested? Decline conversation
+						Send a polite decline
 					</button>
 				</div>
 			{/if}
@@ -1740,7 +1746,7 @@
 </div>
 
 <!-- Decline phrase sheet -->
-{#if declineOpen}
+{#if declineOpen && canDecline}
 	<button
 		type="button"
 		class="media-overlay"
@@ -3713,17 +3719,24 @@
 	/* Decline strip above compose */
 	.decline-strip {
 		display: flex;
+		align-items: center;
 		justify-content: center;
-		padding: 0.35rem 0 0.5rem;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+		margin: 0.65rem 0 0.8rem;
+		padding: 0.5rem 0.75rem;
+		color: var(--pico-muted-color);
+		font-size: 0.825rem;
+		line-height: 1.4;
 	}
 
 	.decline-open-btn {
 		background: none;
 		border: none;
-		font-size: 0.8rem;
+		font-size: inherit;
 		color: var(--pico-muted-color);
 		cursor: pointer;
-		padding: 0.25rem 0.5rem;
+		padding: 0;
 		font-family: inherit;
 		margin: 0;
 		width: auto;

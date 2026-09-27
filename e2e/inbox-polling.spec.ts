@@ -51,6 +51,8 @@ test('a reply sent by the poster appears for the initiator via polling, without 
 
 	// poster opens the same thread and replies
 	await posterPage.goto(threadUrl);
+	const decline = posterPage.getByRole('button', { name: 'Send a polite decline' });
+	await expect(decline).toBeVisible();
 	const reply = 'Thanks for reaching out! Tell me more about what you are looking for.';
 	const replyForm = posterPage
 		.locator('form')
@@ -58,6 +60,7 @@ test('a reply sent by the poster appears for the initiator via polling, without 
 	await replyForm.locator('textarea[name="body"]').fill(reply);
 	await replyForm.locator('button[type="submit"]').click();
 	await expect(posterPage.getByText(reply)).toBeVisible({ timeout: 10_000 });
+	await expect(decline).toHaveCount(0);
 
 	// initiator never reloads — the 3s poll (invalidate('app:thread')) must surface the reply
 	await expect(initiatorPage.getByText(reply)).toBeVisible({ timeout: 10_000 });

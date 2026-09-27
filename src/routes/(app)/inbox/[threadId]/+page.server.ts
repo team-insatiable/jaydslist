@@ -755,6 +755,12 @@ export const actions: Actions = {
 		if (!thread) return fail(404, { error: 'Thread not found' });
 		if (thread.posterId !== userId) return fail(403, { error: 'Only the poster can decline' });
 		if (thread.status !== 'open') return fail(400, { error: 'Thread is already closed' });
+		const hasReplied = await db
+			.select({ id: messages.id })
+			.from(messages)
+			.where(and(eq(messages.threadId, params.threadId), eq(messages.senderId, userId)))
+			.get();
+		if (hasReplied) return fail(400, { error: 'You have already replied in this conversation' });
 
 		const data = await request.formData();
 		const phraseId = data.get('phraseId') as string;
