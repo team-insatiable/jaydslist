@@ -347,7 +347,7 @@
 						<button type="submit" disabled={submitting === photo.id}>Screen before sharing</button>
 					</form>
 				{:else if data.albumPhotos.find((p) => p.id === photo.id)?.contentRating === 'nsfw'}
-					<small class="content-label">NSFW · opt-in required</small>
+					<small class="content-label">NSFW</small>
 				{/if}
 
 				<form
