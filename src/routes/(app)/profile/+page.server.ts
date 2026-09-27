@@ -143,9 +143,27 @@ export const actions: Actions = {
 				bodyType,
 				coupleComposition,
 				dateOfBirth,
-				age,
-				allowNsfw: data.get('allowNsfw') === 'yes'
+				age
 			})
+			.where(eq(userProfiles.id, locals.user.id));
+
+		return { success: true };
+	},
+
+	savePhotoPreferences: async ({ request, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+
+		const data = await request.formData();
+		const choice = data.get('allowNsfw');
+		if (choice !== 'yes' && choice !== 'no')
+			return fail(400, { error: 'Choose whether to allow explicit photos' });
+
+		await getDb(env.DB)
+			.update(userProfiles)
+			.set({ allowNsfw: choice === 'yes' })
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };
@@ -259,7 +277,6 @@ export const actions: Actions = {
 		await getDb(env.DB)
 			.update(userProfiles)
 			.set({
-				allowNsfw: data.get('allowNsfw') === 'yes',
 				seekingIdentity: JSON.stringify(seekingIdentity),
 				seekingBodyType: JSON.stringify(seekingBodyType),
 				seekingNatureOfConnection: JSON.stringify(seekingNatureOfConnection)

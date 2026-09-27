@@ -78,9 +78,9 @@ test('explicit ad photos stay blurred until the viewer opts in', async ({ page, 
 			(await viewer.request.get(`/api/photos/${photo.cfImageId}?preview=blurred`)).status()
 		).toBe(200);
 		await viewer.goto('/profile');
-		await viewer.locator('#preferences-nsfw').selectOption('yes');
-		await viewer.getByRole('button', { name: 'Save preferences', exact: true }).click();
-		await expect(viewer.getByText('Preferences saved.', { exact: true })).toBeVisible();
+		await viewer.locator('#photo-nsfw').selectOption('yes');
+		await viewer.getByRole('button', { name: 'Save photo preference', exact: true }).click();
+		await expect(viewer.getByText('Photo preference saved.', { exact: true })).toBeVisible();
 		await viewer.goto(listingPath);
 		const clear = viewer.getByRole('button', { name: 'View photo', exact: true });
 		await expect(clear).toBeEnabled();
@@ -90,9 +90,9 @@ test('explicit ad photos stay blurred until the viewer opts in', async ({ page, 
 		await expect(viewer.locator('.lightbox')).toBeVisible();
 	} finally {
 		await viewer.goto('/profile');
-		await viewer.locator('#preferences-nsfw').selectOption('no');
-		await viewer.getByRole('button', { name: 'Save preferences', exact: true }).click();
-		await expect(viewer.getByText('Preferences saved.', { exact: true })).toBeVisible();
+		await viewer.locator('#photo-nsfw').selectOption('no');
+		await viewer.getByRole('button', { name: 'Save photo preference', exact: true }).click();
+		await expect(viewer.getByText('Photo preference saved.', { exact: true })).toBeVisible();
 		await page.request.post(`${listingPath}?/delete`, {
 			form: {},
 			headers: { Origin: new URL(page.url()).origin }

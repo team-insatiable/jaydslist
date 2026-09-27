@@ -130,6 +130,9 @@
 		hydrated = true;
 	});
 	let allowNsfw = $state(initialProfile()?.allowNsfw ? 'yes' : 'no');
+	let photoSaving = $state(false);
+	let photoSaved = $state(false);
+	let photoError = $state('');
 	// Seeking preferences
 	let seekingIdentity: Set<string> = $state(new Set(initialProfile()?.seekingIdentity ?? []));
 	let seekingBodyType: Set<string> = $state(new Set(initialProfile()?.seekingBodyType ?? []));
@@ -199,9 +202,9 @@
 
 	<!-- About You -->
 	<nav class="profile-sections" aria-label="Profile sections">
-		<a href="#about-you">About you</a><a href="#location">Location</a><a href="#preferences"
-			>Connections</a
-		><a href="#privacy">Privacy</a>
+		<a href="#about-you">About you</a><a href="#photo-preferences">Photos</a><a href="#location"
+			>Location</a
+		><a href="#preferences">Connections</a><a href="#privacy">Privacy</a>
 	</nav>
 	<section class="card" id="about-you">
 		<h2>About you</h2>
@@ -288,16 +291,6 @@
 				{/if}
 			</div>
 
-			<div class="field">
-				<label for="onboarding-nsfw">Allow nude or sexually explicit photos?</label>
-				<select id="onboarding-nsfw" name="allowNsfw" bind:value={allowNsfw} disabled={!hydrated}>
-					<option value="no">No</option><option value="yes">Yes</option>
-				</select>
-				<small
-					>You can change this anytime. Applies to listing photos and photos or albums received in
-					messages.</small
-				>
-			</div>
 			<button
 				type="submit"
 				aria-busy={profileSaving}
@@ -308,6 +301,49 @@
 					(identity === 'couple' && !coupleComposition)}
 			>
 				{profileSaving ? '' : 'Save'}
+			</button>
+		</form>
+	</section>
+
+	<section class="card" id="photo-preferences">
+		<h2>Photo preferences</h2>
+		<p class="muted">Choose whether you want to see or receive sexually explicit photos.</p>
+
+		{#if photoError}
+			<p class="error">{photoError}</p>
+		{/if}
+		{#if photoSaved}
+			<p class="success">Photo preference saved.</p>
+		{/if}
+
+		<form
+			method="POST"
+			action="?/savePhotoPreferences"
+			use:enhance={() => {
+				photoSaving = true;
+				photoSaved = false;
+				photoError = '';
+				return async ({ result, update }) => {
+					photoSaving = false;
+					if (result.type === 'success') photoSaved = true;
+					else if (result.type === 'failure')
+						photoError = (result.data?.error as string) ?? 'Something went wrong';
+					await update({ reset: false, invalidateAll: false });
+				};
+			}}
+		>
+			<div class="field">
+				<label for="photo-nsfw">Allow explicit photos?</label>
+				<select id="photo-nsfw" name="allowNsfw" bind:value={allowNsfw} disabled={!hydrated}>
+					<option value="no">No</option><option value="yes">Yes</option>
+				</select>
+				<small
+					>No blurs explicit listing photos and blocks explicit photos in messages. Yes shows and
+					allows them. You can change this at any time.</small
+				>
+			</div>
+			<button type="submit" aria-busy={photoSaving} disabled={!hydrated || photoSaving}>
+				{photoSaving ? '' : 'Save photo preference'}
 			</button>
 		</form>
 	</section>
@@ -428,16 +464,6 @@
 				};
 			}}
 		>
-			<div class="field">
-				<label for="preferences-nsfw">Allow nude or sexually explicit photos?</label>
-				<select id="preferences-nsfw" name="allowNsfw" bind:value={allowNsfw} disabled={!hydrated}>
-					<option value="no">No</option><option value="yes">Yes</option>
-				</select>
-				<small
-					>You can change this anytime. Applies to listing photos and photos or albums received in
-					messages.</small
-				>
-			</div>
 			<div class="field">
 				<span class="field-label">Identity</span>
 				<div class="chip-group">

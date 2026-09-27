@@ -7,7 +7,7 @@ test('profile setup selections survive date entry and page data refresh', async 
 	await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 	await page.waitForURL('**/browse');
 	await page.goto('/profile');
-	await expect(page.locator('#onboarding-nsfw')).toBeEnabled();
+	await expect(page.locator('#photo-nsfw')).toBeEnabled();
 
 	await page.locator('#identity').selectOption('man');
 	await page.locator('#bodyType').selectOption('athletic');
