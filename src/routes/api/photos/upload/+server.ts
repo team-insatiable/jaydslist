@@ -49,13 +49,40 @@ export const POST: RequestHandler = async ({ locals, platform, request }) => {
 	}
 	const { maxPhotos } = await getPhotoLimits(env, locals.user.id);
 	await purgeRetiredPhotos(env, locals.user.id);
+	// Hash the original bytes before screening or storage. The existing p_hash
+	// column is unused; the prefix distinguishes this exact digest from a future
+	// perceptual hash. Reserving it atomically also stops simultaneous duplicates.
+	const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+	const contentHash = `sha256:${Array.from(new Uint8Array(digest), (byte) =>
+		byte.toString(16).padStart(2, '0')
+	).join('')}`;
 	const id = crypto.randomUUID();
-	const reservation = await reservePhoto(env.DB, locals.user.id, id, albumId, maxPhotos);
-	if (!reservation.meta.changes)
+	const reservation = await reservePhoto(
+		env.DB,
+		locals.user.id,
+		id,
+		albumId,
+		maxPhotos,
+		contentHash
+	);
+	if (!reservation.meta.changes) {
+		const duplicate = await env.DB.prepare(
+			'SELECT scan_status FROM photo_vault WHERE user_id = ? AND p_hash = ? AND deleted_at IS NULL LIMIT 1'
+		)
+			.bind(locals.user.id, contentHash)
+			.first<{ scan_status: string }>();
+		if (duplicate)
+			throw error(
+				409,
+				duplicate.scan_status === 'uploading'
+					? 'This photo is already uploading. Please try again shortly.'
+					: 'This photo is already in your vault. Select the existing photo instead.'
+			);
 		throw error(
 			400,
 			`Your account allows ${maxPhotos} photos total. Delete a photo before uploading another. Photos retained by listings also count.`
 		);
+	}
 	let cfImageId: string = id;
 	let stage: 'screening' | 'storage' | 'database' = 'screening';
 	try {

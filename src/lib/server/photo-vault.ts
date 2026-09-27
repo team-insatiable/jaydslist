@@ -169,17 +169,20 @@ export async function reservePhoto(
 	userId: string,
 	id: string,
 	albumId: string | null,
-	max: number
+	max: number,
+	contentHash: string
 ) {
 	return database
 		.prepare(
-			`INSERT INTO photo_vault (id, user_id, cf_image_id, album_id, scan_status)
-		SELECT ?, ?, ?, ?, 'uploading'
+			`INSERT INTO photo_vault (id, user_id, cf_image_id, album_id, scan_status, p_hash)
+		SELECT ?, ?, ?, ?, 'uploading', ?
 		WHERE (SELECT count(*) FROM photo_vault v WHERE v.user_id = ? AND
 			(v.deleted_at IS NULL OR EXISTS (SELECT 1 FROM listing_photos lp
-			WHERE lp.vault_photo_id = v.id AND lp.purged_at IS NULL))) < ?`
+			WHERE lp.vault_photo_id = v.id AND lp.purged_at IS NULL))) < ?
+		AND NOT EXISTS (SELECT 1 FROM photo_vault v WHERE v.user_id = ?
+			AND v.p_hash = ? AND v.deleted_at IS NULL)`
 		)
-		.bind(id, userId, id, albumId, userId, max)
+		.bind(id, userId, id, albumId, contentHash, userId, max, userId, contentHash)
 		.run();
 }
 

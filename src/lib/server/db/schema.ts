@@ -222,6 +222,7 @@ export const photoVault = sqliteTable(
 		albumId: text('album_id').references(() => photoAlbums.id, { onDelete: 'set null' }),
 		cfImageId: text('cf_image_id').notNull(),
 		contentRating: text('content_rating').notNull().default('unknown'),
+		// Exact original-file SHA-256 digests use the "sha256:" prefix.
 		pHash: text('p_hash'),
 		scanStatus: text('scan_status').notNull().default('pending'),
 		deletedAt: integer('deleted_at', { mode: 'timestamp' }),

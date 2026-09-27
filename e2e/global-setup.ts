@@ -19,6 +19,7 @@ const KIERA_ID = 'e2e0000-0000-0000-0000-00000000a002';
 const KIERA_LISTING_ID = 'e2e0000-0000-0000-0000-00000000b001';
 const EDIT_PHOTO_ID = 'e2e0000-0000-0000-0000-00000000a003';
 const EDIT_PHOTO_LISTING_ID = 'e2e0000-0000-0000-0000-00000000b003';
+const ALBUM_SHARE_THREAD_ID = 'e2e0000-0000-0000-0000-00000000c003';
 
 function hashPassword(password: string): string {
 	const salt = randomBytes(16).toString('hex');
@@ -101,6 +102,14 @@ SELECT ${sq(EDIT_PHOTO_LISTING_ID)}, id, 'casual_encounters', 'Edit listing phot
 ON CONFLICT (id) DO UPDATE SET status = 'active', expires_at = excluded.expires_at;
 
 DELETE FROM listing_photos WHERE listing_id = ${sq(EDIT_PHOTO_LISTING_ID)};
+DELETE FROM messages WHERE thread_id IN (SELECT id FROM conversation_threads WHERE listing_id = ${sq(EDIT_PHOTO_LISTING_ID)});
+DELETE FROM key_exchanges WHERE thread_id IN (SELECT id FROM conversation_threads WHERE listing_id = ${sq(EDIT_PHOTO_LISTING_ID)});
+DELETE FROM conversation_threads WHERE listing_id = ${sq(EDIT_PHOTO_LISTING_ID)};
+INSERT INTO conversation_threads (id, listing_id, initiator_id, poster_id, status, created_at, last_activity_at)
+SELECT ${sq(ALBUM_SHARE_THREAD_ID)}, ${sq(EDIT_PHOTO_LISTING_ID)},
+       (SELECT id FROM user WHERE email = 'keirajd@gmail.com'),
+       (SELECT id FROM user WHERE email = 'edit-photo@example.test'),
+       'open', ${now}, ${now};
 DELETE FROM photo_vault WHERE user_id = (SELECT id FROM user WHERE email = 'edit-photo@example.test');
 
 -- reset any thread/messages left over from a previous e2e run against this listing
