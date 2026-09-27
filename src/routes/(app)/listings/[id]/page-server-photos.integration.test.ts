@@ -47,4 +47,41 @@ describe('listing detail load photos', () => {
 		expect(result.photos[0].deliveryUrl).toContain('cf-a');
 		expect(result.photos[1].deliveryUrl).toContain('cf-b');
 	});
+	it('returns blurred explicit ad previews while keeping unknown photos hidden', async () => {
+		const owner = await createTestUser(env.DB);
+		const viewer = await createTestUser(env.DB);
+		const listingId = await createTestListing(env.DB, owner);
+		const explicit = await createTestVaultPhoto(env.DB, owner, {
+			cfImageId: 'nsfw-ad',
+			contentRating: 'nsfw'
+		});
+		const unknown = await createTestVaultPhoto(env.DB, owner, {
+			cfImageId: 'unknown-ad',
+			contentRating: 'unknown'
+		});
+		await getDb(env.DB)
+			.insert(listingPhotos)
+			.values([
+				{ id: crypto.randomUUID(), listingId, vaultPhotoId: explicit, displayOrder: 0 },
+				{ id: crypto.randomUUID(), listingId, vaultPhotoId: unknown, displayOrder: 1 }
+			]);
+		const optedOut = (await load(fakeEvent(listingId, viewer))) as {
+			photos: { deliveryUrl: string; blurred: boolean; isNsfw: boolean }[];
+		};
+		expect(optedOut.photos).toEqual([
+			expect.objectContaining({
+				deliveryUrl: '/api/photos/nsfw-ad?preview=blurred',
+				blurred: true,
+				isNsfw: true
+			})
+		]);
+		await env.DB.prepare('UPDATE user_profiles SET allow_nsfw = 1 WHERE id = ?').bind(viewer).run();
+		const optedIn = (await load(fakeEvent(listingId, viewer))) as typeof optedOut;
+		expect(optedIn.photos).toEqual([
+			expect.objectContaining({ deliveryUrl: '/api/photos/nsfw-ad', blurred: false })
+		]);
+		const owned = (await load(fakeEvent(listingId, owner))) as typeof optedOut;
+		expect(owned.photos).toHaveLength(2);
+		expect(owned.photos[0].blurred).toBe(false);
+	});
 });

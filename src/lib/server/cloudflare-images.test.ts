@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('$app/environment', () => ({ dev: false }));
 
-import { uploadImage, deleteImage, downloadImage } from './cloudflare-images';
+import { uploadImage, deleteImage, downloadImage, downloadBlurredImage } from './cloudflare-images';
 
 const env = { CF_IMAGES_ACCOUNT_ID: 'test-account', CF_IMAGES_API_TOKEN: 'test-token' } as Env;
 afterEach(() => {
@@ -107,6 +107,22 @@ describe('Cloudflare image storage', () => {
 			)
 		).rejects.toThrow('Private image delivery failed');
 		expect(fetcher).toHaveBeenCalledTimes(1);
+	});
+	it('fetches only the signed blurred variant and never falls back to clear pixels', async () => {
+		const fetcher = vi
+			.fn()
+			.mockResolvedValue(new Response('blurred', { headers: { 'Content-Type': 'image/png' } }));
+		vi.stubGlobal('fetch', fetcher);
+		const blurEnv = { ...env, CF_IMAGES_ACCOUNT_HASH: 'hash', CF_IMAGES_SIGNING_KEY: 'secret' };
+		await downloadBlurredImage(blurEnv, 'id');
+		expect(fetcher.mock.calls[0][0].pathname).toBe('/hash/id/jaydslistNsfwBlur');
+		fetcher.mockResolvedValueOnce(new Response(null, { status: 502 }));
+		await expect(downloadBlurredImage(blurEnv, 'id')).rejects.toThrow();
+		expect(fetcher).toHaveBeenCalledTimes(2);
+		await expect(downloadBlurredImage(env, 'id')).rejects.toThrow(
+			'Private image signing is not configured'
+		);
+		expect(fetcher).toHaveBeenCalledTimes(2);
 	});
 	it('does not treat failed storage deletion as success', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })));

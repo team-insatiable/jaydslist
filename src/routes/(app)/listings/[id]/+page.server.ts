@@ -146,11 +146,16 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		.filter(
 			(p) =>
 				listing.userId === locals.user?.id ||
-				canReceivePhoto(p.contentRating, viewer?.allowNsfw ?? false)
+				canReceivePhoto(p.contentRating, viewer?.allowNsfw ?? false) ||
+				(p.contentRating === 'nsfw' && !!locals.user && listing.expiresAt.getTime() > Date.now())
 		)
 		.map((p) => ({
 			id: p.id,
-			deliveryUrl: imageUrl(env.CF_IMAGES_ACCOUNT_HASH, p.cfImageId)
+			isNsfw: p.contentRating === 'nsfw',
+			blurred: !isOwner && p.contentRating === 'nsfw' && !viewer?.allowNsfw,
+			deliveryUrl:
+				imageUrl(env.CF_IMAGES_ACCOUNT_HASH, p.cfImageId) +
+				(!isOwner && p.contentRating === 'nsfw' && !viewer?.allowNsfw ? '?preview=blurred' : '')
 		}));
 
 	const hardReqs = reqs.filter((r) => r.type === 'hard');

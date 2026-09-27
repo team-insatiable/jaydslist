@@ -225,10 +225,14 @@
 						<button
 							type="button"
 							class="gallery-thumb"
-							onclick={() => (lightboxUrl = photo.deliveryUrl)}
-							aria-label="View photo"
+							onclick={() => {
+								if (!photo.blurred) lightboxUrl = photo.deliveryUrl;
+							}}
+							disabled={photo.blurred}
+							aria-label={photo.blurred ? 'NSFW photo blurred by your preferences' : 'View photo'}
 						>
 							<img src={photo.deliveryUrl} alt="" />
+							{#if photo.isNsfw}<span class="nsfw-badge">NSFW</span>{/if}
 						</button>
 					{/each}
 				</div>
@@ -780,6 +784,7 @@
 	}
 
 	.gallery-thumb {
+		position: relative;
 		width: 96px;
 		height: 96px;
 		border-radius: 8px;
@@ -794,6 +799,22 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+
+	.gallery-thumb:disabled {
+		opacity: 1;
+		cursor: default;
+	}
+	.nsfw-badge {
+		position: absolute;
+		bottom: 6px;
+		left: 6px;
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		border-radius: 4px;
+		padding: 2px 6px;
+		font-size: 0.7rem;
+		font-weight: 700;
 	}
 
 	.lightbox {
