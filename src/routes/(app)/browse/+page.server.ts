@@ -1,5 +1,5 @@
-import { redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { fail, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { listings, userProfiles, userBlocks } from '$lib/server/db/schema';
 import { eq, desc, and, gt, or } from 'drizzle-orm';
@@ -29,6 +29,23 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 		.where(eq(userProfiles.id, locals.user.id))
 		.get();
 
+	const [savedNature, savedView] = await Promise.all([
+		env.PHONE_VERIFICATION_KV.get(`browse:nature:${locals.user.id}`),
+		env.PHONE_VERIFICATION_KV.get(`browse:view:${locals.user.id}`)
+	]);
+	const viewMode: 'card' | 'list' = savedView === 'list' ? 'list' : 'card';
+	const savedNatureFilter = savedNature && VALID_NATURE.includes(savedNature) ? savedNature : null;
+	const natureParam = url.searchParams.get('nature');
+	const validNatureFilter =
+		natureParam === 'all' || natureParam === ''
+			? null
+			: natureParam && VALID_NATURE.includes(natureParam)
+				? natureParam
+				: savedNatureFilter;
+	const radiusParam = Number(url.searchParams.get('radius'));
+	const savedRadius = VALID_RADII.includes(profile?.browseRadius ?? 0) ? profile!.browseRadius : 25;
+	const radius = VALID_RADII.includes(radiusParam) ? radiusParam : savedRadius;
+
 	const locationSet = !!(profile?.lat != null && profile?.lng != null);
 
 	if (!profile?.identity || !locationSet) {
@@ -37,17 +54,11 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 			missingIdentity: !profile?.identity,
 			missingLocation: !locationSet,
 			listings: [],
-			radius: 25,
-			natureFilter: null as string | null
+			radius,
+			natureFilter: validNatureFilter,
+			viewMode
 		};
 	}
-
-	const radiusParam = parseInt(url.searchParams.get('radius') ?? '');
-	const radius = VALID_RADII.includes(radiusParam) ? radiusParam : (profile.browseRadius ?? 25);
-
-	const natureFilter = url.searchParams.get('nature') ?? null;
-	const validNatureFilter =
-		natureFilter && VALID_NATURE.includes(natureFilter) ? natureFilter : null;
 
 	const now = new Date();
 
@@ -115,7 +126,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 		const nature: string[] = JSON.parse(row.natureOfConnection ?? '[]');
 		const lookingFor: string[] = JSON.parse(row.lookingForIdentity ?? '[]');
 
-		// URL nature filter
+		// Current browse filter (URL override or remembered account preference)
 		if (validNatureFilter && !nature.includes(validNatureFilter) && !nature.includes('open'))
 			continue;
 
@@ -151,6 +162,37 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 		gated: false as const,
 		listings: results,
 		radius,
-		natureFilter: validNatureFilter
+		natureFilter: validNatureFilter,
+		viewMode
 	};
+};
+
+export const actions: Actions = {
+	savePreference: async ({ locals, platform, request }) => {
+		if (!locals.user) throw redirect(303, '/login');
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+		const form = await request.formData();
+		const key = form.get('key');
+		const value = form.get('value');
+		if (typeof value !== 'string') return fail(400, { error: 'Invalid search preference' });
+		if (key === 'radius') {
+			const radius = Number(value);
+			if (!VALID_RADII.includes(radius)) return fail(400, { error: 'Invalid radius' });
+			await getDb(env.DB)
+				.update(userProfiles)
+				.set({ browseRadius: radius })
+				.where(eq(userProfiles.id, locals.user.id));
+		} else if (key === 'nature') {
+			if (value !== 'all' && !VALID_NATURE.includes(value))
+				return fail(400, { error: 'Invalid connection filter' });
+			await env.PHONE_VERIFICATION_KV.put(`browse:nature:${locals.user.id}`, value);
+		} else if (key === 'view') {
+			if (value !== 'card' && value !== 'list') return fail(400, { error: 'Invalid view' });
+			await env.PHONE_VERIFICATION_KV.put(`browse:view:${locals.user.id}`, value);
+		} else {
+			return fail(400, { error: 'Invalid search preference' });
+		}
+		return { saved: true };
+	}
 };

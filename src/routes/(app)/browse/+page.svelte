@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { deserialize } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { resolve } from '$app/paths';
@@ -9,25 +10,58 @@
 
 	let { data } = $props();
 
-	let viewMode = $state<'card' | 'list'>('card');
-
+	let interactive = $state(false);
 	onMount(() => {
-		viewMode = (localStorage.getItem('browse-view') as 'card' | 'list') ?? 'card';
+		interactive = true;
 	});
+
+	let viewMode = $derived(data.viewMode);
+	let preferenceError = $state('');
+	let pendingSaves = $state(0);
+	let preferenceQueue = Promise.resolve();
+
+	// Serialize saves and navigation so rapid changes keep both filters and the
+	// final selection wins. URLs remain usable as temporary search overrides.
+	function savePreference(key: 'radius' | 'nature' | 'view', value: string) {
+		pendingSaves++;
+		preferenceQueue = preferenceQueue.then(async () => {
+			preferenceError = '';
+			try {
+				const res = await fetch('?/savePreference', {
+					method: 'POST',
+					headers: { 'x-sveltekit-action': 'true' },
+					body: new URLSearchParams({ key, value })
+				});
+				const result = deserialize(await res.text());
+				if (result.type === 'redirect') {
+					await goto(resolve('/login'));
+					return;
+				}
+				if (result.type !== 'success')
+					throw new Error('Could not save your search preferences. Please try again.');
+				if (key === 'view') {
+					viewMode = value === 'list' ? 'list' : 'card';
+				} else {
+					const params = new SvelteURLSearchParams($page.url.searchParams);
+					params.set(key, value);
+					await goto(resolve(`/browse?${params}`), { replaceState: true, keepFocus: true });
+				}
+			} catch {
+				if (key === 'view') viewMode = data.viewMode;
+				preferenceError = 'Could not save your search preferences. Please try again.';
+			} finally {
+				pendingSaves--;
+			}
+		});
+	}
 
 	function setView(mode: 'card' | 'list') {
 		viewMode = mode;
-		localStorage.setItem('browse-view', mode);
+		savePreference('view', mode);
 	}
 
-	function setFilter(key: string, value: string) {
-		const params = new SvelteURLSearchParams($page.url.searchParams);
-		if (value === '' || value === 'all') {
-			params.delete(key);
-		} else {
-			params.set(key, value);
-		}
-		goto(resolve(`/browse?${params}`), { replaceState: true, keepFocus: true });
+	function setFilter(key: 'nature' | 'radius', value: string) {
+		savePreference(key, value);
 	}
 
 	type FeedItem =
@@ -90,6 +124,7 @@
 			<div class="browse-controls">
 				<select
 					name="nature"
+					disabled={!interactive}
 					aria-label="Nature of connection"
 					value={data.natureFilter ?? 'all'}
 					onchange={(e) => setFilter('nature', (e.currentTarget as HTMLSelectElement).value)}
@@ -103,6 +138,7 @@
 				</select>
 				<select
 					name="radius"
+					disabled={!interactive}
 					aria-label="Radius"
 					value={data.radius}
 					onchange={(e) => setFilter('radius', (e.currentTarget as HTMLSelectElement).value)}
@@ -116,6 +152,7 @@
 				<div class="view-toggle">
 					<button
 						class="toggle-btn"
+						disabled={!interactive}
 						class:active={viewMode === 'card'}
 						onclick={() => setView('card')}
 						title="Card view"
@@ -136,6 +173,7 @@
 					</button>
 					<button
 						class="toggle-btn"
+						disabled={!interactive}
 						class:active={viewMode === 'list'}
 						onclick={() => setView('list')}
 						title="List view"
@@ -160,6 +198,11 @@
 					</button>
 				</div>
 			</div>
+			<p class="preference-status" aria-live="polite" class:save-error={!!preferenceError}>
+				{preferenceError ||
+					(pendingSaves ? 'Saving preferences…' : 'Filters are remembered for your account.')}
+			</p>
+
 			<a class="post-invitation" href={resolve('/post')}
 				>Put your words on the board <span aria-hidden="true">↗</span></a
 			>
@@ -258,6 +301,15 @@
 			display: none;
 		}
 	}
+	.preference-status {
+		font-size: 0.8rem;
+		color: var(--pico-muted-color);
+		margin: 0.75rem 0;
+	}
+	.preference-status.save-error {
+		color: var(--pico-del-color);
+	}
+
 	/* Gate */
 	.gate-wrap {
 		display: flex;
