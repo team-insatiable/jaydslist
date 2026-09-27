@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import { actions } from './+page.server';
-import { createTestUser, createTestListing } from '$lib/server/test-helpers/fixtures';
+import {
+	createTestUser,
+	createTestListing,
+	createTestVaultPhoto,
+	createTestListingPhoto
+} from '$lib/server/test-helpers/fixtures';
 
 type SaveEvent = Parameters<typeof actions.save>[0];
 
@@ -27,7 +32,8 @@ function fakeEvent(
 
 const VALID_FIELDS = {
 	nature: 'dating',
-	subject: 'A perfectly valid subject line'
+	subject: 'A perfectly valid subject line',
+	body: 'This synthetic listing checks how photos are edited after a post has already been published.'
 };
 
 describe('save action', () => {
@@ -117,5 +123,47 @@ describe('save action', () => {
 			})
 		);
 		expect(result?.status).toBe(403);
+	});
+
+	it('adds, reorders, and removes owned listing photos', async () => {
+		const first = await createTestVaultPhoto(env.DB, userId);
+		const second = await createTestVaultPhoto(env.DB, userId);
+		await createTestListingPhoto(env.DB, { listingId, vaultPhotoId: first });
+
+		await expect(
+			actions.save(fakeEvent(listingId, userId, { ...VALID_FIELDS, photoId: [second, first] }))
+		).rejects.toMatchObject({ status: 303 });
+		let rows = await env.DB.prepare(
+			'SELECT vault_photo_id FROM listing_photos WHERE listing_id = ? ORDER BY display_order'
+		)
+			.bind(listingId)
+			.all();
+		expect(rows.results).toEqual([{ vault_photo_id: second }, { vault_photo_id: first }]);
+
+		await expect(actions.save(fakeEvent(listingId, userId, VALID_FIELDS))).rejects.toMatchObject({
+			status: 303
+		});
+		rows = await env.DB.prepare('SELECT id FROM listing_photos WHERE listing_id = ?')
+			.bind(listingId)
+			.all();
+		expect(rows.results).toEqual([]);
+	});
+
+	it('rejects another account’s photo without changing existing attachments', async () => {
+		const ownPhoto = await createTestVaultPhoto(env.DB, userId);
+		await createTestListingPhoto(env.DB, { listingId, vaultPhotoId: ownPhoto });
+		const otherUserId = await createTestUser(env.DB);
+		const otherPhoto = await createTestVaultPhoto(env.DB, otherUserId);
+
+		const result = await actions.save(
+			fakeEvent(listingId, userId, { ...VALID_FIELDS, photoId: [otherPhoto] })
+		);
+		expect(result?.status).toBe(400);
+		const rows = await env.DB.prepare(
+			'SELECT vault_photo_id FROM listing_photos WHERE listing_id = ?'
+		)
+			.bind(listingId)
+			.all();
+		expect(rows.results).toEqual([{ vault_photo_id: ownPhoto }]);
 	});
 });

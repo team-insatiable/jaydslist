@@ -6,11 +6,15 @@ import {
 	listingRequirements,
 	relativeTermDefinitions,
 	listingEvents,
-	moderationActions
+	moderationActions,
+	listingPhotos,
+	photoVault,
+	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray, isNull, ne } from 'drizzle-orm';
 import { getActiveVocabulary } from '$lib/server/relative-terms.server';
 import { scanTerms } from '$lib/relative-terms';
+import { getVaultPhotos, getAlbumList } from '$lib/server/photo-vault';
 
 const VALID_IDENTITIES = [
 	'man',
@@ -56,13 +60,29 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	if (listing.userId !== locals.user.id) throw error(403, 'Forbidden');
 	if (listing.status === 'removed') throw error(410, 'This listing has been removed');
 
-	const [reqs, termDefs] = await Promise.all([
+	const [reqs, termDefs, attachedPhotos, vaultPhotos, vaultAlbums] = await Promise.all([
 		db.select().from(listingRequirements).where(eq(listingRequirements.listingId, params.id)).all(),
 		db
 			.select()
 			.from(relativeTermDefinitions)
 			.where(eq(relativeTermDefinitions.listingId, params.id))
-			.all()
+			.all(),
+		db
+			.select({ id: photoVault.id })
+			.from(listingPhotos)
+			.innerJoin(photoVault, eq(listingPhotos.vaultPhotoId, photoVault.id))
+			.where(
+				and(
+					eq(listingPhotos.listingId, params.id),
+					isNull(listingPhotos.purgedAt),
+					isNull(photoVault.deletedAt),
+					ne(photoVault.scanStatus, 'uploading')
+				)
+			)
+			.orderBy(listingPhotos.displayOrder)
+			.all(),
+		getVaultPhotos(env.DB, locals.user.id, env.CF_IMAGES_ACCOUNT_HASH),
+		getAlbumList(env.DB, locals.user.id)
 	]);
 
 	let suspensionReason: string | null = null;
@@ -103,7 +123,10 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			softPrompts: softReqs.map((r) => r.promptText).filter(Boolean) as string[]
 		},
 		termDefinitions: termDefs.map((t) => ({ term: t.term, definition: t.definition })),
-		vocabulary
+		vocabulary,
+		photoIds: attachedPhotos.map((photo) => photo.id),
+		vaultPhotos,
+		vaultAlbums
 	};
 };
 
@@ -145,6 +168,7 @@ export const actions: Actions = {
 		const softReqsRaw = data.getAll('softReq') as string[];
 		const ageMinRaw = (data.get('ageMin') as string) || '';
 		const ageMaxRaw = (data.get('ageMax') as string) || '';
+		const photoIds = data.getAll('photoId') as string[];
 
 		if (nature.length === 0)
 			return fail(400, { error: 'Select at least one nature of connection' });
@@ -158,6 +182,27 @@ export const actions: Actions = {
 			return fail(400, { error: 'Body must be at least 50 characters' });
 		if (!VALID_TRUST_TIERS.includes(trustTierMin))
 			return fail(400, { error: 'Invalid trust tier' });
+		if (
+			photoIds.length > parseInt(DEFAULT_CONFIG.LISTING_MAX_PHOTOS) ||
+			new Set(photoIds).size !== photoIds.length
+		)
+			return fail(400, { error: 'Choose up to three distinct photos' });
+		if (photoIds.length > 0) {
+			const owned = await db
+				.select({ id: photoVault.id })
+				.from(photoVault)
+				.where(
+					and(
+						inArray(photoVault.id, photoIds),
+						eq(photoVault.userId, locals.user.id),
+						isNull(photoVault.deletedAt),
+						ne(photoVault.scanStatus, 'uploading')
+					)
+				)
+				.all();
+			if (owned.length !== photoIds.length)
+				return fail(400, { error: 'One or more selected photos are unavailable' });
+		}
 
 		const ageMin = ageMinRaw ? parseInt(ageMinRaw) : null;
 		const ageMax = ageMaxRaw ? parseInt(ageMaxRaw) : null;
@@ -259,6 +304,17 @@ export const actions: Actions = {
 				}))
 			);
 		}
+
+		await env.DB.batch([
+			env.DB.prepare(
+				'DELETE FROM listing_photos WHERE listing_id = ? AND vault_photo_id IN (SELECT id FROM photo_vault WHERE deleted_at IS NULL)'
+			).bind(params.id),
+			...photoIds.map((vaultPhotoId, index) =>
+				env.DB.prepare(
+					'INSERT INTO listing_photos (id, listing_id, vault_photo_id, display_order) VALUES (?, ?, ?, ?)'
+				).bind(crypto.randomUUID(), params.id, vaultPhotoId, index)
+			)
+		]);
 
 		await db.insert(listingEvents).values({
 			id: crypto.randomUUID(),
