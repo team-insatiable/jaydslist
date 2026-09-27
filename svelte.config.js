@@ -1,5 +1,6 @@
 import adapter from '@sveltejs/adapter-cloudflare';
 import { mdsvex } from 'mdsvex';
+import { E2E_PLATFORM_PROXY } from './e2e/local-environment.js';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -10,7 +11,9 @@ const config = {
 	extensions: ['.svelte', '.md'],
 	preprocess: mdsvex({ extensions: ['.md'] }),
 	kit: {
-		adapter: adapter(),
+		adapter: adapter(
+			process.env.JAYDSLIST_E2E === '1' ? { platformProxy: E2E_PLATFORM_PROXY } : {}
+		),
 		typescript: {
 			config: (config) => ({
 				...config,
