@@ -38,3 +38,9 @@ CF_IMAGES_API_TOKEN=
 VAPID_PUBLIC_KEY=
 VAPID_CONTACT=mailto:operator@example.com
 VAPID_PRIVATE_KEY=
+
+# Amazon Rekognition image screening (separate IAM credentials from SES)
+REKOGNITION_ACCESS_KEY_ID=
+REKOGNITION_SECRET_ACCESS_KEY=
+REKOGNITION_REGION=us-east-1
+# REKOGNITION_SESSION_TOKEN= # only for temporary AWS credentials

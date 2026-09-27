@@ -114,6 +114,7 @@ export const userProfiles = sqliteTable(
 		seekingPhysicalType: text('seeking_physical_type'),
 		seekingBodyType: text('seeking_body_type').notNull().default('[]'),
 		seekingNatureOfConnection: text('seeking_nature_of_connection').notNull().default('[]'),
+		allowNsfw: integer('allow_nsfw', { mode: 'boolean' }).notNull().default(false),
 		browseRadius: integer('browse_radius').notNull().default(25),
 		createdAt: integer('created_at', { mode: 'timestamp' })
 			.notNull()
@@ -220,6 +221,7 @@ export const photoVault = sqliteTable(
 		// the abandoned attempt).
 		albumId: text('album_id').references(() => photoAlbums.id, { onDelete: 'set null' }),
 		cfImageId: text('cf_image_id').notNull(),
+		contentRating: text('content_rating').notNull().default('unknown'),
 		pHash: text('p_hash'),
 		scanStatus: text('scan_status').notNull().default('pending'),
 		deletedAt: integer('deleted_at', { mode: 'timestamp' }),
@@ -526,6 +528,8 @@ export const pushSubscriptions = sqliteTable(
 );
 
 export const DEFAULT_CONFIG = {
+	PHOTO_NSFW_CONFIDENCE: '80',
+	PHOTO_REVIEW_CONFIDENCE: '50',
 	LISTING_DURATION_DAYS: '14',
 	LISTING_GRACE_PERIOD_DAYS: '7',
 	LISTING_MAX_BUMPS_PER_PERIOD: '14',

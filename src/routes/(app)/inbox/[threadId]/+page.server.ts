@@ -1,3 +1,4 @@
+import { canReceivePhoto } from '$lib/server/photo-moderation';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
@@ -187,6 +188,19 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		};
 	}
 
+	const contentPreference = await db
+		.select({ allowNsfw: userProfiles.allowNsfw })
+		.from(userProfiles)
+		.where(eq(userProfiles.id, userId))
+		.get();
+	const mediaRatings = await db
+		.select({ cfImageId: photoVault.cfImageId, contentRating: photoVault.contentRating })
+		.from(photoVault)
+		.innerJoin(messages, eq(messages.cfImageId, photoVault.cfImageId))
+		.where(eq(messages.threadId, params.threadId))
+		.all();
+	const ratings = new Map(mediaRatings.map((photo) => [photo.cfImageId, photo.contentRating]));
+
 	// Fetch cover photo URL and name for each album referenced in this thread
 	const albumIds = [...new Set(threadMessages.map((m) => m.albumId).filter(Boolean))] as string[];
 	const albumCovers: Record<string, string> = {};
@@ -194,14 +208,24 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 	if (albumIds.length > 0) {
 		const [covers, names] = await Promise.all([
 			db
-				.select({ albumId: photoVault.albumId, cfImageId: photoVault.cfImageId })
+				.select({
+					albumId: photoVault.albumId,
+					cfImageId: photoVault.cfImageId,
+					contentRating: photoVault.contentRating,
+					userId: photoVault.userId
+				})
 				.from(photoVault)
 				.where(and(isNull(photoVault.deletedAt)))
 				.all(),
 			db.select({ id: photoAlbums.id, name: photoAlbums.name }).from(photoAlbums).all()
 		]);
 		for (const aid of albumIds) {
-			const cover = covers.find((c) => c.albumId === aid);
+			const cover = covers.find(
+				(c) =>
+					c.albumId === aid &&
+					(c.userId === userId ||
+						canReceivePhoto(c.contentRating, contentPreference?.allowNsfw ?? false))
+			);
 			if (cover) albumCovers[aid] = imageUrl(env.CF_IMAGES_ACCOUNT_HASH, cover.cfImageId);
 			const album = names.find((a) => a.id === aid);
 			if (album) albumNames[aid] = album.name;
@@ -229,7 +253,14 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 
 			let cfImageUrl: string | null = null;
 			let expiringState: 'none' | 'unviewed' | 'expired' = 'none';
-			if (m.cfImageId) {
+			if (
+				m.cfImageId &&
+				(isMine ||
+					canReceivePhoto(
+						ratings.get(m.cfImageId) ?? 'unknown',
+						contentPreference?.allowNsfw ?? false
+					))
+			) {
 				if (timedExpired) {
 					expiringState = 'expired';
 				} else if (!m.isExpiring) {
@@ -251,6 +282,13 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 				isMine,
 				body: m.body,
 				cfImageUrl,
+				photoHidden:
+					!!m.cfImageId &&
+					!isMine &&
+					!canReceivePhoto(
+						ratings.get(m.cfImageId) ?? 'unknown',
+						contentPreference?.allowNsfw ?? false
+					),
 				isExpiring: m.isExpiring,
 				expiringState,
 				expiresAt: m.expiresAt ?? null,
@@ -367,9 +405,15 @@ export const actions: Actions = {
 		const albumId = (formData.get('albumId') as string)?.trim() || null;
 		const expiryType = (formData.get('expiryType') as string) || 'none';
 
+		const recipient = await db
+			.select({ allowNsfw: userProfiles.allowNsfw })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, sendOtherUserId))
+			.get();
+
 		if (cfImageId) {
 			const photo = await db
-				.select({ id: photoVault.id })
+				.select({ id: photoVault.id, contentRating: photoVault.contentRating })
 				.from(photoVault)
 				.where(
 					and(
@@ -381,6 +425,13 @@ export const actions: Actions = {
 				)
 				.get();
 			if (!photo) return fail(400, { error: 'Choose a photo from your own vault' });
+			if (!canReceivePhoto(photo.contentRating, recipient?.allowNsfw ?? false))
+				return fail(400, {
+					error:
+						photo.contentRating === 'unknown'
+							? 'This photo needs screening before it can be shared.'
+							: 'This person does not accept nude or sexually explicit photos.'
+				});
 		}
 		if (albumId) {
 			const album = await db
@@ -389,6 +440,23 @@ export const actions: Actions = {
 				.where(and(eq(photoAlbums.id, albumId), eq(photoAlbums.userId, userId)))
 				.get();
 			if (!album) return fail(400, { error: 'Choose one of your own albums' });
+			const photos = await db
+				.select({ contentRating: photoVault.contentRating, scanStatus: photoVault.scanStatus })
+				.from(photoVault)
+				.where(and(eq(photoVault.albumId, albumId), isNull(photoVault.deletedAt)))
+				.all();
+			if (
+				!photos.length ||
+				photos.some(
+					(photo) =>
+						photo.scanStatus === 'uploading' ||
+						!canReceivePhoto(photo.contentRating, recipient?.allowNsfw ?? false)
+				)
+			)
+				return fail(400, {
+					error:
+						'This album contains photos that need screening or are not allowed by this person’s photo preference.'
+				});
 		}
 
 		const hasMedia = !!(cfImageId || albumId);

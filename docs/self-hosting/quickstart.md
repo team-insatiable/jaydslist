@@ -62,6 +62,8 @@ Local storage is separated by purpose:
 
 Browser tests start their own server and seed only their dedicated database. You can leave your normal dev server running. Port 5174 must be free; tests fail instead of reusing another server. The browser-test configuration is `e2e/wrangler.jsonc`, with synthetic local settings and no email, SMS, DBBL, or Images credentials. Your normal `.dev.vars` is not used by that server.
 
+Local photo uploads also stay in the local KV emulator. The dev-only screening selector lets you simulate Safe, NSFW, or Uncertain results without Cloudflare Images or AWS credentials. See [Photo screening and consent](photo-screening.md).
+
 Normal local development data remains separate from deployed Cloudflare resources. `pnpm seed` still wipes **normal development D1 data**, so use it only when you want to reset that local database. No hosted development instance is required.
 
 On WSL, install Chromium and its system dependencies for Playwright:

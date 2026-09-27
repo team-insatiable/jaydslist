@@ -19,6 +19,10 @@ declare global {
 		EMAIL_FROM?: string;
 		/** `resend` or `ses`. Omit only when using the legacy Resend configuration. */
 		EMAIL_PROVIDER?: 'resend' | 'ses';
+		REKOGNITION_ACCESS_KEY_ID?: string;
+		REKOGNITION_SECRET_ACCESS_KEY?: string;
+		REKOGNITION_REGION?: string;
+		REKOGNITION_SESSION_TOKEN?: string;
 		SES_ACCESS_KEY_ID?: string;
 		SES_SECRET_ACCESS_KEY?: string;
 		SES_REGION?: string;

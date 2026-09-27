@@ -1,3 +1,5 @@
+import { screenPhoto } from '$lib/server/photo-moderation';
+import { downloadImage, makeImagePrivate } from '$lib/server/cloudflare-images';
 import { removeVaultPhoto } from '$lib/server/photo-vault';
 import { fail, redirect, error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
@@ -33,6 +35,7 @@ export const load: PageServerLoad = async ({ locals, platform, params }) => {
 	const albumPhotos = await db
 		.select({
 			id: photoVault.id,
+			contentRating: photoVault.contentRating,
 			cfImageId: photoVault.cfImageId,
 			uploadedAt: photoVault.uploadedAt,
 			displayOrder: photoVault.displayOrder
@@ -74,6 +77,7 @@ export const load: PageServerLoad = async ({ locals, platform, params }) => {
 		isUncategorized,
 		albumPhotos: albumPhotos.map((p) => ({
 			id: p.id,
+			contentRating: p.contentRating,
 			deliveryUrl: imageUrl(accountHash, p.cfImageId)
 		})),
 		otherPhotos: otherPhotos.map((p) => ({
@@ -85,6 +89,36 @@ export const load: PageServerLoad = async ({ locals, platform, params }) => {
 };
 
 export const actions: Actions = {
+	screenPhoto: async ({ request, locals, platform }) => {
+		const { db, env, userId } = await requireUser(locals, platform);
+		const form = await request.formData();
+		const photoId = form.get('photoId');
+		if (typeof photoId !== 'string') return fail(400, { error: 'Choose a photo' });
+		const photo = await db
+			.select()
+			.from(photoVault)
+			.where(
+				and(eq(photoVault.id, photoId), eq(photoVault.userId, userId), isNull(photoVault.deletedAt))
+			)
+			.get();
+		if (!photo) return fail(404, { error: 'Photo not found' });
+		try {
+			await makeImagePrivate(env, photo.cfImageId);
+			const image = await downloadImage(env, photo.cfImageId);
+			const contentRating = await screenPhoto(
+				env,
+				await image.blob(),
+				String(form.get('devContentRating') ?? 'safe')
+			);
+			await db.update(photoVault).set({ contentRating }).where(eq(photoVault.id, photoId));
+			return { success: true };
+		} catch {
+			return fail(502, {
+				error:
+					'Could not screen this photo. Screening needs to be configured, and photos must be JPEG or PNG up to 5MB.'
+			});
+		}
+	},
 	renameAlbum: async ({ request, locals, platform, params }) => {
 		const { db, userId } = await requireUser(locals, platform);
 

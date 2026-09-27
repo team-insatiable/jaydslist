@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import AppPageIntro from '$lib/components/AppPageIntro.svelte';
 	import { enhance } from '$app/forms';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -132,6 +133,11 @@
 		}
 	}
 
+	let hydrated = $state(false);
+	onMount(() => {
+		hydrated = true;
+	});
+	let allowNsfw = $derived(data.profile?.allowNsfw ? 'yes' : 'no');
 	// Seeking preferences
 	let seekingIdentity: Set<string> = $state(new Set());
 	let seekingBodyType: Set<string> = $state(new Set());
@@ -292,10 +298,21 @@
 				{/if}
 			</div>
 
+			<div class="field">
+				<label for="onboarding-nsfw">Allow nude or sexually explicit photos?</label>
+				<select id="onboarding-nsfw" name="allowNsfw" bind:value={allowNsfw} disabled={!hydrated}>
+					<option value="no">No</option><option value="yes">Yes</option>
+				</select>
+				<small
+					>You can change this anytime. Applies to listing photos and photos or albums received in
+					messages.</small
+				>
+			</div>
 			<button
 				type="submit"
 				aria-busy={profileSaving}
-				disabled={profileSaving ||
+				disabled={!hydrated ||
+					profileSaving ||
 					!identity ||
 					!dateOfBirth ||
 					(identity === 'couple' && !coupleComposition)}
@@ -422,6 +439,16 @@
 			}}
 		>
 			<div class="field">
+				<label for="preferences-nsfw">Allow nude or sexually explicit photos?</label>
+				<select id="preferences-nsfw" name="allowNsfw" bind:value={allowNsfw} disabled={!hydrated}>
+					<option value="no">No</option><option value="yes">Yes</option>
+				</select>
+				<small
+					>You can change this anytime. Applies to listing photos and photos or albums received in
+					messages.</small
+				>
+			</div>
+			<div class="field">
 				<span class="field-label">Identity</span>
 				<div class="chip-group">
 					<button
@@ -481,7 +508,7 @@
 				{/each}
 			</div>
 
-			<button type="submit" aria-busy={prefSaving} disabled={prefSaving}>
+			<button type="submit" aria-busy={prefSaving} disabled={!hydrated || prefSaving}>
 				{prefSaving ? '' : 'Save preferences'}
 			</button>
 		</form>

@@ -16,6 +16,7 @@ import {
 } from '$lib/server/db/schema';
 import { eq, and, isNull, count, or } from 'drizzle-orm';
 import { isBumpCooldownActive, getNextBumpAt } from '$lib/server/listing-bump';
+import { canReceivePhoto } from '$lib/server/photo-moderation';
 import { imageUrl } from '$lib/server/cloudflare-images';
 
 export const load: PageServerLoad = async ({ params, locals, platform }) => {
@@ -118,6 +119,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	const photoRows = await db
 		.select({
 			id: listingPhotos.id,
+			contentRating: photoVault.contentRating,
 			cfImageId: photoVault.cfImageId,
 			displayOrder: listingPhotos.displayOrder
 		})
@@ -133,10 +135,23 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		.orderBy(listingPhotos.displayOrder)
 		.all();
 
-	const photos = photoRows.map((p) => ({
-		id: p.id,
-		deliveryUrl: imageUrl(env.CF_IMAGES_ACCOUNT_HASH, p.cfImageId)
-	}));
+	const viewer = locals.user
+		? await db
+				.select({ allowNsfw: userProfiles.allowNsfw })
+				.from(userProfiles)
+				.where(eq(userProfiles.id, locals.user.id))
+				.get()
+		: null;
+	const photos = photoRows
+		.filter(
+			(p) =>
+				listing.userId === locals.user?.id ||
+				canReceivePhoto(p.contentRating, viewer?.allowNsfw ?? false)
+		)
+		.map((p) => ({
+			id: p.id,
+			deliveryUrl: imageUrl(env.CF_IMAGES_ACCOUNT_HASH, p.cfImageId)
+		}));
 
 	const hardReqs = reqs.filter((r) => r.type === 'hard');
 	const softReqs = reqs.filter((r) => r.type === 'soft');

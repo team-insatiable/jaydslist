@@ -1,7 +1,8 @@
+import { canReceivePhoto } from '$lib/server/photo-moderation';
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { conversationThreads, messages } from '$lib/server/db/schema';
+import { conversationThreads, messages, photoVault, userProfiles } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { imageUrl } from '$lib/server/cloudflare-images';
 
@@ -32,6 +33,7 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
 			senderId: messages.senderId,
 			cfImageId: messages.cfImageId,
 			isExpiring: messages.isExpiring,
+			expiresAt: messages.expiresAt,
 			photoViewedAt: messages.photoViewedAt
 		})
 		.from(messages)
@@ -43,6 +45,19 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
 	if (!msg.isExpiring) throw error(400, 'Photo is not expiring');
 	// Sender can't "view" their own expiring photo via this endpoint
 	if (msg.senderId === locals.user.id) throw error(403, 'Forbidden');
+	const profile = await db
+		.select({ allowNsfw: userProfiles.allowNsfw })
+		.from(userProfiles)
+		.where(eq(userProfiles.id, locals.user.id))
+		.get();
+	const photo = await db
+		.select({ contentRating: photoVault.contentRating })
+		.from(photoVault)
+		.where(eq(photoVault.cfImageId, msg.cfImageId))
+		.get();
+	if (!canReceivePhoto(photo?.contentRating ?? 'unknown', profile?.allowNsfw ?? false))
+		throw error(403, 'This photo is hidden by your content preference or awaiting screening');
+	if (msg.expiresAt && msg.expiresAt <= new Date()) return json({ expired: true });
 	// Already viewed — return expired
 	if (msg.photoViewedAt) return json({ expired: true });
 

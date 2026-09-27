@@ -111,3 +111,5 @@ pnpm exec wrangler secret put TWILIO_AUTH_TOKEN
 ```
 
 Apply D1 migrations before sending production traffic to code that depends on a new schema.
+
+For image screening, recipient NSFW preferences, and existing-photo rollout requirements, see [Photo screening and consent](photo-screening.md).

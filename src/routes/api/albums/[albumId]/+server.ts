@@ -1,8 +1,15 @@
+import { canReceivePhoto } from '$lib/server/photo-moderation';
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { conversationThreads, messages, photoAlbums } from '$lib/server/db/schema';
-import { eq, or } from 'drizzle-orm';
+import {
+	conversationThreads,
+	messages,
+	photoAlbums,
+	photoVault,
+	userProfiles
+} from '$lib/server/db/schema';
+import { eq, or, and, isNull, sql } from 'drizzle-orm';
 import { getAlbumPhotos } from '$lib/server/photo-vault';
 
 export const GET: RequestHandler = async ({ params, locals, platform }) => {
@@ -30,15 +37,38 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
 			.from(messages)
 			.innerJoin(conversationThreads, eq(messages.threadId, conversationThreads.id))
 			.where(
-				or(
-					eq(conversationThreads.initiatorId, locals.user.id),
-					eq(conversationThreads.posterId, locals.user.id)
+				and(
+					eq(messages.albumId, albumId),
+					eq(messages.senderId, album.userId),
+					or(
+						eq(conversationThreads.initiatorId, locals.user.id),
+						eq(conversationThreads.posterId, locals.user.id)
+					),
+					or(isNull(messages.expiresAt), sql`${messages.expiresAt} > unixepoch()`)
 				)
 			)
 			.get();
 		if (!sharedMsg) throw error(403, 'Forbidden');
 	}
 
-	const photos = await getAlbumPhotos(env.DB, albumId, env.CF_IMAGES_ACCOUNT_HASH);
-	return json({ name: album.name, photos });
+	let photos = await getAlbumPhotos(env.DB, albumId, env.CF_IMAGES_ACCOUNT_HASH);
+	if (!isOwner) {
+		const profile = await db
+			.select({ allowNsfw: userProfiles.allowNsfw })
+			.from(userProfiles)
+			.where(eq(userProfiles.id, locals.user.id))
+			.get();
+		const rows = await db
+			.select({ id: photoVault.id, contentRating: photoVault.contentRating })
+			.from(photoVault)
+			.where(eq(photoVault.albumId, albumId))
+			.all();
+		const allowed = new Set(
+			rows
+				.filter((p) => canReceivePhoto(p.contentRating, profile?.allowNsfw ?? false))
+				.map((p) => p.id)
+		);
+		photos = photos.filter((p) => allowed.has(p.id));
+	}
+	return json({ name: album.name, photos }, { headers: { 'Cache-Control': 'private, no-store' } });
 };
