@@ -56,7 +56,7 @@ export const POST: RequestHandler = async ({ locals, platform, request }) => {
 			400,
 			`Your account allows ${maxPhotos} photos total. Delete a photo before uploading another. Photos retained by listings also count.`
 		);
-	let cfImageId = id;
+	let cfImageId: string = id;
 	let stage: 'screening' | 'storage' | 'database' = 'screening';
 	try {
 		const contentRating = await screenPhoto(
