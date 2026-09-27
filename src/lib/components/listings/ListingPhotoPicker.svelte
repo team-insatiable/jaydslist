@@ -17,14 +17,12 @@
 		photoIds = $bindable(),
 		vaultPhotos = $bindable(),
 		vaultAlbums = $bindable(),
-		isSupporter,
 		maxPhotos = 3,
 		onUploadingChange
 	}: {
 		photoIds: string[];
 		vaultPhotos: VaultPhoto[];
 		vaultAlbums: VaultAlbum[];
-		isSupporter: boolean;
 		maxPhotos?: number;
 		onUploadingChange?: (uploading: boolean) => void;
 	} = $props();
@@ -76,7 +74,7 @@
 	}
 
 	function openPicker() {
-		if (!isSupporter || !canAddMore) return;
+		if (!canAddMore) return;
 		photoError = '';
 		if (!hasAnything) {
 			triggerFilePicker();
@@ -112,11 +110,12 @@
 		photoUploading = true;
 		try {
 			const { id: vaultPhotoId, deliveryUrl } = await uploadPhotoToVault(file);
-			// Add to vault (uncategorized) — user taps it in the grid to select for the listing
+			// Store once in the vault and attach this photo to the listing.
 			vaultPhotos = [
 				{ id: vaultPhotoId, deliveryUrl, uploadedAt: new Date(), albumId: null },
 				...vaultPhotos
 			];
+			selectVaultPhoto(vaultPhotoId);
 		} catch (err) {
 			photoError = err instanceof Error ? err.message : 'Photo upload failed. Try again.';
 		} finally {
@@ -127,31 +126,8 @@
 </script>
 
 <div class="photo-picker">
-	{#if !isSupporter}
-		<p class="supporter-notice">
-			Photos are a supporter-account feature. Your listing will post without photos.
-		</p>
-	{/if}
-
 	<div class="photo-slots-wrap">
-		{#if !isSupporter}
-			<div class="supporter-badge">
-				<svg
-					width="12"
-					height="12"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-				</svg>
-				Supporter feature
-			</div>
-		{/if}
-		<div class="photo-slots" class:disabled={!isSupporter}>
+		<div class="photo-slots">
 			{#each Array(maxPhotos) as _, i (i)}
 				{#if photoIds[i]}
 					{@const photo = photoById(photoIds[i])}
@@ -163,7 +139,6 @@
 							type="button"
 							class="remove-btn"
 							onclick={() => removePhoto(photoIds[i])}
-							disabled={!isSupporter}
 							aria-label="Remove photo"
 						>
 							<svg
@@ -185,7 +160,7 @@
 						type="button"
 						class="photo-slot empty"
 						onclick={openPicker}
-						disabled={!isSupporter || !canAddMore || photoUploading}
+						disabled={!canAddMore || photoUploading}
 						aria-label="Add photo"
 					>
 						+
@@ -362,44 +337,13 @@
 		margin-bottom: 1.25rem;
 	}
 
-	.supporter-notice {
-		font-size: 0.8rem;
-		color: var(--pico-muted-color);
-		margin-bottom: 0.6rem;
-	}
-
 	.photo-slots-wrap {
-		position: relative;
-		padding-top: 2.25rem;
-	}
-
-	.supporter-badge {
-		position: absolute;
-		top: 0;
-		left: 0;
-		z-index: 1;
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		background: color-mix(in srgb, #d97706 16%, transparent);
-		border: 1px solid color-mix(in srgb, #d97706 40%, transparent);
-		border-radius: 999px;
-		padding: 0.3rem 0.7rem;
-		font-size: 0.72rem;
-		font-weight: 700;
-		color: #d97706;
-		white-space: nowrap;
-		pointer-events: none;
+		margin-bottom: 1rem;
 	}
 
 	.photo-slots {
 		display: flex;
 		gap: 0.75rem;
-	}
-
-	.photo-slots.disabled {
-		pointer-events: none;
-		opacity: 0.45;
 	}
 
 	.photo-slot {

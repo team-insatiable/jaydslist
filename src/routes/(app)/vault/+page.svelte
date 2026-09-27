@@ -56,22 +56,17 @@
 		description="A private place for your photos. You choose what to share, and with whom."
 	/>
 
+	<p class="allowance">
+		{data.albums.length}/{data.maxAlbums} albums · {data.photoUsage}/{data.maxPhotos} photos total
+	</p>
+
+	{#if data.photoUsage > data.photos.length}
+		<p class="allowance">
+			Photos retained by listings and uploads in progress also count toward your allowance.
+		</p>
+	{/if}
 	{#if !data.isSupporter}
-		<div class="supporter-gate">
-			<svg
-				width="14"
-				height="14"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-			</svg>
-			Photo vault is a supporter feature.
-		</div>
+		<p class="allowance">Supporters can keep up to three albums and ten photos total.</p>
 	{/if}
 
 	{#if form?.error}
@@ -87,7 +82,7 @@
 				newAlbumName = '';
 				creatingAlbum = true;
 			}}
-			disabled={!data.isSupporter}
+			disabled={data.albums.length >= data.maxAlbums}
 			aria-label="Create new album"
 		>
 			<svg
@@ -172,7 +167,7 @@
 		{/if}
 	</div>
 
-	{#if data.albums.length === 0 && uncategorizedPhotos.length === 0 && data.isSupporter}
+	{#if data.albums.length === 0 && uncategorizedPhotos.length === 0}
 		<p class="empty-hint">No albums yet. Tap + to create one.</p>
 	{/if}
 </div>
@@ -275,7 +270,7 @@
 		padding-bottom: 2rem;
 	}
 
-	.supporter-gate {
+	.allowance {
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;

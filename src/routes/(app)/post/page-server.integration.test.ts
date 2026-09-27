@@ -151,7 +151,7 @@ describe('post action photo attachments', () => {
 		expect(rows.results).toEqual([{ vault_photo_id: ownPhoto }]);
 	});
 
-	it('silently drops all photo ids for a non-supporter, listing still posts', async () => {
+	it('attaches owned vault photos for a free account', async () => {
 		const photo = await createTestVaultPhoto(env.DB, freeUserId);
 
 		await expect(
@@ -165,7 +165,7 @@ describe('post action photo attachments', () => {
 		const rows = await env.DB.prepare('SELECT id FROM listing_photos WHERE listing_id = ?')
 			.bind(listing!.id)
 			.all();
-		expect(rows.results.length).toBe(0);
+		expect(rows.results.length).toBe(1);
 	});
 
 	it('caps attached photos at LISTING_MAX_PHOTOS', async () => {

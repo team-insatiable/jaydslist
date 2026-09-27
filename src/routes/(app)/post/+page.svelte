@@ -330,7 +330,6 @@
 						bind:photoIds
 						bind:vaultPhotos
 						bind:vaultAlbums
-						isSupporter={data.isSupporter}
 						onUploadingChange={(v) => (photosUploading = v)}
 					/>
 				</div>

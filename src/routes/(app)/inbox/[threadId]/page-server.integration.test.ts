@@ -5,7 +5,9 @@ import {
 	createTestUser,
 	createTestListing,
 	createTestThread,
-	createTestMessage
+	createTestMessage,
+	createTestVaultPhoto,
+	createTestAlbum
 } from '$lib/server/test-helpers/fixtures';
 
 type SendEvent = Parameters<typeof actions.send>[0];
@@ -18,9 +20,17 @@ type AcceptExchangeEvent = Parameters<typeof actions.acceptExchange>[0];
 type DeclineExchangeEvent = Parameters<typeof actions.declineExchange>[0];
 type RevokeExchangeEvent = Parameters<typeof actions.revokeExchange>[0];
 
-function fakeEvent(overrides: { threadId: string; userId: string; body: string }): SendEvent {
+function fakeEvent(overrides: {
+	threadId: string;
+	userId: string;
+	body: string;
+	cfImageId?: string;
+	albumId?: string;
+}): SendEvent {
 	const form = new FormData();
 	form.set('body', overrides.body);
+	if (overrides.cfImageId) form.set('cfImageId', overrides.cfImageId);
+	if (overrides.albumId) form.set('albumId', overrides.albumId);
 	return {
 		params: { threadId: overrides.threadId },
 		request: new Request('http://localhost/inbox/x', { method: 'POST', body: form }),
@@ -99,6 +109,29 @@ describe('inbox/[threadId] send action', () => {
 		initiatorId = await createTestUser(env.DB, { alias: 'Initiator' });
 		const listingId = await createTestListing(env.DB, posterId);
 		threadId = await createTestThread(env.DB, { listingId, initiatorId, posterId });
+	});
+
+	it('lets free accounts share owned vault photos and albums', async () => {
+		const albumId = await createTestAlbum(env.DB, initiatorId);
+		const cfImageId = crypto.randomUUID();
+		await createTestVaultPhoto(env.DB, initiatorId, { cfImageId, albumId });
+		expect(
+			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', cfImageId }))
+		).toEqual({ success: true });
+		expect(
+			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', albumId }))
+		).toEqual({ success: true });
+	});
+
+	it('rejects foreign photos, arbitrary image IDs, and foreign albums', async () => {
+		const cfImageId = crypto.randomUUID();
+		await createTestVaultPhoto(env.DB, posterId, { cfImageId });
+		const albumId = await createTestAlbum(env.DB, posterId);
+		for (const media of [{ cfImageId }, { cfImageId: 'arbitrary-id' }, { albumId }]) {
+			expect(
+				await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', ...media }))
+			).toMatchObject({ status: 400 });
+		}
 	});
 
 	it('allows a normal message to send', async () => {

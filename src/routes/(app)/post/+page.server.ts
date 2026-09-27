@@ -11,7 +11,7 @@ import {
 	userProfiles,
 	DEFAULT_CONFIG
 } from '$lib/server/db/schema';
-import { eq, and, isNull, inArray } from 'drizzle-orm';
+import { ne, eq, and, isNull, inArray } from 'drizzle-orm';
 import { getActiveVocabulary } from '$lib/server/relative-terms.server';
 import { scanTerms } from '$lib/relative-terms';
 import { getVaultPhotos, getAlbumList } from '$lib/server/photo-vault';
@@ -158,13 +158,9 @@ export const actions: Actions = {
 			});
 		}
 
-		// Never trust the client's gray-out — silently drop photo ids for
-		// non-supporters (listing still posts, just without photos) and drop
-		// any id that isn't actually an active vault photo owned by this user
-		// (closes the IDOR angle: tampering with the hidden inputs to attach
-		// someone else's vault photo).
+		// Only attach active vault photos owned by this account.
 		let photoIds: string[] = [];
-		if (profile.isSupporter && photoIdsRaw.length > 0) {
+		if (photoIdsRaw.length > 0) {
 			const owned = await db
 				.select({ id: photoVault.id })
 				.from(photoVault)
@@ -172,7 +168,8 @@ export const actions: Actions = {
 					and(
 						inArray(photoVault.id, photoIdsRaw),
 						eq(photoVault.userId, locals.user.id),
-						isNull(photoVault.deletedAt)
+						isNull(photoVault.deletedAt),
+						ne(photoVault.scanStatus, 'uploading')
 					)
 				)
 				.all();

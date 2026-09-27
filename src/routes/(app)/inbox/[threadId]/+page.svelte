@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uploadPhotoToVault } from '$lib/client/photo-upload';
 	import { enhance } from '$app/forms';
 	import { tick } from 'svelte';
 	import { fly } from 'svelte/transition';
@@ -209,23 +210,11 @@
 		photoUploading = true;
 		mediaOpen = false;
 		try {
-			const urlRes = await fetch('/api/photos/upload-url', { method: 'POST' });
-			if (!urlRes.ok) throw new Error('Failed to get upload URL');
-			const { uploadUrl, id, deliveryUrl } = (await urlRes.json()) as {
-				uploadUrl: string;
-				id: string;
-				deliveryUrl: string;
-			};
-
-			const form = new FormData();
-			form.append('file', file);
-			const uploadRes = await fetch(uploadUrl, { method: 'POST', body: form });
-			if (!uploadRes.ok) throw new Error('Upload failed');
-
+			const { cfImageId: id, deliveryUrl } = await uploadPhotoToVault(file);
 			photoId = id;
 			photoPreviewUrl = deliveryUrl;
-		} catch {
-			photoError = 'Photo upload failed. Try again.';
+		} catch (err) {
+			photoError = err instanceof Error ? err.message : 'Photo upload failed. Try again.';
 		} finally {
 			photoUploading = false;
 		}
@@ -245,7 +234,7 @@
 	async function openMedia() {
 		mediaOpen = true;
 		selectedAlbum = null;
-		if (data.isSupporter) {
+		{
 			vaultLoading = true;
 			try {
 				const res = await fetch('/api/photos/vault');
@@ -325,39 +314,13 @@
 		photoError = '';
 		vaultUploading = true;
 		try {
-			const urlRes = await fetch('/api/photos/upload-url', { method: 'POST' });
-			if (!urlRes.ok) throw new Error('Failed to get upload URL');
-			const {
-				uploadUrl,
-				id: cfImageId,
-				deliveryUrl
-			} = (await urlRes.json()) as {
-				uploadUrl: string;
-				id: string;
-				deliveryUrl: string;
-			};
-
-			const form = new FormData();
-			form.append('file', file);
-			const uploadRes = await fetch(uploadUrl, { method: 'POST', body: form });
-			if (!uploadRes.ok) throw new Error('Upload failed');
-
-			await fetch('/api/photos/confirm', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ cfImageId, target: 'vault' })
-			});
-
-			// Add to local vault grid immediately
-			vaultPhotos = [
-				{ id: crypto.randomUUID(), cfImageId, deliveryUrl, albumId: null },
-				...vaultPhotos
-			];
+			const photo = await uploadPhotoToVault(file);
+			vaultPhotos = [{ ...photo, albumId: null }, ...vaultPhotos];
 
 			const gal = document.getElementById('media-gallery-input') as HTMLInputElement | null;
 			if (gal) gal.value = '';
-		} catch {
-			photoError = 'Photo upload failed. Try again.';
+		} catch (err) {
+			photoError = err instanceof Error ? err.message : 'Photo upload failed. Try again.';
 		} finally {
 			vaultUploading = false;
 		}
@@ -1550,156 +1513,156 @@
 
 				<!-- Scrollable vault grid -->
 				<div class="vault-scroll">
-					{#if data.isSupporter}
-						{#if vaultLoading}
-							<p class="vault-grid-empty">Loading vault…</p>
-						{:else if vaultPhotos.length > 0 || vaultAlbums.length > 0}
-							<div class="vault-grid">
-								<!-- Albums: tap to select the whole album -->
-								{#each vaultAlbums as album (album.id)}
-									{@const albumSelected = selectedAlbum?.id === album.id}
-									{@const albumDimmed =
-										selectedVaultPhotos.length > 0 || (!!selectedAlbum && !albumSelected)}
-									<button
-										type="button"
-										class="vault-thumb album-thumb"
-										class:selected={albumSelected}
-										class:dimmed={albumDimmed}
-										onclick={() => selectAlbum(album)}
-										aria-label="Select album {album.name}"
-										aria-pressed={albumSelected}
-									>
-										{#if album.coverUrl}
-											<img src={album.coverUrl} alt="" loading="lazy" />
-										{:else}
-											<div class="album-empty-cover"></div>
-										{/if}
-										<div class="album-label">
-											<span class="album-name">{album.name}</span>
-										</div>
-									</button>
-								{/each}
-								<!-- Uncategorized photos: multi-select up to 10 -->
-								{#each unalbumizedPhotos as photo (photo.id)}
-									{@const photoSelected = selectedVaultPhotos.some(
-										(p) => p.cfImageId === photo.cfImageId
-									)}
-									{@const photoDimmed =
-										!!selectedAlbum || (selectedVaultPhotos.length >= 10 && !photoSelected)}
-									<button
-										type="button"
-										class="vault-thumb"
-										class:selected={photoSelected}
-										class:dimmed={photoDimmed}
-										onclick={() => toggleVaultPhoto(photo)}
-										aria-label="Select vault photo"
-										aria-pressed={photoSelected}
-									>
-										<img src={photo.deliveryUrl} alt="" loading="lazy" />
-										{#if photoSelected}
-											<span class="vault-check" aria-hidden="true">
-												<svg
-													width="16"
-													height="16"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="white"
-													stroke-width="3"
-													stroke-linecap="round"
-													stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg
-												>
-											</span>
-										{/if}
-									</button>
-								{/each}
-							</div>
-						{:else}
-							<p class="vault-grid-empty">No photos in your vault yet.</p>
-						{/if}
+					{#if vaultLoading}
+						<p class="vault-grid-empty">Loading vault…</p>
+					{:else if vaultPhotos.length > 0 || vaultAlbums.length > 0}
+						<div class="vault-grid">
+							<!-- Albums: tap to select the whole album -->
+							{#each vaultAlbums as album (album.id)}
+								{@const albumSelected = selectedAlbum?.id === album.id}
+								{@const albumDimmed =
+									selectedVaultPhotos.length > 0 || (!!selectedAlbum && !albumSelected)}
+								<button
+									type="button"
+									class="vault-thumb album-thumb"
+									class:selected={albumSelected}
+									class:dimmed={albumDimmed}
+									onclick={() => selectAlbum(album)}
+									aria-label="Select album {album.name}"
+									aria-pressed={albumSelected}
+								>
+									{#if album.coverUrl}
+										<img src={album.coverUrl} alt="" loading="lazy" />
+									{:else}
+										<div class="album-empty-cover"></div>
+									{/if}
+									<div class="album-label">
+										<span class="album-name">{album.name}</span>
+									</div>
+								</button>
+							{/each}
+							<!-- Uncategorized photos: multi-select up to 10 -->
+							{#each unalbumizedPhotos as photo (photo.id)}
+								{@const photoSelected = selectedVaultPhotos.some(
+									(p) => p.cfImageId === photo.cfImageId
+								)}
+								{@const photoDimmed =
+									!!selectedAlbum || (selectedVaultPhotos.length >= 10 && !photoSelected)}
+								<button
+									type="button"
+									class="vault-thumb"
+									class:selected={photoSelected}
+									class:dimmed={photoDimmed}
+									onclick={() => toggleVaultPhoto(photo)}
+									aria-label="Select vault photo"
+									aria-pressed={photoSelected}
+								>
+									<img src={photo.deliveryUrl} alt="" loading="lazy" />
+									{#if photoSelected}
+										<span class="vault-check" aria-hidden="true">
+											<svg
+												width="16"
+												height="16"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="white"
+												stroke-width="3"
+												stroke-linecap="round"
+												stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg
+											>
+										</span>
+									{/if}
+								</button>
+							{/each}
+						</div>
+					{:else}
+						<p class="vault-grid-empty">No photos in your vault yet.</p>
 					{/if}
 				</div>
 
 				<!-- Panel footer: overlays the grid, slides up when a photo or selection is made -->
-				{#if data.isSupporter && (photoId || selectedVaultPhotos.length > 0 || selectedAlbum)}
+				{#if photoId || selectedVaultPhotos.length > 0 || selectedAlbum}
 					<div
 						class="panel-footer"
 						class:panel-footer-album={!!selectedAlbum}
 						transition:fly={{ y: 80, duration: 220, easing: cubicOut }}
 					>
 						{#if selectedAlbum}
-							<!-- Album: collapsed expiry selector + sliding options list -->
-							{#if albumExpiryOpen}
-								<div
-									class="album-expiry-list"
-									transition:fly={{ y: 12, duration: 180, easing: cubicOut }}
+							{#if data.isSupporter}
+								<!-- Album: collapsed expiry selector + sliding options list -->
+								{#if albumExpiryOpen}
+									<div
+										class="album-expiry-list"
+										transition:fly={{ y: 12, duration: 180, easing: cubicOut }}
+									>
+										{#each EXPIRY_OPTIONS as opt (opt.value)}
+											<button
+												type="button"
+												class="expiry-list-item"
+												class:active={expiryType === opt.value}
+												onclick={() => {
+													expiryType = opt.value;
+													albumExpiryOpen = false;
+												}}
+											>
+												<span>{opt.label}</span>
+												{#if expiryType === opt.value}
+													<svg
+														width="16"
+														height="16"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2.5"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														aria-hidden="true"
+													>
+														<polyline points="20 6 9 17 4 12" />
+													</svg>
+												{/if}
+											</button>
+										{/each}
+									</div>
+									<hr class="expiry-list-divider" />
+								{/if}
+								<button
+									type="button"
+									class="album-expiry-selector"
+									onclick={() => (albumExpiryOpen = !albumExpiryOpen)}
 								>
-									{#each EXPIRY_OPTIONS as opt (opt.value)}
-										<button
-											type="button"
-											class="expiry-list-item"
-											class:active={expiryType === opt.value}
-											onclick={() => {
-												expiryType = opt.value;
-												albumExpiryOpen = false;
-											}}
-										>
-											<span>{opt.label}</span>
-											{#if expiryType === opt.value}
-												<svg
-													width="16"
-													height="16"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													stroke-width="2.5"
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													aria-hidden="true"
-												>
-													<polyline points="20 6 9 17 4 12" />
-												</svg>
-											{/if}
-										</button>
-									{/each}
-								</div>
+									<svg
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+									</svg>
+									<span class="expiry-selector-label">{EXPIRY_LABELS[expiryType]}</span>
+									<svg
+										class="expiry-chevron"
+										class:open={albumExpiryOpen}
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<polyline points="6 9 12 15 18 9" />
+									</svg>
+								</button>
 								<hr class="expiry-list-divider" />
 							{/if}
-							<button
-								type="button"
-								class="album-expiry-selector"
-								onclick={() => (albumExpiryOpen = !albumExpiryOpen)}
-							>
-								<svg
-									width="16"
-									height="16"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-								>
-									<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-								</svg>
-								<span class="expiry-selector-label">{EXPIRY_LABELS[expiryType]}</span>
-								<svg
-									class="expiry-chevron"
-									class:open={albumExpiryOpen}
-									width="16"
-									height="16"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2.5"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-								>
-									<polyline points="6 9 12 15 18 9" />
-								</svg>
-							</button>
-							<hr class="expiry-list-divider" />
 							<button
 								type="button"
 								class="panel-send-btn"
@@ -1709,30 +1672,32 @@
 								Share Album
 							</button>
 						{:else}
-							<!-- Timer toggle: camera photo or vault selection -->
-							<button
-								type="button"
-								class="panel-expiring-btn"
-								class:active={expiryType !== 'none'}
-								onclick={() => {
-									expiryType = expiryType === 'none' ? 'view_once' : 'none';
-								}}
-								aria-pressed={expiryType !== 'none'}
-							>
-								<svg
-									width="18"
-									height="18"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
+							{#if data.isSupporter}
+								<!-- Timer toggle: camera photo or vault selection -->
+								<button
+									type="button"
+									class="panel-expiring-btn"
+									class:active={expiryType !== 'none'}
+									onclick={() => {
+										expiryType = expiryType === 'none' ? 'view_once' : 'none';
+									}}
+									aria-pressed={expiryType !== 'none'}
 								>
-									<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-								</svg>
-								{expiryType !== 'none' ? '10s' : 'Off'}
-							</button>
+									<svg
+										width="18"
+										height="18"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+									</svg>
+									{expiryType !== 'none' ? '10s' : 'Off'}
+								</button>
+							{/if}
 							<button
 								type="button"
 								class="panel-send-btn"
