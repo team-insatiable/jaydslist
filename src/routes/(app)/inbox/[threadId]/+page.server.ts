@@ -367,6 +367,30 @@ export const actions: Actions = {
 		const albumId = (formData.get('albumId') as string)?.trim() || null;
 		const expiryType = (formData.get('expiryType') as string) || 'none';
 
+		if (cfImageId) {
+			const photo = await db
+				.select({ id: photoVault.id })
+				.from(photoVault)
+				.where(
+					and(
+						eq(photoVault.cfImageId, cfImageId),
+						eq(photoVault.userId, userId),
+						isNull(photoVault.deletedAt),
+						ne(photoVault.scanStatus, 'uploading')
+					)
+				)
+				.get();
+			if (!photo) return fail(400, { error: 'Choose a photo from your own vault' });
+		}
+		if (albumId) {
+			const album = await db
+				.select({ id: photoAlbums.id })
+				.from(photoAlbums)
+				.where(and(eq(photoAlbums.id, albumId), eq(photoAlbums.userId, userId)))
+				.get();
+			if (!album) return fail(400, { error: 'Choose one of your own albums' });
+		}
+
 		const hasMedia = !!(cfImageId || albumId);
 		const isExpiring = hasMedia && expiryType === 'view_once';
 		const EXPIRY_OFFSETS: Record<string, number> = {

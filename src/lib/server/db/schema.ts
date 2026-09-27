@@ -548,7 +548,10 @@ export const DEFAULT_CONFIG = {
 	INSTANCE_NAME: 'Jaydslist',
 	INSTANCE_TAGLINE: 'Real connections, real people',
 	INSTANCE_URL: 'https://example.com',
+	VAULT_MAX_PHOTOS_FREE: '5',
 	VAULT_MAX_PHOTOS_PAID: '10',
+	VAULT_MAX_ALBUMS_FREE: '1',
+	VAULT_MAX_ALBUMS_PAID: '3',
 	LISTING_MAX_PHOTOS: '3',
 	PHASH_HAMMING_THRESHOLD: '10'
 } as const;

@@ -7,7 +7,7 @@ export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export async function uploadPhotoToVault(
 	file: File,
 	albumId?: string
-): Promise<{ id: string; deliveryUrl: string }> {
+): Promise<{ id: string; cfImageId: string; deliveryUrl: string }> {
 	if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
 		throw new Error('Please use a JPEG, PNG, GIF, or WebP image');
 	}
@@ -15,29 +15,13 @@ export async function uploadPhotoToVault(
 		throw new Error('Image must be under 10MB');
 	}
 
-	const urlRes = await fetch('/api/photos/upload-url', { method: 'POST' });
-	if (!urlRes.ok) throw new Error('Failed to get upload URL');
-	const { uploadUrl, id, deliveryUrl } = (await urlRes.json()) as {
-		uploadUrl: string;
-		id: string;
-		deliveryUrl: string;
-	};
-
 	const form = new FormData();
 	form.append('file', file);
-	const uploadRes = await fetch(uploadUrl, { method: 'POST', body: form });
-	if (!uploadRes.ok) throw new Error('Upload failed');
-
-	const confirmRes = await fetch('/api/photos/confirm', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ cfImageId: id, target: 'vault', ...(albumId ? { albumId } : {}) })
-	});
-	if (!confirmRes.ok) {
-		const errBody = (await confirmRes.json().catch(() => null)) as { message?: string } | null;
-		throw new Error(errBody?.message ?? 'Could not save photo to your vault');
+	if (albumId) form.append('albumId', albumId);
+	const res = await fetch('/api/photos/upload', { method: 'POST', body: form });
+	if (!res.ok) {
+		const body = (await res.json().catch(() => null)) as { message?: string } | null;
+		throw new Error(body?.message ?? 'Photo upload failed. Try again.');
 	}
-	const { id: vaultPhotoId } = (await confirmRes.json()) as { id: string };
-
-	return { id: vaultPhotoId, deliveryUrl };
+	return res.json() as Promise<{ id: string; cfImageId: string; deliveryUrl: string }>;
 }

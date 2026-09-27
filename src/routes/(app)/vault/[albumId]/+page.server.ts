@@ -1,32 +1,21 @@
+import { removeVaultPhoto } from '$lib/server/photo-vault';
 import { fail, redirect, error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
-import {
-	photoAlbums,
-	photoVault,
-	listingPhotos,
-	listings,
-	userProfiles
-} from '$lib/server/db/schema';
+import { photoAlbums, photoVault } from '$lib/server/db/schema';
 import { eq, and, isNull, asc, ne, or, sql } from 'drizzle-orm';
-import { imageUrl, deleteImage } from '$lib/server/cloudflare-images';
+import { imageUrl } from '$lib/server/cloudflare-images';
 
-async function requireSupporter(locals: App.Locals, platform: App.Platform | undefined) {
+async function requireUser(locals: App.Locals, platform: App.Platform | undefined) {
 	if (!locals.user) throw redirect(302, '/login');
 	const env = platform?.env;
 	if (!env) throw error(500, 'Server configuration error');
 	const db = getDb(env.DB);
-	const profile = await db
-		.select({ isSupporter: userProfiles.isSupporter })
-		.from(userProfiles)
-		.where(eq(userProfiles.id, locals.user.id))
-		.get();
-	if (!profile?.isSupporter) throw redirect(302, '/vault');
 	return { db, env, userId: locals.user.id };
 }
 
 export const load: PageServerLoad = async ({ locals, platform, params }) => {
-	const { db, env, userId } = await requireSupporter(locals, platform);
+	const { db, env, userId } = await requireUser(locals, platform);
 
 	const isUncategorized = params.albumId === 'uncategorized';
 
@@ -53,6 +42,7 @@ export const load: PageServerLoad = async ({ locals, platform, params }) => {
 			and(
 				eq(photoVault.userId, userId),
 				isNull(photoVault.deletedAt),
+				ne(photoVault.scanStatus, 'uploading'),
 				isUncategorized ? isNull(photoVault.albumId) : eq(photoVault.albumId, params.albumId)
 			)
 		)
@@ -68,6 +58,7 @@ export const load: PageServerLoad = async ({ locals, platform, params }) => {
 					and(
 						eq(photoVault.userId, userId),
 						isNull(photoVault.deletedAt),
+						ne(photoVault.scanStatus, 'uploading'),
 						or(isNull(photoVault.albumId), ne(photoVault.albumId, params.albumId))
 					)
 				)
@@ -95,7 +86,7 @@ export const load: PageServerLoad = async ({ locals, platform, params }) => {
 
 export const actions: Actions = {
 	renameAlbum: async ({ request, locals, platform, params }) => {
-		const { db, userId } = await requireSupporter(locals, platform);
+		const { db, userId } = await requireUser(locals, platform);
 
 		if (params.albumId === 'uncategorized')
 			return fail(400, { error: 'Cannot rename Uncategorized' });
@@ -116,7 +107,7 @@ export const actions: Actions = {
 	},
 
 	addToAlbum: async ({ request, locals, platform, params }) => {
-		const { db, userId } = await requireSupporter(locals, platform);
+		const { db, userId } = await requireUser(locals, platform);
 
 		if (params.albumId === 'uncategorized')
 			return fail(400, { error: 'Cannot add to Uncategorized via this action' });
@@ -141,7 +132,7 @@ export const actions: Actions = {
 	},
 
 	removeFromAlbum: async ({ request, locals, platform }) => {
-		const { db, userId } = await requireSupporter(locals, platform);
+		const { db, userId } = await requireUser(locals, platform);
 
 		const photoId = (await request.formData()).get('photoId') as string;
 		const photo = await db
@@ -156,7 +147,7 @@ export const actions: Actions = {
 	},
 
 	reorderPhotos: async ({ request, locals, platform }) => {
-		const { db, userId } = await requireSupporter(locals, platform);
+		const { db, userId } = await requireUser(locals, platform);
 
 		const ids = JSON.parse(((await request.formData()).get('order') as string) || '[]') as string[];
 		if (!Array.isArray(ids) || ids.length === 0) return { success: true };
@@ -171,7 +162,7 @@ export const actions: Actions = {
 	},
 
 	deletePhoto: async ({ request, locals, platform }) => {
-		const { db, env, userId } = await requireSupporter(locals, platform);
+		const { db, env, userId } = await requireUser(locals, platform);
 
 		const photoId = (await request.formData()).get('photoId') as string;
 		const photo = await db
@@ -186,28 +177,10 @@ export const actions: Actions = {
 		if (!photo || photo.userId !== userId) return fail(404, { error: 'Photo not found' });
 		if (photo.deletedAt) return { success: true };
 
-		await db.update(photoVault).set({ deletedAt: new Date() }).where(eq(photoVault.id, photoId));
-
-		const stillActive = await db
-			.select({ id: listingPhotos.id })
-			.from(listingPhotos)
-			.innerJoin(listings, eq(listingPhotos.listingId, listings.id))
-			.where(
-				and(
-					eq(listingPhotos.vaultPhotoId, photoId),
-					isNull(listingPhotos.purgedAt),
-					eq(listings.status, 'active')
-				)
-			)
-			.get();
-
-		if (!stillActive) {
-			await db
-				.update(listingPhotos)
-				.set({ purgedAt: new Date() })
-				.where(and(eq(listingPhotos.vaultPhotoId, photoId), isNull(listingPhotos.purgedAt)));
-
-			deleteImage(env, photo.cfImageId).catch((e) => console.error('Failed to purge CF image:', e));
+		try {
+			await removeVaultPhoto(env, photoId, photo.cfImageId);
+		} catch {
+			return fail(502, { error: 'Could not delete photo from storage. Please try again.' });
 		}
 
 		return { success: true };

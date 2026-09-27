@@ -121,8 +121,8 @@ DBBL being unavailable must NEVER block core Jaydslist functionality. Wrap all D
 - Favicon (static/favicon.svg)
 - Real-time-ish messaging — thread polling via `invalidate('app:thread')` every 3s (paused when tab hidden), email notification on new message (15-min cooldown per thread via `lastNotifiedAt`), VAPID web push (service worker + `POST /api/push/subscribe`)
 - Abuse detection — per-thread flood detection (>10 msgs/10min auto-suspends sender + alerts admins), daily thread velocity check against trust tier limits (3x cap triggers auto-suspend)
-- Vault-backed listing photo picker (src/lib/components/listings/ListingPhotoPicker.svelte) — supporter-only, pick from vault or upload fresh during listing creation
-- Photo vault management page (src/routes/(app)/vault/) — supporter-only: view/upload/delete vault photos, organize into albums, soft-delete + conditional hard-purge lifecycle, "purged while paused" warning banner on listing resume
+- Vault-backed listing photo picker (src/lib/components/listings/ListingPhotoPicker.svelte) — available to all accounts, pick from vault or upload fresh during listing creation
+- Photo vault management page (src/routes/(app)/vault/) — all accounts: view/upload/delete vault photos, organize into albums, soft-delete + conditional hard-purge lifecycle, "purged while paused" warning banner on listing resume
 
 ### Schema additions beyond initial push
 - `photo_albums` table (id, userId, name, createdAt)
@@ -384,7 +384,7 @@ Mutual consent system for sharing verified contact info off-platform.
 ### Photo Vault
 Photos are a **paid-tier feature only**. Free users post text-only listings.
 
-**Vault:** paid users upload photos to a personal vault (max `VAULT_MAX_PHOTOS_PAID`, default 10). Photos are stored via Cloudflare Images, which handles resizing and CDN delivery. The vault is account-level — not per-listing.
+**Vault:** all accounts can upload photos to a personal vault. Free accounts have one named album and five photos total; supporters have up to three named albums and ten photos total. Limits use `VAULT_MAX_ALBUMS_FREE`, `VAULT_MAX_ALBUMS_PAID`, `VAULT_MAX_PHOTOS_FREE`, and `VAULT_MAX_PHOTOS_PAID`. Photos are stored via Cloudflare Images, which handles resizing and CDN delivery. The vault is account-level — not per-listing.
 
 **Per listing:** up to `LISTING_MAX_PHOTOS` (default 3) photos chosen from the vault. The same vault photo can appear on multiple active listings simultaneously.
 
@@ -396,7 +396,7 @@ Photos are a **paid-tier feature only**. Free users post text-only listings.
 
 **Albums:** vault photos can be organized into named albums (`photo_albums` table). `photo_vault.albumId` is nullable — unorganized photos appear in an "Uncategorized" bucket.
 
-**Message photos:** all users (not just supporters) can send a photo in a thread. Stored as `messages.cfImageId`. Separate from the vault — no vault involvement for message photos.
+**Message photos:** all users (not just supporters) can send a photo in a thread. Stored as `messages.cfImageId`. All new message uploads are saved to the vault and count against the same account photo allowance. Reusing an owned photo or sharing an owned album consumes no additional storage slots.
 
 **Schema tables:** `photo_albums`, `photo_vault`, `listing_photos` (junction), `photo_blocklist`
 
@@ -487,7 +487,7 @@ Being locked down before any code is written. Decisions so far:
 
 **Messaging perks (confirmed):** typing indicators, read receipts, message edit/unsend (2-minute window), higher thread velocity limit as a flat bonus on top of the trust-tier number (not a multiplier, not a floor).
 
-**Listing perks (confirmed):** listing view analytics; bigger photo vault — 3 albums max, 5 photos max per album, 15 total vault photos. "Uncategorized" is not a separate bucket with its own cap — albums are just organizational pointers onto the same 15-photo pool.
+**Listing perks (confirmed):** listing view analytics; bigger photo vault — implemented as three named albums and ten photos total, versus one named album and five photos total for free accounts. "Uncategorized" is an organizational bucket within the same account photo allowance.
 
 **Explicitly rejected:** browse sort/ranking boost for supporters (flagged as pay-to-win risk against the platform's anti-Doublelist ethos).
 

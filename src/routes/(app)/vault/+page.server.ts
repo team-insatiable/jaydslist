@@ -1,17 +1,14 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
+import { photoAlbums, photoVault, messages, userProfiles } from '$lib/server/db/schema';
+import { eq, asc } from 'drizzle-orm';
 import {
-	photoAlbums,
-	photoVault,
-	messages,
-	listingPhotos,
-	listings,
-	userProfiles
-} from '$lib/server/db/schema';
-import { eq, and, isNull, asc } from 'drizzle-orm';
-import { getVaultPhotos } from '$lib/server/photo-vault';
-import { deleteImage } from '$lib/server/cloudflare-images';
+	getVaultPhotos,
+	getPhotoLimits,
+	removeVaultPhoto,
+	getPhotoUsage
+} from '$lib/server/photo-vault';
 
 export const load: PageServerLoad = async ({ locals, platform }) => {
 	if (!locals.user) throw redirect(302, '/login');
@@ -39,7 +36,9 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 	return {
 		albums,
 		photos,
-		isSupporter: profile?.isSupporter ?? false
+		photoUsage: await getPhotoUsage(env.DB, locals.user.id),
+		isSupporter: profile?.isSupporter ?? false,
+		...(await getPhotoLimits(env, locals.user.id))
 	};
 };
 
@@ -49,21 +48,23 @@ export const actions: Actions = {
 		const env = platform?.env;
 		if (!env) return fail(500, { error: 'Server configuration error' });
 
-		const db = getDb(env.DB);
-		const profile = await db
-			.select({ isSupporter: userProfiles.isSupporter })
-			.from(userProfiles)
-			.where(eq(userProfiles.id, locals.user.id))
-			.get();
-		if (!profile?.isSupporter) return fail(403, { error: 'Photo vault is a supporter feature' });
-
 		const data = await request.formData();
 		const name = ((data.get('name') as string) || '').trim();
 		if (!name) return fail(400, { error: 'Album name is required' });
 		if (name.length > 40) return fail(400, { error: 'Album name must be 40 characters or less' });
 
 		const id = crypto.randomUUID();
-		await db.insert(photoAlbums).values({ id, userId: locals.user.id, name });
+		const { maxAlbums } = await getPhotoLimits(env, locals.user.id);
+		const inserted = await env.DB.prepare(
+			`INSERT INTO photo_albums (id, user_id, name)
+			SELECT ?, ?, ? WHERE (SELECT count(*) FROM photo_albums WHERE user_id = ?) < ?`
+		)
+			.bind(id, locals.user.id, name, locals.user.id, maxAlbums)
+			.run();
+		if (!inserted.meta.changes)
+			return fail(400, {
+				error: `Your account allows ${maxAlbums} album${maxAlbums === 1 ? '' : 's'}`
+			});
 
 		return { success: true, albumId: id };
 	},
@@ -74,12 +75,6 @@ export const actions: Actions = {
 		if (!env) return fail(500, { error: 'Server configuration error' });
 
 		const db = getDb(env.DB);
-		const profile = await db
-			.select({ isSupporter: userProfiles.isSupporter })
-			.from(userProfiles)
-			.where(eq(userProfiles.id, locals.user.id))
-			.get();
-		if (!profile?.isSupporter) return fail(403, { error: 'Photo vault is a supporter feature' });
 
 		const data = await request.formData();
 		const id = data.get('id') as string;
@@ -105,12 +100,6 @@ export const actions: Actions = {
 		if (!env) return fail(500, { error: 'Server configuration error' });
 
 		const db = getDb(env.DB);
-		const profile = await db
-			.select({ isSupporter: userProfiles.isSupporter })
-			.from(userProfiles)
-			.where(eq(userProfiles.id, locals.user.id))
-			.get();
-		if (!profile?.isSupporter) return fail(403, { error: 'Photo vault is a supporter feature' });
 
 		const data = await request.formData();
 		const id = data.get('id') as string;
@@ -143,12 +132,6 @@ export const actions: Actions = {
 		if (!env) return fail(500, { error: 'Server configuration error' });
 
 		const db = getDb(env.DB);
-		const profile = await db
-			.select({ isSupporter: userProfiles.isSupporter })
-			.from(userProfiles)
-			.where(eq(userProfiles.id, locals.user.id))
-			.get();
-		if (!profile?.isSupporter) return fail(403, { error: 'Photo vault is a supporter feature' });
 
 		const data = await request.formData();
 		const photoId = data.get('photoId') as string;
@@ -182,12 +165,6 @@ export const actions: Actions = {
 		if (!env) return fail(500, { error: 'Server configuration error' });
 
 		const db = getDb(env.DB);
-		const profile = await db
-			.select({ isSupporter: userProfiles.isSupporter })
-			.from(userProfiles)
-			.where(eq(userProfiles.id, locals.user.id))
-			.get();
-		if (!profile?.isSupporter) return fail(403, { error: 'Photo vault is a supporter feature' });
 
 		const data = await request.formData();
 		const photoId = data.get('photoId') as string;
@@ -204,41 +181,10 @@ export const actions: Actions = {
 		if (!photo || photo.userId !== locals.user.id) return fail(404, { error: 'Photo not found' });
 		if (photo.deletedAt) return { success: true };
 
-		await db.update(photoVault).set({ deletedAt: new Date() }).where(eq(photoVault.id, photoId));
-
-		// "No active listing references it" per CLAUDE.md — status = 'active' is
-		// the only status that keeps a photo alive; paused/removed/flagged do not.
-		const stillActive = await db
-			.select({ id: listingPhotos.id })
-			.from(listingPhotos)
-			.innerJoin(listings, eq(listingPhotos.listingId, listings.id))
-			.where(
-				and(
-					eq(listingPhotos.vaultPhotoId, photoId),
-					isNull(listingPhotos.purgedAt),
-					eq(listings.status, 'active')
-				)
-			)
-			.get();
-
-		if (!stillActive) {
-			// Purges every listingPhotos row for this vault photo (not just one
-			// listing's) — correct, since the underlying image is gone regardless
-			// of which listing(s) ever referenced it. Note: this does not sweep
-			// for photos that become unreferenced *later* (e.g. their one active
-			// listing expires or is removed after this call already skipped the
-			// purge) — that would need a periodic background job, out of scope
-			// here, same deferred posture as pHash blocklist enforcement.
-			await db
-				.update(listingPhotos)
-				.set({ purgedAt: new Date() })
-				.where(and(eq(listingPhotos.vaultPhotoId, photoId), isNull(listingPhotos.purgedAt)));
-
-			// Fire-and-forget: DB deletedAt/purgedAt state is the source of truth
-			// for what the app shows; a failed CF-side delete just leaves an
-			// orphaned image blob, matching the existing fire-and-forget pattern
-			// used for DBBL ban reporting.
-			deleteImage(env, photo.cfImageId).catch((e) => console.error('Failed to purge CF image:', e));
+		try {
+			await removeVaultPhoto(env, photoId, photo.cfImageId);
+		} catch {
+			return fail(502, { error: 'Could not delete photo from storage. Please try again.' });
 		}
 
 		return { success: true };

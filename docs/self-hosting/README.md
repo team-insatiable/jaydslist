@@ -27,7 +27,7 @@ You need all of these before a public launch:
 | Operator email address            | Receives abuse alerts and is configured in `ADMIN_EMAILS`.                                                               |
 | Moderation and legal process      | You are responsible for your instance's rules, privacy notice, abuse handling, data retention, and local-law compliance. |
 
-Cloudflare Images must be enabled and its API token needs **Images Write** permission because user photos are uploaded through the Images API. [Cloudflare Images direct uploads](https://developers.cloudflare.com/images/storage/upload-images/direct-creator-upload/)
+Cloudflare Images must be enabled and its API token needs **Images Write** permission because the server uploads user photos through the Images API after reserving space in the account allowance. [Cloudflare Images uploads](https://developers.cloudflare.com/images/storage/upload-images/upload-custom-path/)
 
 Keep secrets out of git. Use `.dev.vars` locally and Worker secrets in production.
 

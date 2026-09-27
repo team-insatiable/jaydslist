@@ -1,4 +1,10 @@
-import { describe, it, expect } from 'vitest';
+vi.mock('$lib/server/cloudflare-images', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/server/cloudflare-images')>()),
+	deleteImage: vi.fn().mockResolvedValue(undefined)
+}));
+import { deleteImage } from '$lib/server/cloudflare-images';
+beforeEach(() => vi.mocked(deleteImage).mockReset().mockResolvedValue(undefined));
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import { load, actions } from './+page.server';
 import {
@@ -60,10 +66,38 @@ describe('vault load', () => {
 });
 
 describe('vault actions', () => {
-	it('createAlbum rejects non-supporters', async () => {
+	it('free accounts can create one album but cannot create a second', async () => {
 		const userId = await createTestUser(env.DB, { isSupporter: false });
 		const result = await actions.createAlbum(fakeActionEvent(userId, { name: 'New Album' }));
-		expect(result).toMatchObject({ status: 403 });
+		expect(result).toMatchObject({ success: true });
+		expect(await actions.createAlbum(fakeActionEvent(userId, { name: 'Another' }))).toMatchObject({
+			status: 400
+		});
+	});
+
+	it('caps supporter albums at three even with simultaneous requests', async () => {
+		const userId = await createTestUser(env.DB, { isSupporter: true });
+		const results = await Promise.all(
+			Array.from({ length: 5 }, (_, i) =>
+				actions.createAlbum(fakeActionEvent(userId, { name: `Album ${i}` }))
+			)
+		);
+		expect(results.filter((r) => 'success' in r).length).toBe(3);
+	});
+
+	it('keeps a photo and its slot when storage deletion fails', async () => {
+		const userId = await createTestUser(env.DB);
+		const photoId = await createTestVaultPhoto(env.DB, userId);
+		vi.mocked(deleteImage).mockRejectedValueOnce(new Error('Storage unavailable'));
+		expect(await actions.deletePhoto(fakeActionEvent(userId, { photoId }))).toMatchObject({
+			status: 502
+		});
+		const photo = await getDb(env.DB)
+			.select()
+			.from(photoVault)
+			.where(eq(photoVault.id, photoId))
+			.get();
+		expect(photo?.deletedAt).toBeNull();
 	});
 
 	it('createAlbum rejects an empty name', async () => {
