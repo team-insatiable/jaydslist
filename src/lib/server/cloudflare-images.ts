@@ -84,38 +84,7 @@ export async function downloadImage(env: Env, id: string): Promise<Response> {
 			headers: { 'Content-Type': photo.metadata?.contentType ?? 'application/octet-stream' }
 		});
 	}
-	if (env.CF_IMAGES_SIGNING_KEY) {
-		if (!env.CF_IMAGES_ACCOUNT_HASH) throw new Error('Image delivery account is not configured');
-		const url = new URL(
-			`https://imagedelivery.net/${encodeURIComponent(env.CF_IMAGES_ACCOUNT_HASH)}/${encodeURIComponent(id)}/jaydslistPrivateOriginal`
-		);
-		url.searchParams.set('exp', String(Math.floor(Date.now() / 1000) + 60));
-		const encoder = new TextEncoder();
-		const key = await crypto.subtle.importKey(
-			'raw',
-			encoder.encode(env.CF_IMAGES_SIGNING_KEY),
-			{ name: 'HMAC', hash: 'SHA-256' },
-			false,
-			['sign']
-		);
-		const signature = await crypto.subtle.sign(
-			'HMAC',
-			key,
-			encoder.encode(url.pathname + '?' + url.searchParams.toString())
-		);
-		url.searchParams.set(
-			'sig',
-			[...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
-		);
-		// Fetch privately on the server: the browser never receives the signed URL.
-		const response = await fetch(url, {
-			headers: { Accept: 'image/jpeg, image/png' },
-			signal: AbortSignal.timeout(15000),
-			redirect: 'manual'
-		});
-		if (!response.ok) throw new Error('Private image delivery failed');
-		return response;
-	}
+	if (env.CF_IMAGES_SIGNING_KEY) return fetchSignedImage(env, id, 'jaydslistPrivateOriginal');
 	const response = await fetch(
 		`${CF_IMAGES_BASE}/${env.CF_IMAGES_ACCOUNT_ID}/images/v1/${encodeURIComponent(id)}/blob`,
 		{
@@ -144,4 +113,59 @@ export async function makeImagePrivate(env: Env, id: string): Promise<void> {
 	if (!response.ok) throw new Error('Could not protect image delivery');
 	const result = (await response.json()) as { success?: boolean };
 	if (!result.success) throw new Error('Could not protect image delivery');
+}
+
+async function fetchSignedImage(
+	env: Env,
+	id: string,
+	variant: 'jaydslistPrivateOriginal' | 'jaydslistNsfwBlur'
+): Promise<Response> {
+	if (!env.CF_IMAGES_SIGNING_KEY) throw new Error('Private image signing is not configured');
+
+	if (!env.CF_IMAGES_ACCOUNT_HASH) throw new Error('Image delivery account is not configured');
+	const url = new URL(
+		`https://imagedelivery.net/${encodeURIComponent(env.CF_IMAGES_ACCOUNT_HASH)}/${encodeURIComponent(id)}/${variant}`
+	);
+	url.searchParams.set('exp', String(Math.floor(Date.now() / 1000) + 60));
+	const encoder = new TextEncoder();
+	const key = await crypto.subtle.importKey(
+		'raw',
+		encoder.encode(env.CF_IMAGES_SIGNING_KEY),
+		{ name: 'HMAC', hash: 'SHA-256' },
+		false,
+		['sign']
+	);
+	const signature = await crypto.subtle.sign(
+		'HMAC',
+		key,
+		encoder.encode(url.pathname + '?' + url.searchParams.toString())
+	);
+	url.searchParams.set(
+		'sig',
+		[...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+	);
+	// Fetch privately on the server: the browser never receives the signed URL.
+	const response = await fetch(url, {
+		headers: { Accept: 'image/jpeg, image/png' },
+		signal: AbortSignal.timeout(15000),
+		redirect: 'manual'
+	});
+	if (!response.ok) throw new Error('Private image delivery failed');
+	return response;
+}
+
+export async function downloadBlurredImage(env: Env, id: string): Promise<Response> {
+	if (localPhotos) {
+		// Local screening is simulated; use an opaque preview without returning source pixels.
+		return new Response(
+			Uint8Array.from(
+				atob(
+					'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGMIDQ0FAAICAQAgdqf7AAAAAElFTkSuQmCC'
+				),
+				(c) => c.charCodeAt(0)
+			),
+			{ headers: { 'Content-Type': 'image/png' } }
+		);
+	}
+	return fetchSignedImage(env, id, 'jaydslistNsfwBlur');
 }

@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { downloadImage } from '$lib/server/cloudflare-images';
+import { downloadImage, downloadBlurredImage } from '$lib/server/cloudflare-images';
 import { canReceivePhoto } from '$lib/server/photo-moderation';
 
-export const GET: RequestHandler = async ({ locals, platform, params }) => {
+export const GET: RequestHandler = async ({ locals, platform, params, url }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 	const env = platform?.env;
 	if (!env) throw error(500, 'Server configuration error');
@@ -23,9 +23,11 @@ export const GET: RequestHandler = async ({ locals, platform, params }) => {
 		}>();
 	if (!photo) throw error(404, 'Photo not found');
 	const owner = photo.user_id === viewerId;
-	if (!owner && !canReceivePhoto(photo.content_rating, photo.allow_nsfw === 1))
+	const blurred = url?.searchParams.get('preview') === 'blurred';
+	if (blurred && photo.content_rating !== 'nsfw') throw error(403, 'Preview unavailable');
+	if (!blurred && !owner && !canReceivePhoto(photo.content_rating, photo.allow_nsfw === 1))
 		throw error(403, 'This photo is hidden by your content preference or awaiting screening');
-	if (!owner) {
+	if (!owner || blurred) {
 		const blocked = await env.DB.prepare(
 			`SELECT 1 FROM user_blocks WHERE
 			(blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)`
@@ -47,11 +49,13 @@ export const GET: RequestHandler = async ({ locals, platform, params }) => {
 		)
 			.bind(photo.user_id, viewerId, viewerId, params.imageId, photo.album_id, photo.deleted_at)
 			.first();
-		if (!listing && !shared) throw error(403, 'Forbidden');
+		if (blurred ? !listing : !listing && !shared) throw error(403, 'Forbidden');
 	}
 	let response: Response;
 	try {
-		response = await downloadImage(env, params.imageId);
+		response = blurred
+			? await downloadBlurredImage(env, params.imageId)
+			: await downloadImage(env, params.imageId);
 	} catch {
 		throw error(502, 'Photo could not be loaded');
 	}
