@@ -95,7 +95,7 @@ describe('Cloudflare image storage', () => {
 			[...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('')
 		);
 		expect(options.headers.Authorization).toBeUndefined();
-		expect(options.redirect).toBe('error');
+		expect(options.redirect).toBe('manual');
 	});
 	it('fails closed when signed delivery is rejected', async () => {
 		const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 403 }));
