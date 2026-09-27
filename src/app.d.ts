@@ -11,6 +11,8 @@ declare global {
 		/** Cloudflare Images API account and public-delivery hash for this instance. */
 		CF_IMAGES_ACCOUNT_ID: string;
 		CF_IMAGES_ACCOUNT_HASH: string;
+		/** Server-only key for fetching the private full-frame image variant. */
+		CF_IMAGES_SIGNING_KEY?: string;
 		/** DBBL's operator-configured API origin. */
 		DBBL_API_URL: string;
 		VAPID_PUBLIC_KEY: string;

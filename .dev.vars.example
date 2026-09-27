@@ -35,6 +35,8 @@ ADMIN_EMAILS=
 CF_IMAGES_ACCOUNT_ID=
 CF_IMAGES_ACCOUNT_HASH=
 CF_IMAGES_API_TOKEN=
+# Optional private delivery; requires the jaydslistPrivateOriginal variant (see photo-screening.md).
+CF_IMAGES_SIGNING_KEY=
 VAPID_PUBLIC_KEY=
 VAPID_CONTACT=mailto:operator@example.com
 VAPID_PRIVATE_KEY=

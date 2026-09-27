@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('$app/environment', () => ({ dev: false }));
 
-import { uploadImage, deleteImage } from './cloudflare-images';
+import { uploadImage, deleteImage, downloadImage } from './cloudflare-images';
 
 const env = { CF_IMAGES_ACCOUNT_ID: 'test-account', CF_IMAGES_API_TOKEN: 'test-token' } as Env;
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
+});
 
 describe('Cloudflare image storage', () => {
 	it('allocates a private Cloudflare ID and uploads without custom IDs or exposed credentials', async () => {
@@ -60,6 +63,51 @@ describe('Cloudflare image storage', () => {
 			).rejects.toMatchObject({ imageId: 'cloudflare-id' });
 		}
 	);
+	it('fetches signed private image bytes on the server with a short expiry', async () => {
+		vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
+		const fetcher = vi
+			.fn()
+			.mockResolvedValue(new Response('image', { headers: { 'Content-Type': 'image/png' } }));
+		vi.stubGlobal('fetch', fetcher);
+		await downloadImage(
+			{ ...env, CF_IMAGES_ACCOUNT_HASH: 'account-hash', CF_IMAGES_SIGNING_KEY: 'signing-secret' },
+			'image-id'
+		);
+		const [url, options] = fetcher.mock.calls[0];
+		expect(url.origin).toBe('https://imagedelivery.net');
+		expect(url.pathname).toBe('/account-hash/image-id/jaydslistPrivateOriginal');
+		expect(url.searchParams.get('exp')).toBe('1700000060');
+		const signature = url.searchParams.get('sig');
+		url.searchParams.delete('sig');
+		const key = await crypto.subtle.importKey(
+			'raw',
+			new TextEncoder().encode('signing-secret'),
+			{ name: 'HMAC', hash: 'SHA-256' },
+			false,
+			['sign']
+		);
+		const mac = await crypto.subtle.sign(
+			'HMAC',
+			key,
+			new TextEncoder().encode(url.pathname + '?' + url.searchParams.toString())
+		);
+		expect(signature).toBe(
+			[...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('')
+		);
+		expect(options.headers.Authorization).toBeUndefined();
+		expect(options.redirect).toBe('error');
+	});
+	it('fails closed when signed delivery is rejected', async () => {
+		const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 403 }));
+		vi.stubGlobal('fetch', fetcher);
+		await expect(
+			downloadImage(
+				{ ...env, CF_IMAGES_ACCOUNT_HASH: 'account-hash', CF_IMAGES_SIGNING_KEY: 'signing-secret' },
+				'image-id'
+			)
+		).rejects.toThrow('Private image delivery failed');
+		expect(fetcher).toHaveBeenCalledTimes(1);
+	});
 	it('does not treat failed storage deletion as success', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
 		await expect(deleteImage(env, 'image-id')).rejects.toThrow();
