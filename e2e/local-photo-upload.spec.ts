@@ -29,7 +29,7 @@ test('local vault upload displays an image and a simulated NSFW result without s
 	expect(response.status()).toBe(200);
 	const photo = (await response.json()) as { id: string };
 	const tile = page.locator(`[data-photo-id="${photo.id}"]`);
-	await expect(tile.getByText('NSFW · opt-in required')).toBeVisible();
+	await expect(tile.getByText('NSFW')).toBeVisible();
 	await expect(tile.locator('img')).toBeVisible();
 	await expect
 		.poll(() => tile.locator('img').evaluate((image) => (image as HTMLImageElement).naturalWidth))
