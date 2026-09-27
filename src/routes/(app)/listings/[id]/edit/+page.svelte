@@ -4,8 +4,13 @@
 	import { scanTerms } from '$lib/relative-terms';
 	import { SvelteSet } from 'svelte/reactivity';
 	import RelativeTermsEditor from '$lib/components/listings/RelativeTermsEditor.svelte';
+	import ListingPhotoPicker from '$lib/components/listings/ListingPhotoPicker.svelte';
 
 	let { data, form } = $props();
+
+	function initialData() {
+		return data;
+	}
 
 	const { listing, requirements, termDefinitions } = data;
 
@@ -22,6 +27,10 @@
 	// Content
 	let subject = $state(listing.subject);
 	let body = $state(listing.body);
+	let photoIds = $state(initialData().photoIds);
+	let vaultPhotos = $state(initialData().vaultPhotos);
+	let vaultAlbums = $state(initialData().vaultAlbums);
+	let photosUploading = $state(false);
 
 	// Age range
 	let ageRangeEnabled = $state(requirements.ageMin !== null || requirements.ageMax !== null);
@@ -180,6 +189,7 @@
 			<input type="hidden" name="termKey" value={term} />
 			<input type="hidden" name="termValue" value={termDefs[term] ?? ''} />
 		{/each}
+		{#each photoIds as id (id)}<input type="hidden" name="photoId" value={id} />{/each}
 
 		<!-- Section: Who can respond -->
 		<section class="card">
@@ -276,6 +286,17 @@
 			</div>
 		</section>
 
+		<section class="card">
+			<h2>Photos (optional)</h2>
+			<p class="hint">Add up to three photos from your vault or upload a new one.</p>
+			<ListingPhotoPicker
+				bind:photoIds
+				bind:vaultPhotos
+				bind:vaultAlbums
+				onUploadingChange={(uploading) => (photosUploading = uploading)}
+			/>
+		</section>
+
 		<!-- Section: Requirements -->
 		<section class="card">
 			<h2>Requirements</h2>
@@ -343,7 +364,11 @@
 
 		<div class="save-bar">
 			<a href={resolve(`/listings/${listing.id}`)} class="cancel-btn">Cancel</a>
-			<button type="submit" disabled={!canSave || submitting} aria-busy={submitting}>
+			<button
+				type="submit"
+				disabled={!canSave || submitting || photosUploading}
+				aria-busy={submitting}
+			>
 				{submitting ? '' : 'Save changes'}
 			</button>
 		</div>

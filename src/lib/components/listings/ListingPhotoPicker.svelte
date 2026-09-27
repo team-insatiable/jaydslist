@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import DevPhotoControls from '$lib/components/DevPhotoControls.svelte';
 	let devContentRating = $state('safe');
 	import { uploadPhotoToVault, SUPPORTED_IMAGE_TYPES } from '$lib/client/photo-upload';
@@ -34,6 +35,10 @@
 	let photoUploading = $state(false);
 	let photoError = $state('');
 	let fileInputEl: HTMLInputElement | undefined = $state();
+	let hydrated = $state(false);
+	onMount(() => {
+		hydrated = true;
+	});
 
 	$effect(() => {
 		onUploadingChange?.(photoUploading);
@@ -167,7 +172,7 @@
 						type="button"
 						class="photo-slot empty"
 						onclick={openPicker}
-						disabled={!canAddMore || photoUploading}
+						disabled={!hydrated || !canAddMore || photoUploading}
 						aria-label="Add photo"
 					>
 						+
@@ -187,7 +192,7 @@
 		class="file-input"
 		bind:this={fileInputEl}
 		onchange={handleFileSelect}
-		disabled={photoUploading}
+		disabled={!hydrated || photoUploading}
 		aria-label="Upload a new photo"
 	/>
 
@@ -299,7 +304,7 @@
 						type="button"
 						class="picker-add-tile"
 						onclick={triggerFilePicker}
-						disabled={photoUploading}
+						disabled={!hydrated || photoUploading}
 						aria-label="Upload new photo"
 					>
 						{#if photoUploading}
