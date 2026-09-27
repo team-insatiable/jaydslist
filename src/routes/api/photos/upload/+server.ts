@@ -56,6 +56,7 @@ export const POST: RequestHandler = async ({ locals, platform, request }) => {
 			400,
 			`Your account allows ${maxPhotos} photos total. Delete a photo before uploading another. Photos retained by listings also count.`
 		);
+	let cfImageId = id;
 	let stage: 'screening' | 'storage' | 'database' = 'screening';
 	try {
 		const contentRating = await screenPhoto(
@@ -64,11 +65,11 @@ export const POST: RequestHandler = async ({ locals, platform, request }) => {
 			localPhotos ? String(form.get('devContentRating') ?? 'safe') : 'safe'
 		);
 		stage = 'storage';
-		await uploadImage(env, id, file);
+		cfImageId = await uploadImage(env, id, file);
 		stage = 'database';
 		await db
 			.update(photoVault)
-			.set({ scanStatus: 'pending', contentRating })
+			.set({ cfImageId, scanStatus: 'pending', contentRating })
 			.where(eq(photoVault.id, id));
 	} catch (failure) {
 		console.error(
@@ -79,7 +80,11 @@ export const POST: RequestHandler = async ({ locals, platform, request }) => {
 		// Do not release capacity until storage confirms cleanup, even if the
 		// upload response was lost after Cloudflare accepted the file.
 		try {
-			if (stage !== 'screening') await deleteImage(env, id);
+			if (failure instanceof ImageStorageError && failure.imageId) cfImageId = failure.imageId;
+			if (stage !== 'screening') {
+				await db.update(photoVault).set({ cfImageId }).where(eq(photoVault.id, id));
+				await deleteImage(env, cfImageId);
+			}
 			await db.delete(photoVault).where(eq(photoVault.id, id));
 		} catch {
 			console.error('Failed to clean up reserved photo', id);
@@ -98,5 +103,5 @@ export const POST: RequestHandler = async ({ locals, platform, request }) => {
 				: 'The uploaded photo could not be saved. Please try again.'
 		);
 	}
-	return json({ id, cfImageId: id, deliveryUrl: imageUrl(env.CF_IMAGES_ACCOUNT_HASH, id) });
+	return json({ id, cfImageId, deliveryUrl: imageUrl(env.CF_IMAGES_ACCOUNT_HASH, cfImageId) });
 };

@@ -1,31 +1,59 @@
 import { localPhotos, localPhotoKey } from '$lib/server/local-photos';
 export class ImageStorageError extends Error {
-	constructor(public status: number) {
+	constructor(
+		public status: number,
+		public imageId?: string
+	) {
 		super('Image storage upload failed');
 	}
 }
 
 const CF_IMAGES_BASE = 'https://api.cloudflare.com/client/v4/accounts';
 
-export async function uploadImage(env: Env, id: string, file: File): Promise<void> {
+export async function uploadImage(env: Env, id: string, file: File): Promise<string> {
 	if (localPhotos) {
 		await env.PHONE_VERIFICATION_KV.put(localPhotoKey(id), await file.arrayBuffer(), {
 			metadata: { contentType: file.type }
 		});
-		return;
+		return id;
 	}
-	const body = new FormData();
-	body.append('id', id);
-	body.append('file', file);
-	body.append('requireSignedURLs', 'true');
-	const res = await fetch(`${CF_IMAGES_BASE}/${env.CF_IMAGES_ACCOUNT_ID}/images/v1`, {
-		method: 'POST',
-		headers: { Authorization: `Bearer ${env.CF_IMAGES_API_TOKEN}` },
-		body
-	});
-	if (!res.ok) throw new ImageStorageError(res.status);
-	const data = (await res.json()) as { success?: boolean; result?: { id?: string } };
-	if (!data.success || data.result?.id !== id) throw new Error('Image storage upload failed');
+	// Allocate a Cloudflare ID first: private images cannot use custom IDs.
+	const allocation = new FormData();
+	allocation.append('requireSignedURLs', 'true');
+	const draft = await fetch(
+		`${CF_IMAGES_BASE}/${env.CF_IMAGES_ACCOUNT_ID}/images/v2/direct_upload`,
+		{
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${env.CF_IMAGES_API_TOKEN}`
+			},
+			body: allocation,
+			signal: AbortSignal.timeout(15000)
+		}
+	);
+	if (!draft.ok) throw new ImageStorageError(draft.status);
+	const allocated = (await draft.json()) as {
+		success?: boolean;
+		result?: { id?: string; uploadURL?: string };
+	};
+	if (!allocated.success || !allocated.result?.id || !allocated.result.uploadURL)
+		throw new Error('Image storage allocation failed');
+	const imageId = allocated.result.id;
+	try {
+		const body = new FormData();
+		body.append('file', file);
+		const res = await fetch(allocated.result.uploadURL, {
+			method: 'POST',
+			body,
+			signal: AbortSignal.timeout(30000)
+		});
+		if (!res.ok) throw new ImageStorageError(res.status, imageId);
+		const data = (await res.json()) as { success?: boolean; result?: { id?: string } };
+		if (!data.success || data.result?.id !== imageId) throw new ImageStorageError(502, imageId);
+		return imageId;
+	} catch (failure) {
+		throw failure instanceof ImageStorageError ? failure : new ImageStorageError(502, imageId);
+	}
 }
 
 export async function deleteImage(env: Env, cfImageId: string): Promise<void> {

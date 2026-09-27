@@ -18,7 +18,7 @@ vi.mock('$app/environment', () => ({ dev: false }));
 
 vi.mock('$lib/server/cloudflare-images', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/server/cloudflare-images')>()),
-	uploadImage: vi.fn().mockResolvedValue(undefined),
+	uploadImage: vi.fn().mockResolvedValue('cloudflare-image-id'),
 	deleteImage: vi.fn().mockResolvedValue(undefined)
 }));
 
@@ -26,7 +26,7 @@ vi.mock('$lib/server/photo-moderation', () => ({ screenPhoto: vi.fn().mockResolv
 
 beforeEach(() => {
 	vi.mocked(screenPhoto).mockReset().mockResolvedValue('safe');
-	vi.mocked(uploadImage).mockReset().mockResolvedValue(undefined);
+	vi.mocked(uploadImage).mockReset().mockResolvedValue('cloudflare-image-id');
 	vi.mocked(deleteImage).mockReset().mockResolvedValue(undefined);
 });
 type Event = Parameters<typeof POST>[0];
@@ -54,6 +54,28 @@ function event(
 }
 
 describe('account photo uploads', () => {
+	it('stores the generated image ID separately from the vault reservation', async () => {
+		const userId = await createTestUser(env.DB);
+		const response = await POST(event(userId));
+		const photo = (await response.json()) as { id: string; cfImageId: string; deliveryUrl: string };
+		expect(photo.cfImageId).toBe('cloudflare-image-id');
+		expect(photo.deliveryUrl).toBe('/api/photos/cloudflare-image-id');
+		const row = await env.DB.prepare('SELECT cf_image_id FROM photo_vault WHERE id = ?')
+			.bind(photo.id)
+			.first();
+		expect(row?.cf_image_id).toBe('cloudflare-image-id');
+	});
+	it('retains the generated ID for cleanup when storage loses its upload response', async () => {
+		const userId = await createTestUser(env.DB);
+		vi.mocked(uploadImage).mockRejectedValueOnce(new ImageStorageError(502, 'allocated-image'));
+		vi.mocked(deleteImage).mockRejectedValueOnce(new Error('Cleanup unavailable'));
+		await expect(POST(event(userId))).rejects.toMatchObject({ status: 502 });
+		expect(deleteImage).toHaveBeenCalledWith(expect.anything(), 'allocated-image');
+		const row = await env.DB.prepare('SELECT cf_image_id FROM photo_vault WHERE user_id = ?')
+			.bind(userId)
+			.first();
+		expect(row?.cf_image_id).toBe('allocated-image');
+	});
 	it('identifies rejected storage credentials and cleans the failed reservation', async () => {
 		const userId = await createTestUser(env.DB);
 		vi.mocked(uploadImage).mockRejectedValueOnce(new ImageStorageError(403));
@@ -125,7 +147,7 @@ describe('account photo uploads', () => {
 		const albumId = await createTestAlbum(env.DB, userId);
 		const response = await POST(event(userId, albumId));
 		const photo = (await response.json()) as { id: string; cfImageId: string };
-		expect(photo.cfImageId).toBe(photo.id);
+		expect(photo.cfImageId).toBe('cloudflare-image-id');
 		expect(await getVaultPhotos(env.DB, userId, 'test')).toMatchObject([{ id: photo.id, albumId }]);
 	});
 	it('cleans up failed uploads before releasing their reservation', async () => {
