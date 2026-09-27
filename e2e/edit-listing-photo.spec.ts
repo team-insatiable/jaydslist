@@ -16,11 +16,7 @@ test('an existing listing can upload, show, and remove a photo', async ({ page }
 		(response) =>
 			response.url().endsWith('/api/photos/upload') && response.request().method() === 'POST'
 	);
-	const [chooser] = await Promise.all([
-		page.waitForEvent('filechooser'),
-		page.getByRole('button', { name: 'Add photo' }).first().click()
-	]);
-	await chooser.setFiles({
+	await page.getByLabel('Upload a new photo').setInputFiles({
 		name: 'edit-listing.png',
 		mimeType: 'image/png',
 		buffer: Buffer.from(

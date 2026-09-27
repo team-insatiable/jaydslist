@@ -156,8 +156,8 @@
 	} | null>(null);
 	let _albumViewLoading = $state(false);
 
-	// Unalbumized photos shown in top-level grid
-	const unalbumizedPhotos = $derived(vaultPhotos.filter((p) => !p.albumId));
+	// Every vault photo can be sent on its own, including photos inside albums.
+	const selectablePhotos = $derived(vaultPhotos);
 
 	// Photos received from the other party in this thread
 	const receivedPhotos = $derived(
@@ -270,6 +270,7 @@
 	}
 
 	function toggleVaultPhoto(photo: { cfImageId: string; deliveryUrl: string }) {
+		selectedAlbum = null;
 		const idx = selectedVaultPhotos.findIndex((p) => p.cfImageId === photo.cfImageId);
 		if (idx >= 0) {
 			selectedVaultPhotos = selectedVaultPhotos.filter((_, i) => i !== idx);
@@ -279,6 +280,7 @@
 	}
 
 	function selectAlbum(album: { id: string; name: string; coverUrl: string | null }) {
+		selectedVaultPhotos = [];
 		if (selectedAlbum?.id === album.id) {
 			selectedAlbum = null;
 			albumExpiryOpen = false;
@@ -1550,8 +1552,13 @@
 									</div>
 								</button>
 							{/each}
-							<!-- Uncategorized photos: multi-select up to 10 -->
-							{#each unalbumizedPhotos as photo (photo.id)}
+							{#if selectablePhotos.length > 0}
+								<p class="vault-section-label">Choose individual photos</p>
+							{/if}
+							{#each selectablePhotos as photo (photo.id)}
+								{@const albumName = photo.albumId
+									? vaultAlbums.find((album) => album.id === photo.albumId)?.name
+									: null}
 								{@const photoSelected = selectedVaultPhotos.some(
 									(p) => p.cfImageId === photo.cfImageId
 								)}
@@ -1563,10 +1570,13 @@
 									class:selected={photoSelected}
 									class:dimmed={photoDimmed}
 									onclick={() => toggleVaultPhoto(photo)}
-									aria-label="Select vault photo"
+									aria-label={albumName
+										? `Select photo from ${albumName}`
+										: 'Select uncategorized photo'}
 									aria-pressed={photoSelected}
 								>
 									<img src={photo.deliveryUrl} alt="" loading="lazy" />
+									{#if albumName}<span class="photo-album-label">{albumName}</span>{/if}
 									{#if photoSelected}
 										<span class="vault-check" aria-hidden="true">
 											<svg
@@ -2991,6 +3001,29 @@
 		grid-template-columns: repeat(3, 1fr);
 		gap: 2px;
 		padding: 0;
+	}
+
+	.vault-section-label {
+		grid-column: 1 / -1;
+		margin: 0.6rem 0 0.2rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--pico-muted-color);
+	}
+
+	.photo-album-label {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		padding: 0.2rem 0.3rem;
+		background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+		color: white;
+		font-size: 0.65rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		pointer-events: none;
 	}
 
 	.vault-thumb {

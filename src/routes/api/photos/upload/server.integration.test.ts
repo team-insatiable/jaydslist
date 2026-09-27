@@ -30,10 +30,11 @@ beforeEach(() => {
 	vi.mocked(deleteImage).mockReset().mockResolvedValue(undefined);
 });
 type Event = Parameters<typeof POST>[0];
+let uploadSequence = 0;
 function event(
 	userId?: string,
 	albumId?: string,
-	file = new File(['image'], 'photo.png', { type: 'image/png' })
+	file = new File([`image-${++uploadSequence}`], 'photo.png', { type: 'image/png' })
 ): Event {
 	const form = new FormData();
 	form.set('file', file);
@@ -149,6 +150,43 @@ describe('account photo uploads', () => {
 		const photo = (await response.json()) as { id: string; cfImageId: string };
 		expect(photo.cfImageId).toBe('cloudflare-image-id');
 		expect(await getVaultPhotos(env.DB, userId, 'test')).toMatchObject([{ id: photo.id, albumId }]);
+	});
+	it('rejects an identical upload across albums before screening, storage, or quota use', async () => {
+		const userId = await createTestUser(env.DB);
+		const albumId = await createTestAlbum(env.DB, userId);
+		const file = () => new File(['same bytes'], 'photo.png', { type: 'image/png' });
+		await POST(event(userId, albumId, file()));
+		vi.mocked(screenPhoto).mockClear();
+		vi.mocked(uploadImage).mockClear();
+		await expect(POST(event(userId, undefined, file()))).rejects.toMatchObject({
+			status: 409,
+			body: { message: expect.stringContaining('already in your vault') }
+		});
+		expect(screenPhoto).not.toHaveBeenCalled();
+		expect(uploadImage).not.toHaveBeenCalled();
+		expect(await getVaultPhotos(env.DB, userId, 'test')).toHaveLength(1);
+	});
+	it('reserves only one copy during simultaneous uploads', async () => {
+		const userId = await createTestUser(env.DB);
+		const file = () => new File(['simultaneous'], 'photo.png', { type: 'image/png' });
+		const results = await Promise.allSettled([
+			POST(event(userId, undefined, file())),
+			POST(event(userId, undefined, file()))
+		]);
+		expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+		expect(results.filter((result) => result.status === 'rejected')).toMatchObject([
+			{ reason: { status: 409 } }
+		]);
+		expect(screenPhoto).toHaveBeenCalledTimes(1);
+		expect(uploadImage).toHaveBeenCalledTimes(1);
+	});
+	it('allows another account to upload the same bytes', async () => {
+		const firstUser = await createTestUser(env.DB);
+		const secondUser = await createTestUser(env.DB);
+		const file = () => new File(['shared bytes'], 'photo.png', { type: 'image/png' });
+		expect((await POST(event(firstUser, undefined, file()))).status).toBe(200);
+		expect((await POST(event(secondUser, undefined, file()))).status).toBe(200);
+		expect(uploadImage).toHaveBeenCalledTimes(2);
 	});
 	it('cleans up failed uploads before releasing their reservation', async () => {
 		const userId = await createTestUser(env.DB);
