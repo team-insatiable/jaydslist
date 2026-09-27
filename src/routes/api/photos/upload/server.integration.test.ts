@@ -41,7 +41,13 @@ function event(
 	return {
 		locals: userId ? { user: { id: userId } } : {},
 		platform: {
-			env: { ...env, REKOGNITION_ACCESS_KEY_ID: 'test', REKOGNITION_SECRET_ACCESS_KEY: 'test' }
+			env: {
+				...env,
+				CF_IMAGES_ACCOUNT_ID: 'test-account',
+				CF_IMAGES_API_TOKEN: 'test-token',
+				REKOGNITION_ACCESS_KEY_ID: 'test',
+				REKOGNITION_SECRET_ACCESS_KEY: 'test'
+			}
 		},
 		request: new Request('http://localhost/api/photos/upload', { method: 'POST', body: form })
 	} as unknown as Event;
