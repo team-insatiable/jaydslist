@@ -522,3 +522,73 @@ describe('inbox/[threadId] blockUser action', () => {
 		expect(block).toBeTruthy();
 	});
 });
+
+describe('recipient photo consent', () => {
+	async function setup() {
+		const sender = await createTestUser(env.DB);
+		const recipient = await createTestUser(env.DB);
+		const listing = await createTestListing(env.DB, recipient);
+		const thread = await createTestThread(env.DB, {
+			listingId: listing,
+			initiatorId: sender,
+			posterId: recipient
+		});
+		return { sender, recipient, thread };
+	}
+	it('rejects explicit photos by default and permits them after recipient opt-in', async () => {
+		const { sender, recipient, thread } = await setup();
+		await createTestVaultPhoto(env.DB, sender, {
+			cfImageId: 'consent-nsfw',
+			contentRating: 'nsfw'
+		});
+		const sendEvent = fakeEvent({
+			threadId: thread,
+			userId: sender,
+			body: '',
+			cfImageId: 'consent-nsfw'
+		});
+		expect((await actions.send(sendEvent))?.status).toBe(400);
+		const count = await env.DB.prepare('SELECT count(*) AS n FROM messages WHERE thread_id = ?')
+			.bind(thread)
+			.first<{ n: number }>();
+		expect(count?.n).toBe(0);
+		await env.DB.prepare('UPDATE user_profiles SET allow_nsfw = 1 WHERE id = ?')
+			.bind(recipient)
+			.run();
+		expect(
+			await actions.send(
+				fakeEvent({ threadId: thread, userId: sender, body: '', cfImageId: 'consent-nsfw' })
+			)
+		).toMatchObject({ success: true });
+	});
+	it('rejects unknown photos even after opt-in and blocks mixed albums without consent', async () => {
+		const { sender, recipient, thread } = await setup();
+		const album = await createTestAlbum(env.DB, sender);
+		await createTestVaultPhoto(env.DB, sender, {
+			cfImageId: 'consent-unknown',
+			contentRating: 'unknown'
+		});
+		await createTestVaultPhoto(env.DB, sender, { albumId: album, contentRating: 'safe' });
+		await createTestVaultPhoto(env.DB, sender, { albumId: album, contentRating: 'nsfw' });
+		expect(
+			(
+				await actions.send(
+					fakeEvent({ threadId: thread, userId: sender, body: '', albumId: album })
+				)
+			)?.status
+		).toBe(400);
+		await env.DB.prepare('UPDATE user_profiles SET allow_nsfw = 1 WHERE id = ?')
+			.bind(recipient)
+			.run();
+		expect(
+			(
+				await actions.send(
+					fakeEvent({ threadId: thread, userId: sender, body: '', cfImageId: 'consent-unknown' })
+				)
+			)?.status
+		).toBe(400);
+		expect(
+			await actions.send(fakeEvent({ threadId: thread, userId: sender, body: '', albumId: album }))
+		).toMatchObject({ success: true });
+	});
+});

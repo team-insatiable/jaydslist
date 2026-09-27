@@ -1,4 +1,7 @@
 <script lang="ts">
+	import DevPhotoControls from '$lib/components/DevPhotoControls.svelte';
+	let devContentRating = $state('safe');
+	import ReportModal from '$lib/components/ReportModal.svelte';
 	import { uploadPhotoToVault } from '$lib/client/photo-upload';
 	import { enhance } from '$app/forms';
 	import { tick } from 'svelte';
@@ -210,7 +213,11 @@
 		photoUploading = true;
 		mediaOpen = false;
 		try {
-			const { cfImageId: id, deliveryUrl } = await uploadPhotoToVault(file);
+			const { cfImageId: id, deliveryUrl } = await uploadPhotoToVault(
+				file,
+				undefined,
+				devContentRating
+			);
 			photoId = id;
 			photoPreviewUrl = deliveryUrl;
 		} catch (err) {
@@ -314,7 +321,7 @@
 		photoError = '';
 		vaultUploading = true;
 		try {
-			const photo = await uploadPhotoToVault(file);
+			const photo = await uploadPhotoToVault(file, undefined, devContentRating);
 			vaultPhotos = [{ ...photo, albumId: null }, ...vaultPhotos];
 
 			const gal = document.getElementById('media-gallery-input') as HTMLInputElement | null;
@@ -679,16 +686,14 @@
 		</div>
 	{/if}
 
-	<!-- Report bottom sheet -->
+	<!-- Report modal -->
 	{#if showReportSheet}
-		<button class="sheet-backdrop" onclick={() => (showReportSheet = false)} aria-label="Close"
-		></button>
-		<div class="bottom-sheet" transition:fly={{ y: 320, duration: 240, easing: cubicOut }}>
+		<ReportModal title={`Report ${data.otherAlias}`} onclose={() => (showReportSheet = false)}>
 			{#if reportDone}
 				<p class="sheet-done">Report submitted. Our moderation team will review it.</p>
 			{:else}
-				<p class="sheet-title">Report {data.otherAlias}</p>
 				<form
+					class="report-form"
 					method="POST"
 					action="?/report"
 					use:enhance={() => {
@@ -701,7 +706,7 @@
 					}}
 				>
 					<input type="hidden" name="targetUserId" value={data.otherUserId} />
-					<select name="category" bind:value={reportCategory} required>
+					<select aria-label="Report reason" name="category" bind:value={reportCategory} required>
 						<option value="" disabled>Select a reason…</option>
 						<option value="harassment">Harassment</option>
 						<option value="spam">Spam</option>
@@ -711,6 +716,7 @@
 						<option value="other">Other</option>
 					</select>
 					<textarea
+						aria-label="Additional details"
 						name="detail"
 						bind:value={reportDetail}
 						placeholder="Additional details (optional)"
@@ -735,7 +741,7 @@
 					</div>
 				</form>
 			{/if}
-		</div>
+		</ReportModal>
 	{/if}
 
 	<!-- Received Photos bottom sheet -->
@@ -778,7 +784,9 @@
 						class:bubble-album={msg.albumId}
 						class:bubble-expired={msg.expiringState === 'expired'}
 					>
-						{#if msg.expiringState === 'unviewed' && !msg.isMine}
+						{#if msg.photoHidden}
+							<p class="bubble-body">Photo hidden by your preferences or awaiting screening.</p>
+						{:else if msg.expiringState === 'unviewed' && !msg.isMine}
 							<button
 								class="expiring-placeholder"
 								type="button"
@@ -1416,6 +1424,7 @@
 				<h3 class="panel-title">Media</h3>
 				<hr class="panel-divider" />
 
+				<DevPhotoControls bind:value={devContentRating} />
 				<!-- Action row -->
 				<div class="panel-actions" class:locked={!!photoId}>
 					{#if isDesktop}
@@ -1505,7 +1514,7 @@
 				<input
 					id="media-gallery-input"
 					type="file"
-					accept="image/jpeg,image/png,image/gif,image/webp"
+					accept="image/jpeg,image/png"
 					class="file-input"
 					onchange={handleAddToVault}
 					disabled={vaultUploading}
@@ -2185,13 +2194,13 @@
 		padding: 1rem 0;
 	}
 
-	.bottom-sheet select,
-	.bottom-sheet textarea {
+	.report-form select,
+	.report-form textarea {
 		margin-bottom: 0.5rem;
 		font-size: 0.875rem;
 	}
 
-	.bottom-sheet textarea {
+	.report-form textarea {
 		resize: vertical;
 	}
 

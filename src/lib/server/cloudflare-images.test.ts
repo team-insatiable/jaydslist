@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+vi.mock('$app/environment', () => ({ dev: false }));
+
 import { uploadImage, deleteImage } from './cloudflare-images';
 
 const env = { CF_IMAGES_ACCOUNT_ID: 'test-account', CF_IMAGES_API_TOKEN: 'test-token' } as Env;

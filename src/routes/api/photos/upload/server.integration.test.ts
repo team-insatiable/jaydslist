@@ -1,9 +1,10 @@
+import { screenPhoto } from '$lib/server/photo-moderation';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import { POST } from './+server';
 import { POST as legacyUpload } from '../upload-url/+server';
 import { POST as legacyConfirm } from '../confirm/+server';
-import { uploadImage, deleteImage } from '$lib/server/cloudflare-images';
+import { uploadImage, deleteImage, ImageStorageError } from '$lib/server/cloudflare-images';
 import { getVaultPhotos } from '$lib/server/photo-vault';
 import {
 	createTestUser,
@@ -13,13 +14,18 @@ import {
 	createTestListingPhoto
 } from '$lib/server/test-helpers/fixtures';
 
+vi.mock('$app/environment', () => ({ dev: false }));
+
 vi.mock('$lib/server/cloudflare-images', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/server/cloudflare-images')>()),
 	uploadImage: vi.fn().mockResolvedValue(undefined),
 	deleteImage: vi.fn().mockResolvedValue(undefined)
 }));
 
+vi.mock('$lib/server/photo-moderation', () => ({ screenPhoto: vi.fn().mockResolvedValue('safe') }));
+
 beforeEach(() => {
+	vi.mocked(screenPhoto).mockReset().mockResolvedValue('safe');
 	vi.mocked(uploadImage).mockReset().mockResolvedValue(undefined);
 	vi.mocked(deleteImage).mockReset().mockResolvedValue(undefined);
 });
@@ -34,12 +40,48 @@ function event(
 	if (albumId) form.set('albumId', albumId);
 	return {
 		locals: userId ? { user: { id: userId } } : {},
-		platform: { env },
+		platform: {
+			env: {
+				...env,
+				CF_IMAGES_ACCOUNT_ID: 'test-account',
+				CF_IMAGES_API_TOKEN: 'test-token',
+				REKOGNITION_ACCESS_KEY_ID: 'test',
+				REKOGNITION_SECRET_ACCESS_KEY: 'test'
+			}
+		},
 		request: new Request('http://localhost/api/photos/upload', { method: 'POST', body: form })
 	} as unknown as Event;
 }
 
 describe('account photo uploads', () => {
+	it('identifies rejected storage credentials and cleans the failed reservation', async () => {
+		const userId = await createTestUser(env.DB);
+		vi.mocked(uploadImage).mockRejectedValueOnce(new ImageStorageError(403));
+		await expect(POST(event(userId))).rejects.toMatchObject({
+			status: 502,
+			body: { message: expect.stringContaining('Photo storage rejected its credentials') }
+		});
+		expect(deleteImage).toHaveBeenCalledTimes(1);
+		const count = await env.DB.prepare(
+			'SELECT count(*) AS total FROM photo_vault WHERE user_id = ?'
+		)
+			.bind(userId)
+			.first<{ total: number }>();
+		expect(count?.total).toBe(0);
+	});
+	it('never uploads images when AWS screening fails and stores uncertain results as unknown', async () => {
+		const userId = await createTestUser(env.DB);
+		vi.mocked(screenPhoto).mockRejectedValueOnce(new Error('AWS unavailable'));
+		await expect(POST(event(userId))).rejects.toMatchObject({ status: 502 });
+		expect(uploadImage).not.toHaveBeenCalled();
+		vi.mocked(screenPhoto).mockResolvedValueOnce('unknown');
+		const response = await POST(event(userId));
+		const photo = (await response.json()) as { id: string };
+		const row = await env.DB.prepare('SELECT content_rating FROM photo_vault WHERE id = ?')
+			.bind(photo.id)
+			.first();
+		expect(row?.content_rating).toBe('unknown');
+	});
 	it('requires authentication and validates the file before contacting storage', async () => {
 		await expect(POST(event())).rejects.toMatchObject({ status: 401 });
 		const userId = await createTestUser(env.DB);

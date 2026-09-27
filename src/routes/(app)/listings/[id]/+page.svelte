@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ReportModal from '$lib/components/ReportModal.svelte';
 	import { resolve } from '$app/paths';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
@@ -489,56 +490,76 @@
 				<div class="report-section">
 					{#if reportDone}
 						<p class="report-done">Report submitted. Our moderation team will review it.</p>
-					{:else if showReportForm}
-						<form
-							method="POST"
-							action="?/report"
-							use:enhance={() => {
-								reportSubmitting = true;
-								return async ({ result, update }) => {
-									reportSubmitting = false;
-									if (result.type === 'success') {
-										reportDone = true;
-										showReportForm = false;
-									}
-									await update();
-								};
-							}}
-							class="report-form"
-						>
-							<p class="report-form-title">Report this listing</p>
-							<select name="category" bind:value={reportCategory} required>
-								<option value="" disabled>Select a reason…</option>
-								<option value="spam">Spam</option>
-								<option value="fake_profile">Fake profile</option>
-								<option value="harassment">Harassment</option>
-								<option value="explicit_content">Explicit content</option>
-								<option value="other">Other</option>
-							</select>
-							<textarea
-								name="detail"
-								bind:value={reportDetail}
-								placeholder="Additional details (optional)"
-								rows="3"
-							></textarea>
-							<div class="report-actions">
-								<button type="button" class="report-cancel" onclick={() => (showReportForm = false)}
-									>Cancel</button
-								>
-								<button
-									type="submit"
-									class="report-submit"
-									disabled={!reportCategory || reportSubmitting}
-									aria-busy={reportSubmitting}
-								>
-									Submit report
-								</button>
-							</div>
-						</form>
 					{:else}
-						<button type="button" class="report-link" onclick={() => (showReportForm = true)}
-							>Report this listing</button
-						>
+						<button type="button" class="report-link" onclick={() => (showReportForm = true)}>
+							<svg
+								aria-hidden="true"
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.75"
+								><path d="M4 22V3s1-1 4-1 5 2 8 2 4-1 4-1v12s-1 1-4 1-5-2-8-2-4 1-4 1" /></svg
+							>
+							Report this listing
+						</button>
+					{/if}
+					{#if showReportForm}
+						<ReportModal title="Report this listing" onclose={() => (showReportForm = false)}>
+							<form
+								method="POST"
+								action="?/report"
+								use:enhance={() => {
+									reportSubmitting = true;
+									return async ({ result, update }) => {
+										reportSubmitting = false;
+										if (result.type === 'success') {
+											reportDone = true;
+											showReportForm = false;
+										}
+										await update();
+									};
+								}}
+								class="report-form"
+							>
+								<select
+									aria-label="Report reason"
+									name="category"
+									bind:value={reportCategory}
+									required
+								>
+									<option value="" disabled>Select a reason…</option>
+									<option value="spam">Spam</option>
+									<option value="fake_profile">Fake profile</option>
+									<option value="harassment">Harassment</option>
+									<option value="explicit_content">Explicit content</option>
+									<option value="other">Other</option>
+								</select>
+								<textarea
+									aria-label="Additional details"
+									name="detail"
+									bind:value={reportDetail}
+									placeholder="Additional details (optional)"
+									rows="3"
+								></textarea>
+								<div class="report-actions">
+									<button
+										type="button"
+										class="report-cancel"
+										onclick={() => (showReportForm = false)}>Cancel</button
+									>
+									<button
+										type="submit"
+										class="report-submit"
+										disabled={!reportCategory || reportSubmitting}
+										aria-busy={reportSubmitting}
+									>
+										Submit report
+									</button>
+								</div>
+							</form>
+						</ReportModal>
 					{/if}
 				</div>
 			{/if}
@@ -968,25 +989,21 @@
 	}
 
 	.report-link {
-		background: none;
-		border: none;
-		padding: 0;
-		font-size: 0.78rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		min-height: 44px;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 8px;
+		background: transparent;
 		color: var(--pico-muted-color);
-		cursor: pointer;
-		font-family: inherit;
-		text-decoration: underline;
-		text-underline-offset: 2px;
+		font-size: 0.85rem;
+		width: auto;
+		margin: 0;
 	}
-
 	.report-link:hover {
 		color: var(--pico-del-color);
-	}
-
-	.report-form-title {
-		font-size: 0.875rem;
-		font-weight: 600;
-		margin-bottom: 0.75rem;
 	}
 
 	.report-form select,

@@ -49,6 +49,7 @@ export async function createTestVaultPhoto(
 		cfImageId: string;
 		deletedAt: Date;
 		albumId: string | null;
+		contentRating: string;
 	}> = {}
 ) {
 	const id = overrides.id ?? crypto.randomUUID();
@@ -59,7 +60,8 @@ export async function createTestVaultPhoto(
 			userId,
 			cfImageId: overrides.cfImageId ?? `test-cf-image-${id}`,
 			deletedAt: overrides.deletedAt,
-			albumId: overrides.albumId
+			albumId: overrides.albumId,
+			contentRating: overrides.contentRating ?? 'safe'
 		});
 	return id;
 }

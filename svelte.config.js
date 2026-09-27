@@ -12,7 +12,9 @@ const config = {
 	preprocess: mdsvex({ extensions: ['.md'] }),
 	kit: {
 		adapter: adapter(
-			process.env.JAYDSLIST_E2E === '1' ? { platformProxy: E2E_PLATFORM_PROXY } : {}
+			process.env.JAYDSLIST_E2E === '1'
+				? { platformProxy: E2E_PLATFORM_PROXY }
+				: { platformProxy: { remoteBindings: false } }
 		),
 		typescript: {
 			config: (config) => ({

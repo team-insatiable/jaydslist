@@ -1,4 +1,6 @@
 <script lang="ts">
+	import DevPhotoControls from '$lib/components/DevPhotoControls.svelte';
+	let devContentRating = $state('safe');
 	import { uploadPhotoToVault, SUPPORTED_IMAGE_TYPES } from '$lib/client/photo-upload';
 
 	interface VaultPhoto {
@@ -109,7 +111,11 @@
 		photoError = '';
 		photoUploading = true;
 		try {
-			const { id: vaultPhotoId, deliveryUrl } = await uploadPhotoToVault(file);
+			const { id: vaultPhotoId, deliveryUrl } = await uploadPhotoToVault(
+				file,
+				undefined,
+				devContentRating
+			);
 			// Store once in the vault and attach this photo to the listing.
 			vaultPhotos = [
 				{ id: vaultPhotoId, deliveryUrl, uploadedAt: new Date(), albumId: null },
@@ -126,6 +132,7 @@
 </script>
 
 <div class="photo-picker">
+	<DevPhotoControls bind:value={devContentRating} />
 	<div class="photo-slots-wrap">
 		<div class="photo-slots">
 			{#each Array(maxPhotos) as _, i (i)}

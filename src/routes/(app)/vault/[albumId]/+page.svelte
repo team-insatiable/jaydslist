@@ -1,4 +1,6 @@
 <script lang="ts">
+	import DevPhotoControls from '$lib/components/DevPhotoControls.svelte';
+	let devContentRating = $state('safe');
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -55,7 +57,7 @@
 		try {
 			for (let i = 0; i < files.length; i++) {
 				if (uploadProgress) uploadProgress = { current: i + 1, total: files.length };
-				await uploadPhotoToVault(files[i], albumId);
+				await uploadPhotoToVault(files[i], albumId, devContentRating);
 			}
 			await invalidateAll();
 		} catch (err) {
@@ -270,6 +272,7 @@
 	</div>
 
 	<!-- Photo grid -->
+	<DevPhotoControls bind:value={devContentRating} />
 	<div class="photo-grid" bind:this={gridEl}>
 		<!-- Add button -->
 		{#if !data.isUncategorized}
@@ -325,6 +328,28 @@
 				>
 					<img src={photo.deliveryUrl} alt="" />
 				</button>
+				{#if data.albumPhotos.find((p) => p.id === photo.id)?.contentRating === 'unknown'}
+					<form
+						class="screen-form"
+						method="POST"
+						action="?/screenPhoto"
+						use:enhance={() => {
+							submitting = photo.id;
+							return async ({ update }) => {
+								submitting = null;
+								await update();
+								await invalidateAll();
+							};
+						}}
+					>
+						<input type="hidden" name="devContentRating" value={devContentRating} />
+						<input type="hidden" name="photoId" value={photo.id} />
+						<button type="submit" disabled={submitting === photo.id}>Screen before sharing</button>
+					</form>
+				{:else if data.albumPhotos.find((p) => p.id === photo.id)?.contentRating === 'nsfw'}
+					<small class="content-label">NSFW · opt-in required</small>
+				{/if}
+
 				<form
 					method="POST"
 					action="?/deletePhoto"
@@ -760,6 +785,28 @@
 		right: 4px;
 	}
 
+	.photo-tile form.screen-form {
+		top: auto;
+		bottom: 4px;
+		left: 4px;
+		right: 4px;
+	}
+	.screen-form button {
+		font-size: 0.7rem;
+		padding: 0.35rem;
+		margin: 0;
+		width: 100%;
+	}
+	.content-label {
+		position: absolute;
+		bottom: 4px;
+		left: 4px;
+		right: 4px;
+		background: rgb(0 0 0 / 75%);
+		color: white;
+		font-size: 0.7rem;
+		padding: 0.2rem;
+	}
 	.trash-btn {
 		width: 26px;
 		height: 26px;

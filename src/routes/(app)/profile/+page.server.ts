@@ -53,6 +53,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 				seekingIdentity: userProfiles.seekingIdentity,
 				seekingBodyType: userProfiles.seekingBodyType,
 				seekingNatureOfConnection: userProfiles.seekingNatureOfConnection,
+				allowNsfw: userProfiles.allowNsfw,
 				browseRadius: userProfiles.browseRadius
 			})
 			.from(userProfiles)
@@ -137,7 +138,14 @@ export const actions: Actions = {
 
 		await getDb(env.DB)
 			.update(userProfiles)
-			.set({ identity, bodyType, coupleComposition, dateOfBirth, age })
+			.set({
+				identity,
+				bodyType,
+				coupleComposition,
+				dateOfBirth,
+				age,
+				allowNsfw: data.get('allowNsfw') === 'yes'
+			})
 			.where(eq(userProfiles.id, locals.user.id));
 
 		return { success: true };
@@ -251,6 +259,7 @@ export const actions: Actions = {
 		await getDb(env.DB)
 			.update(userProfiles)
 			.set({
+				allowNsfw: data.get('allowNsfw') === 'yes',
 				seekingIdentity: JSON.stringify(seekingIdentity),
 				seekingBodyType: JSON.stringify(seekingBodyType),
 				seekingNatureOfConnection: JSON.stringify(seekingNatureOfConnection)
