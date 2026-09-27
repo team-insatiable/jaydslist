@@ -46,11 +46,16 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	}
 
 	if (event.platform.env.INSTANCE_PRELAUNCH_MODE === 'true') {
-		const admins = (event.platform.env.ADMIN_EMAILS ?? '')
+		const allowedEmails = [
+			event.platform.env.ADMIN_EMAILS ?? '',
+			event.platform.env.INSTANCE_PRELAUNCH_TESTER_EMAILS ?? ''
+		]
+			.join(',')
 			.split(',')
 			.map((email) => email.trim().toLowerCase())
 			.filter(Boolean);
-		const isAdmin = !!event.locals.user && admins.includes(event.locals.user.email.toLowerCase());
+		const hasPrelaunchAccess =
+			!!event.locals.user && allowedEmails.includes(event.locals.user.email.toLowerCase());
 		const publicPath =
 			event.url.pathname === '/' ||
 			event.url.pathname === '/beta/confirm' ||
@@ -58,7 +63,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 				event.url.pathname
 			) ||
 			event.url.pathname.startsWith('/api/auth/');
-		if (!isAdmin && !publicPath) throw redirect(303, '/');
+		if (!hasPrelaunchAccess && !publicPath) throw redirect(303, '/');
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });

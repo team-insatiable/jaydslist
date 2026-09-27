@@ -31,7 +31,7 @@ Overlay your own `content/about.md`, `content/rules.md`, `content/privacy.md`, a
 
 ## Pre-launch beta waitlist
 
-Set `INSTANCE_PRELAUNCH_MODE=true` to present a public landing page instead of the application. Signup stores a pending record; visitors join the confirmed waitlist only after following the expiring email link. Signed-in administrators retain application access. About, Rules, Privacy, Terms, and Self-host remain public. This feature does not send a beta launch announcement or provide campaign management.
+Set `INSTANCE_PRELAUNCH_MODE=true` to present a public landing page instead of the application. Signup stores a pending record; visitors join the confirmed waitlist only after following the expiring email link. Signed-in administrators retain application access. Operators can optionally set the `INSTANCE_PRELAUNCH_TESTER_EMAILS` Worker secret to a comma-separated list of test account emails. Those accounts can access the application during prelaunch without receiving administrator permissions; normal phone verification and account checks still apply. About, Rules, Privacy, Terms, and Self-host remain public. This feature does not send a beta launch announcement or provide campaign management.
 
 This feature adds a D1 migration. Apply that migration before enabling the setting, and ensure your transactional email provider is configured.
 

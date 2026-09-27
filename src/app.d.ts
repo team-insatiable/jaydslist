@@ -38,6 +38,8 @@ declare global {
 		INSTANCE_SOURCE_URL?: string;
 		/** Set to true to show the public beta landing page instead of the app. */
 		INSTANCE_PRELAUNCH_MODE?: string;
+		/** Comma-separated test account emails allowed through the prelaunch gate, without admin access. */
+		INSTANCE_PRELAUNCH_TESTER_EMAILS?: string;
 	}
 
 	namespace App {
