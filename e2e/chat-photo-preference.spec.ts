@@ -54,6 +54,11 @@ test('explicit photos can be allowed and blocked in one chat without changing th
 		await presence;
 		await recipient.getByRole('button', { name: 'More options' }).click();
 		await recipient.getByRole('button', { name: 'Photo settings' }).click();
+		await recipient.mouse.move(5, 200);
+		await expect(recipient.locator('.overlay-backdrop')).toHaveCSS(
+			'background-color',
+			'rgba(0, 0, 0, 0.45)'
+		);
 		const choice = recipient.getByLabel('Explicit photos from Kiera');
 		await expect(choice).toHaveValue('inherit');
 		await choice.selectOption('allow');
@@ -93,10 +98,10 @@ test('explicit photos can be allowed and blocked in one chat without changing th
 			.getByRole('dialog', { name: 'Photo settings for this conversation' })
 			.getByRole('button', { name: 'Save' })
 			.click();
-		await expect(
-			recipient.getByText('Photo hidden by your preferences or awaiting screening.')
-		).toBeVisible();
+		await expect(recipient.getByAltText('Blurred explicit content')).toBeVisible();
+		await expect(recipient.getByText('NSFW · Hidden by your photo setting')).toBeVisible();
 		expect((await recipient.request.get(scopedPath)).status()).toBe(403);
+		expect((await recipient.request.get(`${scopedPath}&preview=blurred`)).status()).toBe(200);
 		await recipient.goto('/profile');
 		await expect(recipient.locator('#photo-nsfw')).toHaveValue('no');
 
