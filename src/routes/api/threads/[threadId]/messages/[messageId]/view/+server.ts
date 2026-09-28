@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { conversationThreads, messages, photoVault, userProfiles } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { imageUrl } from '$lib/server/cloudflare-images';
+import { allowsNsfwInThread, threadPhotoUrl } from '$lib/server/thread-photo-preference';
 
 export const POST: RequestHandler = async ({ params, locals, platform }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -17,7 +17,9 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
 	const thread = await db
 		.select({
 			initiatorId: conversationThreads.initiatorId,
-			posterId: conversationThreads.posterId
+			posterId: conversationThreads.posterId,
+			initiatorNsfwChoice: conversationThreads.initiatorNsfwChoice,
+			posterNsfwChoice: conversationThreads.posterNsfwChoice
 		})
 		.from(conversationThreads)
 		.where(eq(conversationThreads.id, params.threadId))
@@ -55,7 +57,14 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
 		.from(photoVault)
 		.where(eq(photoVault.cfImageId, msg.cfImageId))
 		.get();
-	if (!canReceivePhoto(photo?.contentRating ?? 'unknown', profile?.allowNsfw ?? false))
+	const choice =
+		locals.user.id === thread.initiatorId ? thread.initiatorNsfwChoice : thread.posterNsfwChoice;
+	if (
+		!canReceivePhoto(
+			photo?.contentRating ?? 'unknown',
+			allowsNsfwInThread(profile?.allowNsfw ?? false, choice)
+		)
+	)
 		throw error(403, 'This photo is hidden by your content preference or awaiting screening');
 	if (msg.expiresAt && msg.expiresAt <= new Date()) return json({ expired: true });
 	// Already viewed — return expired
@@ -66,5 +75,5 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
 		.set({ photoViewedAt: new Date() })
 		.where(eq(messages.id, params.messageId));
 
-	return json({ cfImageUrl: imageUrl(env.CF_IMAGES_ACCOUNT_HASH, msg.cfImageId) });
+	return json({ cfImageUrl: threadPhotoUrl(msg.cfImageId, params.threadId) });
 };
