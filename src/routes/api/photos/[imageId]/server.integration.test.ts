@@ -142,6 +142,9 @@ describe('private photo delivery', () => {
 		await expect(GET(event(viewer, 'chat-explicit', false, thread))).rejects.toMatchObject({
 			status: 403
 		});
+		expect((await GET(event(viewer, 'chat-explicit', true, thread))).status).toBe(200);
+		expect(downloadBlurredImage).toHaveBeenCalledTimes(1);
+		expect(downloadImage).not.toHaveBeenCalled();
 		await env.DB.prepare('UPDATE conversation_threads SET initiator_nsfw_choice = ? WHERE id = ?')
 			.bind('allow', thread)
 			.run();
@@ -157,8 +160,15 @@ describe('private photo delivery', () => {
 				status: 403
 			}
 		);
+		await expect(GET(event(viewer, 'chat-explicit', true, unrelatedThread))).rejects.toMatchObject({
+			status: 403
+		});
 		await expect(GET(event(viewer, 'chat-explicit'))).rejects.toMatchObject({ status: 403 });
+		await expect(GET(event(viewer, 'chat-explicit', true))).rejects.toMatchObject({ status: 403 });
 		await expect(GET(event(stranger, 'chat-explicit', false, thread))).rejects.toMatchObject({
+			status: 403
+		});
+		await expect(GET(event(stranger, 'chat-explicit', true, thread))).rejects.toMatchObject({
 			status: 403
 		});
 		await env.DB.prepare('UPDATE conversation_threads SET initiator_nsfw_choice = ? WHERE id = ?')
@@ -167,6 +177,30 @@ describe('private photo delivery', () => {
 		await expect(GET(event(viewer, 'chat-explicit', false, thread))).rejects.toMatchObject({
 			status: 403
 		});
+		expect((await GET(event(viewer, 'chat-explicit', true, thread))).status).toBe(200);
+	});
+	it('does not preview view-once photos while explicit photos are blocked', async () => {
+		const sender = await createTestUser(env.DB);
+		const viewer = await createTestUser(env.DB);
+		await createTestVaultPhoto(env.DB, sender, {
+			cfImageId: 'chat-view-once-explicit',
+			contentRating: 'nsfw'
+		});
+		const listing = await createTestListing(env.DB, sender);
+		const thread = await createTestThread(env.DB, {
+			listingId: listing,
+			initiatorId: viewer,
+			posterId: sender
+		});
+		await env.DB.prepare(
+			'INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id, is_expiring) VALUES (?, ?, ?, ?, ?, 1)'
+		)
+			.bind(crypto.randomUUID(), thread, sender, '', 'chat-view-once-explicit')
+			.run();
+		await expect(GET(event(viewer, 'chat-view-once-explicit', true, thread))).rejects.toMatchObject(
+			{ status: 403 }
+		);
+		expect(downloadBlurredImage).not.toHaveBeenCalled();
 	});
 	it('checks blocks and listing expiry before returning blurred pixels', async () => {
 		const owner = await createTestUser(env.DB);

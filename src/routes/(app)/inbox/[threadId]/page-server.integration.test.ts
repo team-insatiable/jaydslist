@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
-import { actions } from './+page.server';
+import { actions, load } from './+page.server';
 import {
 	createTestUser,
 	createTestListing,
@@ -49,6 +49,15 @@ function fakePhotoChoiceEvent(threadId: string, userId: string, choice: string):
 		locals: { user: { id: userId } },
 		platform: { env }
 	} as unknown as PhotoChoiceEvent;
+}
+
+function fakeLoadEvent(threadId: string, userId: string): Parameters<typeof load>[0] {
+	return {
+		params: { threadId },
+		locals: { user: { id: userId } },
+		platform: { env },
+		depends: () => {}
+	} as unknown as Parameters<typeof load>[0];
 }
 
 function fakeDeclineEvent(overrides: {
@@ -165,6 +174,28 @@ describe('inbox/[threadId] send action', () => {
 		expect(
 			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', cfImageId }))
 		).toEqual({ success: true });
+	});
+	it('shows a blurred preview after a recipient blocks a previously shared explicit photo', async () => {
+		const cfImageId = crypto.randomUUID();
+		await createTestVaultPhoto(env.DB, initiatorId, { cfImageId, contentRating: 'nsfw' });
+		await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, posterId, 'allow'));
+		expect(
+			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', cfImageId }))
+		).toEqual({ success: true });
+		await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, posterId, 'block'));
+		const blocked = (await load(fakeLoadEvent(threadId, posterId))) as {
+			messages: { cfImageUrl: string | null; blurredPhotoUrl: string | null }[];
+		};
+		expect(blocked.messages[0]).toMatchObject({
+			cfImageUrl: null,
+			blurredPhotoUrl: `/api/photos/${cfImageId}?threadId=${threadId}&preview=blurred`
+		});
+		await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, posterId, 'allow'));
+		const allowed = (await load(fakeLoadEvent(threadId, posterId))) as typeof blocked;
+		expect(allowed.messages[0]).toMatchObject({
+			cfImageUrl: `/api/photos/${cfImageId}?threadId=${threadId}`,
+			blurredPhotoUrl: null
+		});
 	});
 	it('only lets a participant change their own photo choice', async () => {
 		const stranger = await createTestUser(env.DB);

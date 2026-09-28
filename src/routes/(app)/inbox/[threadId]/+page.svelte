@@ -886,11 +886,22 @@
 					<div
 						class="bubble"
 						class:bubble-photo={msg.expiringState === 'unviewed' ||
-							(!!msg.cfImageUrl && msg.expiringState !== 'expired')}
+							(!!msg.cfImageUrl && msg.expiringState !== 'expired') ||
+							!!msg.blurredPhotoUrl}
 						class:bubble-album={msg.albumId}
 						class:bubble-expired={msg.expiringState === 'expired'}
 					>
-						{#if msg.photoHidden}
+						{#if msg.blurredPhotoUrl}
+							<div class="msg-photo-preview">
+								<img
+									class="msg-photo"
+									src={msg.blurredPhotoUrl}
+									alt="Blurred explicit content"
+									loading="lazy"
+								/>
+								<span class="msg-photo-preview-label">NSFW · Hidden by your photo setting</span>
+							</div>
+						{:else if msg.photoHidden}
 							<p class="bubble-body">Photo hidden by your preferences or awaiting screening.</p>
 						{:else if msg.expiringState === 'unviewed' && !msg.isMine}
 							<button
@@ -2202,6 +2213,11 @@
 		border-radius: 0;
 	}
 
+	.overlay-backdrop:hover:not(:disabled) {
+		background: rgba(0, 0, 0, 0.45);
+		border-color: transparent;
+	}
+
 	.block-overlay {
 		position: fixed;
 		top: 50%;
@@ -2555,6 +2571,23 @@
 		width: 100%;
 		aspect-ratio: 4 / 3;
 		object-fit: cover;
+	}
+
+	.msg-photo-preview {
+		position: relative;
+		overflow: hidden;
+		border-radius: 14px;
+	}
+
+	.msg-photo-preview-label {
+		position: absolute;
+		inset: auto 0 0;
+		padding: 0.45rem 0.5rem;
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		font-size: 0.7rem;
+		line-height: 1.3;
+		text-align: center;
 	}
 
 	.bubble-photo .bubble-body {
