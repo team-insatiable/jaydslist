@@ -26,12 +26,15 @@ beforeEach(() => {
 			async () => new Response('photo', { headers: { 'Content-Type': 'image/png' } })
 		);
 });
-function event(userId: string | undefined, imageId: string, blurred = false) {
+function event(userId: string | undefined, imageId: string, blurred = false, threadId?: string) {
+	const url = new URL(`http://localhost/api/photos/${imageId}`);
+	if (blurred) url.searchParams.set('preview', 'blurred');
+	if (threadId) url.searchParams.set('threadId', threadId);
 	return {
 		locals: userId ? { user: { id: userId } } : {},
 		platform: { env },
 		params: { imageId },
-		url: new URL(`http://localhost/api/photos/${imageId}${blurred ? '?preview=blurred' : ''}`)
+		url
 	} as unknown as Parameters<typeof GET>[0];
 }
 describe('private photo delivery', () => {
@@ -117,6 +120,54 @@ describe('private photo delivery', () => {
 		expect(downloadBlurredImage).not.toHaveBeenCalled();
 		expect(downloadImage).not.toHaveBeenCalled();
 	});
+	it('allows explicit photos only in the opted-in chat, including direct delivery and revocation', async () => {
+		const owner = await createTestUser(env.DB);
+		const viewer = await createTestUser(env.DB);
+		const stranger = await createTestUser(env.DB);
+		await createTestVaultPhoto(env.DB, owner, {
+			cfImageId: 'chat-explicit',
+			contentRating: 'nsfw'
+		});
+		const listing = await createTestListing(env.DB, owner);
+		const thread = await createTestThread(env.DB, {
+			listingId: listing,
+			initiatorId: viewer,
+			posterId: owner
+		});
+		await env.DB.prepare(
+			'INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id) VALUES (?, ?, ?, ?, ?)'
+		)
+			.bind(crypto.randomUUID(), thread, owner, '', 'chat-explicit')
+			.run();
+		await expect(GET(event(viewer, 'chat-explicit', false, thread))).rejects.toMatchObject({
+			status: 403
+		});
+		await env.DB.prepare('UPDATE conversation_threads SET initiator_nsfw_choice = ? WHERE id = ?')
+			.bind('allow', thread)
+			.run();
+		expect((await GET(event(viewer, 'chat-explicit', false, thread))).status).toBe(200);
+		const otherListing = await createTestListing(env.DB, owner);
+		const unrelatedThread = await createTestThread(env.DB, {
+			listingId: otherListing,
+			initiatorId: viewer,
+			posterId: owner
+		});
+		await expect(GET(event(viewer, 'chat-explicit', false, unrelatedThread))).rejects.toMatchObject(
+			{
+				status: 403
+			}
+		);
+		await expect(GET(event(viewer, 'chat-explicit'))).rejects.toMatchObject({ status: 403 });
+		await expect(GET(event(stranger, 'chat-explicit', false, thread))).rejects.toMatchObject({
+			status: 403
+		});
+		await env.DB.prepare('UPDATE conversation_threads SET initiator_nsfw_choice = ? WHERE id = ?')
+			.bind('block', thread)
+			.run();
+		await expect(GET(event(viewer, 'chat-explicit', false, thread))).rejects.toMatchObject({
+			status: 403
+		});
+	});
 	it('checks blocks and listing expiry before returning blurred pixels', async () => {
 		const owner = await createTestUser(env.DB);
 		const viewer = await createTestUser(env.DB);
@@ -156,7 +207,8 @@ describe('private photo delivery', () => {
 		const albumEvent = {
 			locals: { user: { id: viewer } },
 			platform: { env },
-			params: { albumId: album }
+			params: { albumId: album },
+			url: new URL(`http://localhost/api/albums/${album}?threadId=${thread}`)
 		} as unknown as Parameters<typeof albumGET>[0];
 		await env.DB.prepare(
 			'INSERT INTO messages (id, thread_id, sender_id, body) VALUES (?, ?, ?, ?)'
@@ -179,7 +231,29 @@ describe('private photo delivery', () => {
 			photos: { cfImageId: string }[];
 		};
 		expect(result.photos.map((p) => p.cfImageId)).toEqual(['safe-album']);
+		await expect(GET(event(viewer, 'new-nsfw-album', false, thread))).rejects.toMatchObject({
+			status: 403
+		});
+		expect((await GET(event(viewer, 'safe-album', false, thread))).status).toBe(200);
+		await env.DB.prepare('UPDATE conversation_threads SET initiator_nsfw_choice = ? WHERE id = ?')
+			.bind('allow', thread)
+			.run();
+		const allowedAlbum = (await (await albumGET(albumEvent)).json()) as {
+			photos: { cfImageId: string; deliveryUrl: string }[];
+		};
+		expect(allowedAlbum.photos.map((photo) => photo.cfImageId)).toEqual([
+			'safe-album',
+			'new-nsfw-album'
+		]);
+		expect(allowedAlbum.photos[1].deliveryUrl).toContain(`threadId=${thread}`);
+		expect((await GET(event(viewer, 'new-nsfw-album', false, thread))).status).toBe(200);
 		await expect(GET(event(viewer, 'new-nsfw-album'))).rejects.toMatchObject({ status: 403 });
-		expect((await GET(event(viewer, 'safe-album'))).status).toBe(200);
+		await env.DB.prepare('UPDATE conversation_threads SET initiator_nsfw_choice = ? WHERE id = ?')
+			.bind('block', thread)
+			.run();
+		const blockedAlbum = (await (await albumGET(albumEvent)).json()) as {
+			photos: { cfImageId: string }[];
+		};
+		expect(blockedAlbum.photos.map((photo) => photo.cfImageId)).toEqual(['safe-album']);
 	});
 });

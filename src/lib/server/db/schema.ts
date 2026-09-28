@@ -345,6 +345,8 @@ export const conversationThreads = sqliteTable(
 			.references(() => userProfiles.id),
 		status: text('status').notNull().default('open'),
 		acknowledgedRequirements: text('acknowledged_requirements').notNull().default('[]'),
+		initiatorNsfwChoice: text('initiator_nsfw_choice').notNull().default('inherit'),
+		posterNsfwChoice: text('poster_nsfw_choice').notNull().default('inherit'),
 		initiatorResponseRate: real('initiator_response_rate'),
 		initiatorWarned: integer('initiator_warned', { mode: 'boolean' }).notNull().default(false),
 		createdAt: integer('created_at', { mode: 'timestamp' })

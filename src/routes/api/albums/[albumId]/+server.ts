@@ -11,8 +11,9 @@ import {
 } from '$lib/server/db/schema';
 import { eq, or, and, isNull, sql } from 'drizzle-orm';
 import { getAlbumPhotos } from '$lib/server/photo-vault';
+import { allowsNsfwInThread, threadPhotoUrl } from '$lib/server/thread-photo-preference';
 
-export const GET: RequestHandler = async ({ params, locals, platform }) => {
+export const GET: RequestHandler = async ({ params, locals, platform, url }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 	const env = platform?.env;
 	if (!env) throw error(500, 'Server configuration error');
@@ -30,14 +31,24 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
 	if (!album) throw error(404, 'Album not found');
 
 	const isOwner = album.userId === locals.user.id;
+	let recipientChoice = 'inherit';
+	const threadId = url.searchParams.get('threadId');
 
 	if (!isOwner) {
+		if (!threadId) throw error(403, 'Forbidden');
 		const sharedMsg = await db
-			.select({ id: messages.id })
+			.select({
+				id: messages.id,
+				initiatorId: conversationThreads.initiatorId,
+				posterId: conversationThreads.posterId,
+				initiatorNsfwChoice: conversationThreads.initiatorNsfwChoice,
+				posterNsfwChoice: conversationThreads.posterNsfwChoice
+			})
 			.from(messages)
 			.innerJoin(conversationThreads, eq(messages.threadId, conversationThreads.id))
 			.where(
 				and(
+					eq(messages.threadId, threadId),
 					eq(messages.albumId, albumId),
 					eq(messages.senderId, album.userId),
 					or(
@@ -49,6 +60,10 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
 			)
 			.get();
 		if (!sharedMsg) throw error(403, 'Forbidden');
+		recipientChoice =
+			locals.user.id === sharedMsg.initiatorId
+				? sharedMsg.initiatorNsfwChoice
+				: sharedMsg.posterNsfwChoice;
 	}
 
 	let photos = await getAlbumPhotos(env.DB, albumId, env.CF_IMAGES_ACCOUNT_HASH);
@@ -65,10 +80,17 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
 			.all();
 		const allowed = new Set(
 			rows
-				.filter((p) => canReceivePhoto(p.contentRating, profile?.allowNsfw ?? false))
+				.filter((p) =>
+					canReceivePhoto(
+						p.contentRating,
+						allowsNsfwInThread(profile?.allowNsfw ?? false, recipientChoice)
+					)
+				)
 				.map((p) => p.id)
 		);
-		photos = photos.filter((p) => allowed.has(p.id));
+		photos = photos
+			.filter((p) => allowed.has(p.id))
+			.map((p) => ({ ...p, deliveryUrl: threadPhotoUrl(p.cfImageId, threadId!) }));
 	}
 	return json({ name: album.name, photos }, { headers: { 'Cache-Control': 'private, no-store' } });
 };

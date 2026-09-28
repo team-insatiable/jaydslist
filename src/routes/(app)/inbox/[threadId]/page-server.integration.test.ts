@@ -11,6 +11,7 @@ import {
 } from '$lib/server/test-helpers/fixtures';
 
 type SendEvent = Parameters<typeof actions.send>[0];
+type PhotoChoiceEvent = Parameters<typeof actions.setPhotoChoice>[0];
 type DeclineEvent = Parameters<typeof actions.decline>[0];
 type PauseEvent = Parameters<typeof actions.pauseListing>[0];
 type ReportEvent = Parameters<typeof actions.report>[0];
@@ -37,6 +38,17 @@ function fakeEvent(overrides: {
 		locals: { user: { id: overrides.userId, email: 'test@example.com' } },
 		platform: { env }
 	} as unknown as SendEvent;
+}
+
+function fakePhotoChoiceEvent(threadId: string, userId: string, choice: string): PhotoChoiceEvent {
+	const form = new FormData();
+	form.set('choice', choice);
+	return {
+		params: { threadId },
+		request: new Request('http://localhost/inbox/x', { method: 'POST', body: form }),
+		locals: { user: { id: userId } },
+		platform: { env }
+	} as unknown as PhotoChoiceEvent;
 }
 
 function fakeDeclineEvent(overrides: {
@@ -121,6 +133,57 @@ describe('inbox/[threadId] send action', () => {
 		expect(
 			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', albumId }))
 		).toEqual({ success: true });
+	});
+	it('uses each recipient’s chat-only choice when sending explicit photos and albums', async () => {
+		const albumId = await createTestAlbum(env.DB, initiatorId);
+		const cfImageId = crypto.randomUUID();
+		await createTestVaultPhoto(env.DB, initiatorId, {
+			cfImageId,
+			albumId,
+			contentRating: 'nsfw'
+		});
+		expect(
+			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', cfImageId }))
+		).toMatchObject({ status: 400 });
+		expect(await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, posterId, 'allow'))).toEqual(
+			{ success: true }
+		);
+		expect(
+			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', cfImageId }))
+		).toEqual({ success: true });
+		expect(
+			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', albumId }))
+		).toEqual({ success: true });
+		await env.DB.prepare('UPDATE user_profiles SET allow_nsfw = 1 WHERE id = ?')
+			.bind(posterId)
+			.run();
+		await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, posterId, 'block'));
+		expect(
+			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', cfImageId }))
+		).toMatchObject({ status: 400 });
+		await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, posterId, 'inherit'));
+		expect(
+			await actions.send(fakeEvent({ threadId, userId: initiatorId, body: '', cfImageId }))
+		).toEqual({ success: true });
+	});
+	it('only lets a participant change their own photo choice', async () => {
+		const stranger = await createTestUser(env.DB);
+		expect(
+			await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, stranger, 'allow'))
+		).toMatchObject({ status: 403 });
+		expect(
+			await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, posterId, 'invalid'))
+		).toMatchObject({ status: 400 });
+		await actions.setPhotoChoice(fakePhotoChoiceEvent(threadId, initiatorId, 'allow'));
+		const row = await env.DB.prepare(
+			'SELECT initiator_nsfw_choice, poster_nsfw_choice FROM conversation_threads WHERE id = ?'
+		)
+			.bind(threadId)
+			.first<{ initiator_nsfw_choice: string; poster_nsfw_choice: string }>();
+		expect(row).toMatchObject({
+			initiator_nsfw_choice: 'allow',
+			poster_nsfw_choice: 'inherit'
+		});
 	});
 
 	it('rejects foreign photos, arbitrary image IDs, and foreign albums', async () => {

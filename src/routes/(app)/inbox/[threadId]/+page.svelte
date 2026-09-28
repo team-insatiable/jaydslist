@@ -71,6 +71,10 @@
 	let blockWorking = $state(false);
 	let showReportSheet = $state(false);
 	let showReceivedPhotos = $state(false);
+	let showPhotoSettings = $state(false);
+	let photoChoice = $state<'inherit' | 'allow' | 'block'>('inherit');
+	let photoChoiceError = $state('');
+	let photoChoiceWorking = $state(false);
 	let spamConfirm = $state(false);
 	let spamWorking = $state(false);
 	let spamDone = $state(false);
@@ -299,12 +303,14 @@
 	async function openAlbumViewer(albumId: string) {
 		_albumViewLoading = true;
 		try {
-			const res = await fetch(`/api/albums/${albumId}`);
-			const data = (await res.json()) as {
+			const res = await fetch(
+				`/api/albums/${albumId}?threadId=${encodeURIComponent(data.thread.id)}`
+			);
+			const albumData = (await res.json()) as {
 				name: string;
 				photos: { id: string; cfImageId: string; deliveryUrl: string }[];
 			};
-			albumViewing = { albumId, name: data.name, photos: data.photos, index: 0 };
+			albumViewing = { albumId, name: albumData.name, photos: albumData.photos, index: 0 };
 		} catch {
 			// ignore
 		} finally {
@@ -505,6 +511,32 @@
 					class="flyout-tile"
 					onclick={() => {
 						menuOpen = false;
+						photoChoice = data.photoChoice as 'inherit' | 'allow' | 'block';
+						photoChoiceError = '';
+						showPhotoSettings = true;
+					}}
+				>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<rect x="3" y="5" width="18" height="16" rx="2" />
+						<circle cx="12" cy="13" r="3" />
+						<path d="M8 5l1-2h6l1 2" />
+					</svg>
+					<span>Photo<br />settings</span>
+				</button>
+				<button
+					class="flyout-tile"
+					onclick={() => {
+						menuOpen = false;
 						showReceivedPhotos = true;
 					}}
 				>
@@ -601,6 +633,73 @@
 			</div>
 		{/if}
 	</div>
+
+	<!-- Per-conversation photo preference -->
+	{#if showPhotoSettings}
+		<button
+			class="overlay-backdrop"
+			onclick={() => (showPhotoSettings = false)}
+			aria-label="Close photo settings"
+		></button>
+		<div
+			class="block-overlay photo-settings-overlay"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Photo settings for this conversation"
+		>
+			<p class="block-overlay-title">Photos in this conversation</p>
+			<p class="block-overlay-hint">
+				Choose whether you can receive explicit photos from {data.otherAlias} here. This does not change
+				your account setting or other chats.
+			</p>
+			<form
+				method="POST"
+				action="?/setPhotoChoice"
+				use:enhance={() => {
+					photoChoiceWorking = true;
+					photoChoiceError = '';
+					return async ({ result, update }) => {
+						photoChoiceWorking = false;
+						if (result.type === 'success') {
+							showPhotoSettings = false;
+							await update();
+						} else {
+							photoChoiceError =
+								result.type === 'failure' && result.data?.error
+									? String(result.data.error)
+									: 'Could not save photo setting.';
+						}
+					};
+				}}
+			>
+				<label for="thread-photo-choice">Explicit photos from {data.otherAlias}</label>
+				<select
+					id="thread-photo-choice"
+					name="choice"
+					bind:value={photoChoice}
+					disabled={photoChoiceWorking}
+				>
+					<option value="inherit"
+						>Use account setting ({data.accountAllowsNsfw ? 'allow' : 'block'})</option
+					>
+					<option value="allow">Allow in this conversation</option>
+					<option value="block">Block in this conversation</option>
+				</select>
+				{#if photoChoiceError}<p class="send-error">{photoChoiceError}</p>{/if}
+				<div class="block-overlay-actions">
+					<button
+						type="button"
+						class="overlay-cancel-btn"
+						onclick={() => (showPhotoSettings = false)}
+						disabled={photoChoiceWorking}>Cancel</button
+					>
+					<button type="submit" class="photo-settings-save" disabled={photoChoiceWorking}
+						>Save</button
+					>
+				</div>
+			</form>
+		</div>
+	{/if}
 
 	<!-- Hidden spam form -->
 	<form
@@ -2115,6 +2214,34 @@
 		padding: 1.25rem 1.25rem 1rem;
 		width: min(320px, calc(100vw - 2rem));
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+	}
+
+	.photo-settings-overlay {
+		width: min(400px, calc(100vw - 2rem));
+	}
+
+	.photo-settings-overlay label {
+		display: block;
+		margin-bottom: 0.4rem;
+		font-size: 0.825rem;
+	}
+
+	.photo-settings-overlay select {
+		margin-bottom: 1rem;
+	}
+
+	.photo-settings-save {
+		background: var(--pico-primary);
+		color: white;
+		border: none;
+		border-radius: 8px;
+		padding: 0.45rem 1.1rem;
+		font: inherit;
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+		width: auto;
+		margin: 0;
 	}
 
 	.block-overlay-title {

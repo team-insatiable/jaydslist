@@ -20,6 +20,7 @@ const KIERA_LISTING_ID = 'e2e0000-0000-0000-0000-00000000b001';
 const EDIT_PHOTO_ID = 'e2e0000-0000-0000-0000-00000000a003';
 const EDIT_PHOTO_LISTING_ID = 'e2e0000-0000-0000-0000-00000000b003';
 const ALBUM_SHARE_THREAD_ID = 'e2e0000-0000-0000-0000-00000000c003';
+const CHAT_PHOTO_CHOICE_THREAD_ID = 'e2e0000-0000-0000-0000-00000000c004';
 
 function hashPassword(password: string): string {
 	const salt = randomBytes(16).toString('hex');
@@ -116,6 +117,11 @@ DELETE FROM photo_vault WHERE user_id = (SELECT id FROM user WHERE email = 'edit
 DELETE FROM messages WHERE thread_id IN (SELECT id FROM conversation_threads WHERE listing_id = ${sq(KIERA_LISTING_ID)});
 DELETE FROM key_exchanges WHERE thread_id IN (SELECT id FROM conversation_threads WHERE listing_id = ${sq(KIERA_LISTING_ID)});
 DELETE FROM conversation_threads WHERE listing_id = ${sq(KIERA_LISTING_ID)};
+INSERT INTO conversation_threads (id, listing_id, initiator_id, poster_id, status, created_at, last_activity_at)
+SELECT ${sq(CHAT_PHOTO_CHOICE_THREAD_ID)}, ${sq(KIERA_LISTING_ID)},
+       (SELECT id FROM user WHERE email = 'edit-photo@example.test'),
+       (SELECT id FROM user WHERE email = 'keirajd@gmail.com'),
+       'open', ${now}, ${now};
 
 -- reset any listing keirockjd created during a previous e2e run (free tier
 -- allows only one active listing, so this must stay empty for the listing-

@@ -2,7 +2,6 @@ import { canReceivePhoto } from '$lib/server/photo-moderation';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
-import { imageUrl } from '$lib/server/cloudflare-images';
 import {
 	conversationThreads,
 	listings,
@@ -23,6 +22,7 @@ import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$li
 import { getInstanceConfig } from '$lib/server/instance';
 import { sendPushNotification } from '$lib/server/push';
 import { isKeyExchangeEligible } from '$lib/server/key-exchange';
+import { allowsNsfwInThread, threadPhotoUrl } from '$lib/server/thread-photo-preference';
 
 const CONTACT_INFO_PATTERN = /(\+?[\d\s\-().]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/i;
 
@@ -43,6 +43,8 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			listingSubject: listings.subject,
 			initiatorId: conversationThreads.initiatorId,
 			posterId: conversationThreads.posterId,
+			initiatorNsfwChoice: conversationThreads.initiatorNsfwChoice,
+			posterNsfwChoice: conversationThreads.posterNsfwChoice,
 			status: conversationThreads.status
 		})
 		.from(conversationThreads)
@@ -55,6 +57,7 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 
 	const otherUserId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
 	const role = thread.posterId === userId ? 'poster' : 'responder';
+	const photoChoice = role === 'poster' ? thread.posterNsfwChoice : thread.initiatorNsfwChoice;
 
 	const [otherProfile, currentProfile, threadMessages, latestExchange] = await Promise.all([
 		db
@@ -193,6 +196,7 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		.from(userProfiles)
 		.where(eq(userProfiles.id, userId))
 		.get();
+	const allowsNsfw = allowsNsfwInThread(contentPreference?.allowNsfw ?? false, photoChoice);
 	const mediaRatings = await db
 		.select({ cfImageId: photoVault.cfImageId, contentRating: photoVault.contentRating })
 		.from(photoVault)
@@ -222,11 +226,9 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 		for (const aid of albumIds) {
 			const cover = covers.find(
 				(c) =>
-					c.albumId === aid &&
-					(c.userId === userId ||
-						canReceivePhoto(c.contentRating, contentPreference?.allowNsfw ?? false))
+					c.albumId === aid && (c.userId === userId || canReceivePhoto(c.contentRating, allowsNsfw))
 			);
-			if (cover) albumCovers[aid] = imageUrl(env.CF_IMAGES_ACCOUNT_HASH, cover.cfImageId);
+			if (cover) albumCovers[aid] = threadPhotoUrl(cover.cfImageId, params.threadId);
 			const album = names.find((a) => a.id === aid);
 			if (album) albumNames[aid] = album.name;
 		}
@@ -241,6 +243,8 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			role
 		},
 		otherUserId,
+		photoChoice,
+		accountAllowsNsfw: contentPreference?.allowNsfw ?? false,
 		otherAlias: otherProfile?.alias ?? 'Anonymous',
 		isSupporter: currentProfile?.isSupporter ?? false,
 		otherPresence,
@@ -255,18 +259,14 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			let expiringState: 'none' | 'unviewed' | 'expired' = 'none';
 			if (
 				m.cfImageId &&
-				(isMine ||
-					canReceivePhoto(
-						ratings.get(m.cfImageId) ?? 'unknown',
-						contentPreference?.allowNsfw ?? false
-					))
+				(isMine || canReceivePhoto(ratings.get(m.cfImageId) ?? 'unknown', allowsNsfw))
 			) {
 				if (timedExpired) {
 					expiringState = 'expired';
 				} else if (!m.isExpiring) {
-					cfImageUrl = imageUrl(env.CF_IMAGES_ACCOUNT_HASH, m.cfImageId);
+					cfImageUrl = threadPhotoUrl(m.cfImageId, params.threadId);
 				} else if (isMine) {
-					cfImageUrl = imageUrl(env.CF_IMAGES_ACCOUNT_HASH, m.cfImageId);
+					cfImageUrl = threadPhotoUrl(m.cfImageId, params.threadId);
 					expiringState = m.photoViewedAt ? 'expired' : 'unviewed';
 				} else {
 					expiringState = m.photoViewedAt ? 'expired' : 'unviewed';
@@ -285,10 +285,7 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 				photoHidden:
 					!!m.cfImageId &&
 					!isMine &&
-					!canReceivePhoto(
-						ratings.get(m.cfImageId) ?? 'unknown',
-						contentPreference?.allowNsfw ?? false
-					),
+					!canReceivePhoto(ratings.get(m.cfImageId) ?? 'unknown', allowsNsfw),
 				isExpiring: m.isExpiring,
 				expiringState,
 				expiresAt: m.expiresAt ?? null,
@@ -315,6 +312,36 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 };
 
 export const actions: Actions = {
+	setPhotoChoice: async ({ params, request, locals, platform }) => {
+		if (!locals.user) throw redirect(302, '/login');
+		const env = platform?.env;
+		if (!env) return fail(500, { error: 'Server configuration error' });
+		const choice = (await request.formData()).get('choice');
+		if (!['inherit', 'allow', 'block'].includes(String(choice)))
+			return fail(400, { error: 'Invalid photo preference' });
+		const db = getDb(env.DB);
+		const thread = await db
+			.select({
+				initiatorId: conversationThreads.initiatorId,
+				posterId: conversationThreads.posterId
+			})
+			.from(conversationThreads)
+			.where(eq(conversationThreads.id, params.threadId))
+			.get();
+		if (!thread) return fail(404, { error: 'Thread not found' });
+		const userId = locals.user.id;
+		if (userId !== thread.initiatorId && userId !== thread.posterId)
+			return fail(403, { error: 'Forbidden' });
+		await db
+			.update(conversationThreads)
+			.set(
+				userId === thread.initiatorId
+					? { initiatorNsfwChoice: String(choice) }
+					: { posterNsfwChoice: String(choice) }
+			)
+			.where(eq(conversationThreads.id, params.threadId));
+		return { success: true };
+	},
 	send: async ({ params, request, locals, platform }) => {
 		if (!locals.user) throw redirect(302, '/login');
 		const env = platform?.env;
@@ -330,6 +357,8 @@ export const actions: Actions = {
 				listingSubject: listings.subject,
 				initiatorId: conversationThreads.initiatorId,
 				posterId: conversationThreads.posterId,
+				initiatorNsfwChoice: conversationThreads.initiatorNsfwChoice,
+				posterNsfwChoice: conversationThreads.posterNsfwChoice,
 				status: conversationThreads.status,
 				lastNotifiedAt: conversationThreads.lastNotifiedAt
 			})
@@ -410,6 +439,9 @@ export const actions: Actions = {
 			.from(userProfiles)
 			.where(eq(userProfiles.id, sendOtherUserId))
 			.get();
+		const recipientChoice =
+			sendOtherUserId === thread.posterId ? thread.posterNsfwChoice : thread.initiatorNsfwChoice;
+		const recipientAllowsNsfw = allowsNsfwInThread(recipient?.allowNsfw ?? false, recipientChoice);
 
 		if (cfImageId) {
 			const photo = await db
@@ -425,7 +457,7 @@ export const actions: Actions = {
 				)
 				.get();
 			if (!photo) return fail(400, { error: 'Choose a photo from your own vault' });
-			if (!canReceivePhoto(photo.contentRating, recipient?.allowNsfw ?? false))
+			if (!canReceivePhoto(photo.contentRating, recipientAllowsNsfw))
 				return fail(400, {
 					error:
 						photo.contentRating === 'unknown'
@@ -450,7 +482,7 @@ export const actions: Actions = {
 				photos.some(
 					(photo) =>
 						photo.scanStatus === 'uploading' ||
-						!canReceivePhoto(photo.contentRating, recipient?.allowNsfw ?? false)
+						!canReceivePhoto(photo.contentRating, recipientAllowsNsfw)
 				)
 			)
 				return fail(400, {
