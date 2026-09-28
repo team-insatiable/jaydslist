@@ -254,6 +254,11 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			const isMine = m.senderId === userId;
 			const now = new Date();
 			const timedExpired = m.expiresAt ? m.expiresAt <= now : false;
+			const rating = m.cfImageId ? (ratings.get(m.cfImageId) ?? 'unknown') : null;
+			const blurredPhotoUrl =
+				m.cfImageId && !isMine && !m.isExpiring && !timedExpired && rating === 'nsfw' && !allowsNsfw
+					? threadPhotoUrl(m.cfImageId, params.threadId, true)
+					: null;
 
 			let cfImageUrl: string | null = null;
 			let expiringState: 'none' | 'unviewed' | 'expired' = 'none';
@@ -282,10 +287,8 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 				isMine,
 				body: m.body,
 				cfImageUrl,
-				photoHidden:
-					!!m.cfImageId &&
-					!isMine &&
-					!canReceivePhoto(ratings.get(m.cfImageId) ?? 'unknown', allowsNsfw),
+				blurredPhotoUrl,
+				photoHidden: !!m.cfImageId && !isMine && !canReceivePhoto(rating ?? 'unknown', allowsNsfw),
 				isExpiring: m.isExpiring,
 				expiringState,
 				expiresAt: m.expiresAt ?? null,

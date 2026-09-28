@@ -6,6 +6,6 @@ export function allowsNsfwInThread(accountAllowsNsfw: boolean, choice: string): 
 	return accountAllowsNsfw;
 }
 
-export function threadPhotoUrl(cfImageId: string, threadId: string): string {
-	return `/api/photos/${encodeURIComponent(cfImageId)}?threadId=${encodeURIComponent(threadId)}`;
+export function threadPhotoUrl(cfImageId: string, threadId: string, blurred = false): string {
+	return `/api/photos/${encodeURIComponent(cfImageId)}?threadId=${encodeURIComponent(threadId)}${blurred ? '&preview=blurred' : ''}`;
 }

@@ -36,13 +36,14 @@ export const GET: RequestHandler = async ({ locals, platform, params, url }) => 
 			.bind(viewerId, photo.user_id, photo.user_id, viewerId)
 			.first();
 		if (blocked) throw error(403, 'Forbidden');
-		if (threadId && !blurred) {
+		if (threadId) {
 			const shared = await env.DB.prepare(
 				`SELECT t.initiator_id, t.initiator_nsfw_choice, t.poster_nsfw_choice
 				FROM messages m JOIN conversation_threads t ON t.id = m.thread_id
 				WHERE t.id = ? AND m.sender_id = ? AND (t.initiator_id = ? OR t.poster_id = ?)
 				AND (m.cf_image_id = ? OR (m.album_id = ? AND ? IS NULL))
-				AND (m.expires_at IS NULL OR m.expires_at > unixepoch()) LIMIT 1`
+				AND (m.expires_at IS NULL OR m.expires_at > unixepoch())
+				AND (? = 0 OR m.is_expiring = 0) LIMIT 1`
 			)
 				.bind(
 					threadId,
@@ -51,7 +52,8 @@ export const GET: RequestHandler = async ({ locals, platform, params, url }) => 
 					viewerId,
 					params.imageId,
 					photo.album_id,
-					photo.deleted_at
+					photo.deleted_at,
+					blurred ? 1 : 0
 				)
 				.first<{
 					initiator_id: string;
