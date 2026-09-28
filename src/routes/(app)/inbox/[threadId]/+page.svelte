@@ -2202,6 +2202,11 @@
 		border-radius: 0;
 	}
 
+	.overlay-backdrop:hover:not(:disabled) {
+		background: rgba(0, 0, 0, 0.45);
+		border-color: transparent;
+	}
+
 	.block-overlay {
 		position: fixed;
 		top: 50%;
