@@ -4,6 +4,7 @@ import { load } from './+page.server';
 import {
 	createTestUser,
 	createTestListing,
+	createTestThread,
 	createTestVaultPhoto
 } from '$lib/server/test-helpers/fixtures';
 import { getDb } from '$lib/server/db';
@@ -83,5 +84,65 @@ describe('listing detail load photos', () => {
 		const owned = (await load(fakeEvent(listingId, owner))) as typeof optedOut;
 		expect(owned.photos).toHaveLength(2);
 		expect(owned.photos[0].blurred).toBe(false);
+	});
+	it.each(['removed', 'expired', 'paused'])(
+		'lets an existing conversation participant revisit an inactive %s listing without opening it to others',
+		async (status) => {
+			const owner = await createTestUser(env.DB);
+			const participant = await createTestUser(env.DB);
+			const stranger = await createTestUser(env.DB);
+			const listingId = await createTestListing(env.DB, owner, { status });
+			const threadId = await createTestThread(env.DB, {
+				listingId,
+				initiatorId: participant,
+				posterId: owner
+			});
+			const archived = (await load(fakeEvent(listingId, participant))) as {
+				unavailable: boolean;
+				archived: boolean;
+				existingThreadId: string;
+				listing: { body: string };
+				photos: unknown[];
+			};
+			expect(archived).toMatchObject({
+				unavailable: false,
+				archived: true,
+				existingThreadId: threadId,
+				listing: { body: 'Test listing body' },
+				photos: []
+			});
+			const outside = (await load(fakeEvent(listingId, stranger))) as {
+				unavailable: boolean;
+				listing: { body?: string };
+			};
+			expect(outside.unavailable).toBe(true);
+			expect(outside.listing.body).toBeUndefined();
+		}
+	);
+	it('treats a past expiry time as archived even before the listing status updates', async () => {
+		const owner = await createTestUser(env.DB);
+		const participant = await createTestUser(env.DB);
+		const listingId = await createTestListing(env.DB, owner);
+		await createTestThread(env.DB, { listingId, initiatorId: participant, posterId: owner });
+		await env.DB.prepare('UPDATE listings SET expires_at = unixepoch() - 1 WHERE id = ?')
+			.bind(listingId)
+			.run();
+		const archived = (await load(fakeEvent(listingId, participant))) as {
+			unavailable: boolean;
+			archived: boolean;
+		};
+		expect(archived).toMatchObject({ unavailable: false, archived: true });
+	});
+	it('does not expose a moderator-flagged listing through a conversation', async () => {
+		const owner = await createTestUser(env.DB);
+		const participant = await createTestUser(env.DB);
+		const listingId = await createTestListing(env.DB, owner, { status: 'flagged' });
+		await createTestThread(env.DB, { listingId, initiatorId: participant, posterId: owner });
+		const result = (await load(fakeEvent(listingId, participant))) as {
+			unavailable: boolean;
+			listing: { body?: string };
+		};
+		expect(result.unavailable).toBe(true);
+		expect(result.listing.body).toBeUndefined();
 	});
 });

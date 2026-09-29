@@ -73,10 +73,27 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		if (block) throw error(404, 'Listing not found');
 	}
 
-	const isAvailable = listing.status === 'active';
+	const isAvailable = listing.status === 'active' && listing.expiresAt.getTime() > Date.now();
+	const canViewArchive =
+		['removed', 'expired', 'lapsed', 'paused'].includes(listing.status) ||
+		(listing.status === 'active' && !isAvailable);
+	const existingThread =
+		locals.user && !isOwner
+			? await db
+					.select({ id: conversationThreads.id })
+					.from(conversationThreads)
+					.where(
+						and(
+							eq(conversationThreads.listingId, params.id),
+							eq(conversationThreads.initiatorId, locals.user.id)
+						)
+					)
+					.get()
+			: null;
+	const archived = canViewArchive && !isOwner && !!existingThread;
 
-	// Non-owners can still see the listing exists, just not its full content
-	if (!isAvailable && !isOwner) {
+	// Only the owner and people already in a conversation can revisit an inactive listing.
+	if (!isAvailable && !isOwner && !archived) {
 		return {
 			listing: { id: listing.id, subject: listing.subject, status: listing.status },
 			requirements: { ageMin: null, ageMax: null, trustTierMin: null, softPrompts: [] },
@@ -84,25 +101,12 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 			photos: [],
 			isOwner: false,
 			isLoggedIn: !!locals.user,
-			unavailable: true
+			unavailable: true,
+			archived: false
 		};
 	}
 
-	// Check for existing thread (for logged-in non-owners)
-	let existingThreadId: string | null = null;
-	if (locals.user && !isOwner) {
-		const existing = await db
-			.select({ id: conversationThreads.id })
-			.from(conversationThreads)
-			.where(
-				and(
-					eq(conversationThreads.listingId, params.id),
-					eq(conversationThreads.initiatorId, locals.user.id)
-				)
-			)
-			.get();
-		existingThreadId = existing?.id ?? null;
-	}
+	const existingThreadId = existingThread?.id ?? null;
 
 	const reqs = await db
 		.select()
@@ -116,24 +120,26 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		.where(eq(relativeTermDefinitions.listingId, params.id))
 		.all();
 
-	const photoRows = await db
-		.select({
-			id: listingPhotos.id,
-			contentRating: photoVault.contentRating,
-			cfImageId: photoVault.cfImageId,
-			displayOrder: listingPhotos.displayOrder
-		})
-		.from(listingPhotos)
-		.innerJoin(photoVault, eq(listingPhotos.vaultPhotoId, photoVault.id))
-		.where(
-			and(
-				eq(listingPhotos.listingId, params.id),
-				isNull(listingPhotos.purgedAt),
-				isNull(photoVault.deletedAt)
-			)
-		)
-		.orderBy(listingPhotos.displayOrder)
-		.all();
+	const photoRows = archived
+		? []
+		: await db
+				.select({
+					id: listingPhotos.id,
+					contentRating: photoVault.contentRating,
+					cfImageId: photoVault.cfImageId,
+					displayOrder: listingPhotos.displayOrder
+				})
+				.from(listingPhotos)
+				.innerJoin(photoVault, eq(listingPhotos.vaultPhotoId, photoVault.id))
+				.where(
+					and(
+						eq(listingPhotos.listingId, params.id),
+						isNull(listingPhotos.purgedAt),
+						isNull(photoVault.deletedAt)
+					)
+				)
+				.orderBy(listingPhotos.displayOrder)
+				.all();
 
 	const viewer = locals.user
 		? await db
@@ -206,6 +212,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 		isOwner,
 		isLoggedIn: !!locals.user,
 		unavailable: false,
+		archived,
 		canBump,
 		nextBumpAt
 	};
