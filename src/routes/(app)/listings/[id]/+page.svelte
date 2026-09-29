@@ -12,6 +12,7 @@
 	const isOwner = $derived(data.isOwner);
 	const isLoggedIn = $derived(data.isLoggedIn);
 	const unavailable = $derived(data.unavailable);
+	const archived = $derived(data.archived);
 
 	let confirmingDelete = $state(false);
 	let lightboxUrl: string | null = $state(null);
@@ -153,6 +154,12 @@
 
 			<!-- Subject -->
 			<h1 class="subject">{listing.subject}</h1>
+			{#if archived}
+				<div class="archive-notice" role="status">
+					<strong>This listing is no longer active.</strong> You can revisit its details because you already
+					have a conversation about it. New conversations cannot start from this listing.
+				</div>
+			{/if}
 
 			<!-- Poster meta -->
 			<div class="poster-meta">
@@ -441,7 +448,8 @@
 							</div>
 						{:else if listing.status === 'removed'}
 							<div class="status-notice notice-removed">
-								This listing has been deleted — only you can see it
+								This listing is removed from public view. Members with existing conversations can
+								still see its details.
 							</div>
 							<form
 								id="restore-form"
@@ -477,7 +485,7 @@
 				{:else if isLoggedIn}
 					{#if data.existingThreadId}
 						<a href={resolve(`/inbox/${data.existingThreadId}`)} class="respond-btn"
-							>View conversation</a
+							>{archived ? 'Return to conversation' : 'View conversation'}</a
 						>
 					{:else}
 						<a href={resolve(`/inbox/new?listing=${listing.id}`)} class="respond-btn"
@@ -707,6 +715,21 @@
 		line-height: 1.2;
 		text-wrap: balance;
 		margin-bottom: 1rem;
+	}
+
+	.archive-notice {
+		padding: 0.75rem 1rem;
+		margin-bottom: 1.25rem;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 8px;
+		background: var(--pico-muted-background-color);
+		color: var(--pico-muted-color);
+		font-size: 0.875rem;
+		line-height: 1.5;
+	}
+
+	.archive-notice strong {
+		color: var(--pico-color);
 	}
 
 	.poster-meta {

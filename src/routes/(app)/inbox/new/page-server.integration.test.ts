@@ -73,6 +73,18 @@ describe('inbox/new send action', () => {
 			.all();
 		expect(threads.results.length).toBe(1);
 	});
+	it('does not open a new thread after the listing expires, even if its status is still active', async () => {
+		await env.DB.prepare('UPDATE listings SET expires_at = unixepoch() - 1 WHERE id = ?')
+			.bind(listingId)
+			.run();
+		const result = await actions.send(
+			fakeEvent({ listingId, userId: initiatorId, body: LONG_MESSAGE })
+		);
+		expect(result).toMatchObject({
+			status: 400,
+			data: { error: 'This listing is no longer active' }
+		});
+	});
 
 	it('blocks a new thread once the daily velocity cap for a "new" tier account is hit', async () => {
 		// THREAD_VELOCITY_NEW_PER_DAY defaults to 3 — pre-create 3 other threads for this user today

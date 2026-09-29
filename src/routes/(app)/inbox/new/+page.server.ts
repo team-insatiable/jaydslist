@@ -39,6 +39,7 @@ export const load: PageServerLoad = async ({ url, locals, platform }) => {
 			subject: listings.subject,
 			body: listings.body,
 			status: listings.status,
+			expiresAt: listings.expiresAt,
 			posterAlias: userProfiles.alias
 		})
 		.from(listings)
@@ -48,7 +49,8 @@ export const load: PageServerLoad = async ({ url, locals, platform }) => {
 
 	if (!listing) throw error(404, 'Listing not found');
 	if (listing.userId === userId) throw redirect(302, `/listings/${listingId}`);
-	if (listing.status !== 'active') throw error(410, 'This listing is no longer active');
+	if (listing.status !== 'active' || listing.expiresAt.getTime() <= Date.now())
+		throw error(410, 'This listing is no longer active');
 
 	// Redirect to existing thread if one exists
 	const existing = await db
@@ -90,6 +92,7 @@ export const actions: Actions = {
 				id: listings.id,
 				userId: listings.userId,
 				status: listings.status,
+				expiresAt: listings.expiresAt,
 				subject: listings.subject
 			})
 			.from(listings)
@@ -99,7 +102,7 @@ export const actions: Actions = {
 		if (!listing) return fail(404, { error: 'Listing not found' });
 		if (listing.userId === userId)
 			return fail(400, { error: 'You cannot reply to your own listing' });
-		if (listing.status !== 'active')
+		if (listing.status !== 'active' || listing.expiresAt.getTime() <= Date.now())
 			return fail(400, { error: 'This listing is no longer active' });
 
 		// Prevent duplicate threads
