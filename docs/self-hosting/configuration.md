@@ -25,11 +25,11 @@ For example, in your private `wrangler.jsonc` under `vars`:
 "INSTANCE_URL": "https://your-instance.example"
 ```
 
-Redeploy after changing these values. The name is used throughout the app, account pages, public-page footers, and transactional email text. The tagline appears in the app header and landing page metadata. Set `EMAIL_FROM` separately to your chosen sender name and verified email address; `INSTANCE_NAME` does not override an explicitly configured sender. The bundled logo artwork still belongs to the upstream visual identity; changing the name does not replace that artwork. Policy files should use `{{INSTANCE_NAME}}` rather than hardcoding a name.
+Redeploy after changing these values. The name is used throughout the app, account pages, public-page footers, and transactional email text. The tagline appears in the app header and landing page metadata. Set `EMAIL_FROM` separately to your chosen sender name and verified email address; `INSTANCE_NAME` does not override an explicitly configured sender. Changing the name does not replace the logo artwork. Policy files should use `{{INSTANCE_NAME}}` rather than hardcoding a name.
 
-For email branding, replace `static/email-logo.png` with your own logo. The email uses your instance's HTTPS URL automatically; `INSTANCE_EMAIL_LOGO_URL` is an optional override for an externally hosted public image. Transactional email templates can be overlaid at build time; see [Email delivery](email.md#branding-and-templates). This affects email only and does not replace the bundled website logo.
+For visual branding, overlay your square PNG onto `static/logo.png` before building. The website, favicon, notifications, and email all use this asset; email derives its URL from your instance's HTTPS URL. `INSTANCE_EMAIL_LOGO_URL` is an optional email-only override for an externally hosted public image. Transactional email templates can be overlaid at build time; see [Email delivery](email.md#branding-and-templates).
 
-Overlay your own `content/about.md`, `content/rules.md`, `content/privacy.md`, and `content/terms.md` onto `src/lib/instance-content/` before building. These are public files, not secrets. The placeholders in the upstream checkout are not ready-to-use policies. See [instance policy content](deploy-cloudflare.md#instance-policy-content).
+Overlay your own `content/about.md`, `content/rules.md`, `content/privacy.md`, and `content/terms.md` onto `src/lib/instance-content/` before building. These are public files, not secrets. The placeholders in the upstream checkout are not ready-to-use policies. See [Deploy on Cloudflare](deploy-cloudflare.md#1-keep-your-instance-separate-from-the-application).
 
 ## Pre-launch beta waitlist
 

@@ -35,7 +35,7 @@ function logoUrl(env: Partial<Env>, instanceUrl: string): string | null {
 		if (customUrl) return customUrl;
 	}
 	try {
-		return publicHttpsUrl(new URL('/email-logo.png', instanceUrl).toString());
+		return publicHttpsUrl(new URL('/logo.png', instanceUrl).toString());
 	} catch {
 		return null;
 	}
