@@ -22,6 +22,8 @@ Jaydslist is a modern classifieds-style personals platform focused on casual enc
 
 ## Self-hosting
 
+Contributions and bug reports are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the issue workflow and private security reporting path.
+
 Jaydslist is designed for independent Cloudflare Workers deployments. Each operator supplies
 their own domain, Cloudflare account, D1 database, KV namespace, Cloudflare Images account,
 Twilio Verify service, email provider, and moderation/legal process. Do not reuse another

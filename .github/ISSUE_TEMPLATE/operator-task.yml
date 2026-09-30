@@ -1,0 +1,27 @@
+name: Operator task
+description: Track deployment, verification, documentation, or recovery work.
+labels: [operations, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep account IDs, credentials, production data, and private instance configuration out of public issues. Record sensitive evidence in the operator's private workspace.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: State the result an operator should be able to verify.
+    validations:
+      required: true
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Steps and acceptance criteria
+      description: Include a safe test or rollback plan when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies or decisions
+      description: Note approvals or external services needed; do not include secrets.

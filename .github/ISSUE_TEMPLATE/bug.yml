@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible problem in Jaydslist.
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues first. Do not include passwords, tokens, private messages, phone numbers, or other people's personal data. Use the private security report link for access-control or data-exposure issues.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the behavior and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Use synthetic data where possible.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Include a commit SHA if known.
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and device, if relevant
