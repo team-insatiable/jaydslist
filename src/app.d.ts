@@ -33,7 +33,7 @@ declare global {
 		INSTANCE_THEME?: string;
 		INSTANCE_NAME?: string;
 		INSTANCE_TAGLINE?: string;
-		/** Public HTTPS image used in transactional email headers. */
+		/** Optional public HTTPS override for the instance-hosted email logo. */
 		INSTANCE_EMAIL_LOGO_URL?: string;
 		INSTANCE_URL?: string;
 		INSTANCE_LEGAL_EMAIL?: string;

@@ -19,12 +19,23 @@ function renderFields(template: string, values: Record<string, string>, escape: 
 	});
 }
 
-function logoUrl(env: Partial<Env>): string | null {
-	const candidate = env.INSTANCE_EMAIL_LOGO_URL?.trim();
-	if (!candidate) return null;
+function publicHttpsUrl(candidate: string): string | null {
 	try {
 		const url = new URL(candidate);
 		return url.protocol === 'https:' && !url.username && !url.password ? url.toString() : null;
+	} catch {
+		return null;
+	}
+}
+
+function logoUrl(env: Partial<Env>, instanceUrl: string): string | null {
+	const override = env.INSTANCE_EMAIL_LOGO_URL?.trim();
+	if (override) {
+		const customUrl = publicHttpsUrl(override);
+		if (customUrl) return customUrl;
+	}
+	try {
+		return publicHttpsUrl(new URL('/email-logo.png', instanceUrl).toString());
 	} catch {
 		return null;
 	}
@@ -53,7 +64,7 @@ export function renderInstanceEmail(
 		.replace(/[\r\n]+/g, ' ')
 		.trim();
 	const body = renderFields(template.html, values, true);
-	const logo = logoUrl(env);
+	const logo = logoUrl(env, instance.url);
 	const brand = logo
 		? `<img src="${escapeEmailHtml(logo)}" alt="${escapeEmailHtml(instance.name)} logo" width="56" height="56" style="display:block;width:56px;height:56px;object-fit:contain;margin-bottom:12px" />`
 		: '';

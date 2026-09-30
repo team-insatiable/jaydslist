@@ -35,6 +35,7 @@ with your configured instance values. Review Terms and Privacy content for your 
 actual data practices.
 
 Optionally overlay `content/email-templates.ts` onto `src/lib/instance-content/email-templates.ts` to customize transactional email copy. See [Email delivery](email.md#branding-and-templates). Keep the same template keys and required action URL placeholders.
+If your instance has its own logo, also overlay its PNG onto `static/email-logo.png` before building; emails will use it through `INSTANCE_URL` automatically.
 
 ## 2. Provision your Cloudflare resources
 
