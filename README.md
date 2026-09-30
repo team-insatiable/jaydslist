@@ -44,17 +44,18 @@ data, but it deletes and recreates the local D1 database first.
 
 ### Deploy your own instance
 
-1. Replace the placeholder Worker name, D1 ID, KV ID, Images account ID, delivery hash, and
-   public instance values in `wrangler.jsonc` with resources from your Cloudflare account.
+Keep an operator-owned instance repository for your configuration, policies, logo, and optional email templates. Deploy a chosen upstream release or commit with those files copied into its checkout. You only need a fork if you change application code.
+
+1. Put a configured `wrangler.jsonc`, your four policy Markdown files, and your square `static/logo.png` in your instance repository. Use resources from your own Cloudflare account.
 2. Copy the applicable settings from `.dev.vars.example` to Worker variables and set every
    secret interactively with `pnpm exec wrangler secret put NAME`.
-3. Apply migrations to **your** remote D1 database:
+3. Verify the selected Cloudflare account with `pnpm exec wrangler whoami`, then apply migrations to **your** remote D1 database:
 
    ```bash
    pnpm exec wrangler d1 migrations apply YOUR_DATABASE_NAME --remote
    ```
 
-4. Supply your instance's About, Rules, Privacy, and Terms Markdown, then build and deploy the Worker and attach a domain you control. Set `ORIGIN` and `INSTANCE_URL` to that HTTPS URL.
+4. Overlay the instance files onto the chosen upstream checkout, then build and deploy the Worker and attach a domain you control. Set `ORIGIN` and `INSTANCE_URL` to that HTTPS URL.
 5. Before inviting users, test phone verification, photos, listings, messaging, password reset
    email, and administrator access.
 

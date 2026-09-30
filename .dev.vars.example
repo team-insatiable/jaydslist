@@ -5,7 +5,7 @@ ENVIRONMENT=development
 INSTANCE_THEME=default
 INSTANCE_NAME=Jaydslist
 INSTANCE_TAGLINE="Real connections, real people"
-# Optional absolute HTTPS override for the default /email-logo.png asset.
+# Optional absolute HTTPS override for the default /logo.png asset.
 INSTANCE_EMAIL_LOGO_URL=
 INSTANCE_URL=http://localhost:5173
 INSTANCE_LEGAL_EMAIL=operator@example.com

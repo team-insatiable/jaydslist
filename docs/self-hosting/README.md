@@ -35,5 +35,5 @@ Keep secrets out of git. Use `.dev.vars` locally and Worker secrets in productio
 
 Each instance must supply its own About page, Community Rules, Privacy Policy, and Terms of Use.
 These pages are not upstream configuration and should not be copied from another operator. The
-deployment configuration repository overlays four Markdown files at build time; see
-[Deploy on Cloudflare](deploy-cloudflare.md#instance-policy-content).
+instance repository overlays four Markdown files at build time; see
+[Deploy on Cloudflare](deploy-cloudflare.md#1-keep-your-instance-separate-from-the-application).

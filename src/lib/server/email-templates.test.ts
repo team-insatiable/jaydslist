@@ -10,7 +10,7 @@ const instance = {
 describe('operator email templates', () => {
 	it('uses the instance-hosted logo without separate configuration', () => {
 		const email = renderInstanceEmail(instance, 'betaWelcome');
-		expect(email.html).toContain('src="https://harbor.example/email-logo.png"');
+		expect(email.html).toContain('src="https://harbor.example/logo.png"');
 		expect(email.html).toContain(
 			'<strong style="font-size:20px">Harbor &lt;Connections&gt;</strong>'
 		);
@@ -18,12 +18,12 @@ describe('operator email templates', () => {
 
 	it('accepts a custom HTTPS logo with a visible text name and safe action link', () => {
 		const email = renderInstanceEmail(
-			{ ...instance, INSTANCE_EMAIL_LOGO_URL: 'https://harbor.example/email-logo.png' },
+			{ ...instance, INSTANCE_EMAIL_LOGO_URL: 'https://harbor.example/logo.png' },
 			'passwordReset',
 			{ resetUrl: 'https://harbor.example/reset?token=a&b=2' }
 		);
 		expect(email.subject).toBe('Reset your Harbor <Connections> password');
-		expect(email.html).toContain('src="https://harbor.example/email-logo.png"');
+		expect(email.html).toContain('src="https://harbor.example/logo.png"');
 		expect(email.html).toContain(
 			'<strong style="font-size:20px">Harbor &lt;Connections&gt;</strong>'
 		);
@@ -37,7 +37,7 @@ describe('operator email templates', () => {
 				{ ...instance, INSTANCE_EMAIL_LOGO_URL: logo },
 				'betaWelcome'
 			);
-			expect(email.html).toContain('src="https://harbor.example/email-logo.png"');
+			expect(email.html).toContain('src="https://harbor.example/logo.png"');
 			expect(email.html).toContain('Harbor &lt;Connections&gt;');
 		}
 	});
