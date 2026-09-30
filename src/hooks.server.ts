@@ -58,6 +58,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 			!!event.locals.user && allowedEmails.includes(event.locals.user.email.toLowerCase());
 		const publicPath =
 			event.url.pathname === '/' ||
+			event.url.pathname === '/email-logo.png' ||
 			event.url.pathname === '/beta/confirm' ||
 			['/about', '/rules', '/terms', '/privacy', '/self-host', '/login'].includes(
 				event.url.pathname
