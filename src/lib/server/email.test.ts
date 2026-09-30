@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { emailIsConfigured, sendEmail, sendAbuseAlertEmail, userWarnedEmail } from './email';
+import { emailIsConfigured, sendEmail, sendAbuseAlertEmail } from './email';
+import { renderInstanceEmail } from './email-templates';
 
 const resendEnv = {
 	EMAIL_PROVIDER: 'resend',
@@ -38,10 +39,11 @@ describe('email providers', () => {
 	});
 
 	it('uses the instance rules URL and escapes names in moderation email HTML', () => {
-		const html = userWarnedEmail(
+		const html = renderInstanceEmail(
 			{ INSTANCE_NAME: 'Local <Connections>', INSTANCE_URL: 'https://community.example/' } as Env,
-			'<script>test</script>'
-		);
+			'accountWarning',
+			{ reason: '<script>test</script>' }
+		).html;
 		expect(html).toContain('Local &lt;Connections&gt; moderator');
 		expect(html).toContain('href="https://community.example/rules"');
 		expect(html).toContain('&lt;script&gt;test&lt;/script&gt;');

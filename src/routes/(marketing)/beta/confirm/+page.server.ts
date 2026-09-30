@@ -4,7 +4,7 @@ import { betaWaitlist } from '$lib/server/db/schema';
 import { getDb } from '$lib/server/db';
 import { sendEmail } from '$lib/server/email';
 import { getInstanceConfig } from '$lib/server/instance';
-import { escapeEmailHtml } from '$lib/server/email-html';
+import { renderInstanceEmail } from '$lib/server/email-templates';
 import type { PageServerLoad } from './$types';
 
 const hash = async (value: string) =>
@@ -38,8 +38,7 @@ export const load: PageServerLoad = async ({ url, platform }) => {
 			.where(eq(betaWaitlist.id, entry.id));
 		await sendEmail(env, {
 			to: entry.email,
-			subject: `You’re on the ${instance.name} beta list`,
-			html: `<p>You’re confirmed for the ${escapeEmailHtml(instance.name)} beta. We’ll email you when there is news to share.</p>`
+			...renderInstanceEmail(env, 'betaWelcome')
 		});
 	}
 	return { instanceName: instance.name };
