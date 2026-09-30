@@ -8,7 +8,15 @@ const instance = {
 } as Env;
 
 describe('operator email templates', () => {
-	it('renders a custom HTTPS logo with a visible text name and safe action link', () => {
+	it('uses the instance-hosted logo without separate configuration', () => {
+		const email = renderInstanceEmail(instance, 'betaWelcome');
+		expect(email.html).toContain('src="https://harbor.example/email-logo.png"');
+		expect(email.html).toContain(
+			'<strong style="font-size:20px">Harbor &lt;Connections&gt;</strong>'
+		);
+	});
+
+	it('accepts a custom HTTPS logo with a visible text name and safe action link', () => {
 		const email = renderInstanceEmail(
 			{ ...instance, INSTANCE_EMAIL_LOGO_URL: 'https://harbor.example/email-logo.png' },
 			'passwordReset',
@@ -23,15 +31,24 @@ describe('operator email templates', () => {
 		expect(email.html).not.toContain('static/logo.svg');
 	});
 
-	it('falls back to the name when the logo URL is absent or unsafe', () => {
-		for (const logo of [undefined, 'http://harbor.example/logo.png', 'javascript:alert(1)']) {
+	it('falls back to the instance asset when a logo override is unsafe', () => {
+		for (const logo of ['http://harbor.example/logo.png', 'javascript:alert(1)']) {
 			const email = renderInstanceEmail(
 				{ ...instance, INSTANCE_EMAIL_LOGO_URL: logo },
 				'betaWelcome'
 			);
-			expect(email.html).not.toContain('<img');
+			expect(email.html).toContain('src="https://harbor.example/email-logo.png"');
 			expect(email.html).toContain('Harbor &lt;Connections&gt;');
 		}
+	});
+
+	it('shows text without an image when the instance URL is not public HTTPS', () => {
+		const email = renderInstanceEmail(
+			{ ...instance, INSTANCE_URL: 'http://localhost:5173' },
+			'betaWelcome'
+		);
+		expect(email.html).not.toContain('<img');
+		expect(email.html).toContain('Harbor &lt;Connections&gt;');
 	});
 
 	it('escapes untrusted message content and removes absent optional sections', () => {
