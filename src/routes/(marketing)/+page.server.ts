@@ -4,7 +4,7 @@ import { betaWaitlist } from '$lib/server/db/schema';
 import { getDb } from '$lib/server/db';
 import { emailIsConfigured, sendEmail } from '$lib/server/email';
 import { getInstanceConfig } from '$lib/server/instance';
-import { escapeEmailHtml } from '$lib/server/email-html';
+import { renderInstanceEmail } from '$lib/server/email-templates';
 import type { Actions, PageServerLoad } from './$types';
 
 const hash = async (value: string) =>
@@ -55,8 +55,7 @@ export const actions: Actions = {
 		confirmUrl.searchParams.set('token', rawToken);
 		await sendEmail(env, {
 			to: email,
-			subject: `Confirm your ${instance.name} beta signup`,
-			html: `<p>Confirm that you want beta updates from ${escapeEmailHtml(instance.name)}.</p><p><a href="${escapeEmailHtml(confirmUrl.toString())}">Confirm beta signup</a></p><p>This link expires in 24 hours. If you did not request this, you can ignore this email.</p>`
+			...renderInstanceEmail(env, 'betaConfirm', { confirmUrl: confirmUrl.toString() })
 		});
 		return { submitted: true };
 	}

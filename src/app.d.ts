@@ -33,6 +33,8 @@ declare global {
 		INSTANCE_THEME?: string;
 		INSTANCE_NAME?: string;
 		INSTANCE_TAGLINE?: string;
+		/** Public HTTPS image used in transactional email headers. */
+		INSTANCE_EMAIL_LOGO_URL?: string;
 		INSTANCE_URL?: string;
 		INSTANCE_LEGAL_EMAIL?: string;
 		INSTANCE_SOURCE_URL?: string;

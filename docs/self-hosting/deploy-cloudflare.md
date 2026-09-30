@@ -34,6 +34,8 @@ may use `{{INSTANCE_NAME}}`, `{{INSTANCE_URL}}`, and `{{LEGAL_EMAIL}}`; the appl
 with your configured instance values. Review Terms and Privacy content for your jurisdiction and
 actual data practices.
 
+Optionally overlay `content/email-templates.ts` onto `src/lib/instance-content/email-templates.ts` to customize transactional email copy. See [Email delivery](email.md#branding-and-templates). Keep the same template keys and required action URL placeholders.
+
 ## 2. Provision your Cloudflare resources
 
 Create these resources in **your** Cloudflare account:
