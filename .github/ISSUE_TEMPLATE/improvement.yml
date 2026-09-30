@@ -1,0 +1,27 @@
+name: Improvement
+description: Suggest a feature or refinement.
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues first. Jaydslist is privacy-first, ad-free, and open source. Core use should stay available without payment.
+  - type: textarea
+    id: need
+    attributes:
+      label: User need
+      description: Who needs this, and what are they trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behavior you would like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or constraints
+      description: Include privacy, accessibility, or self-hosting considerations if relevant.
