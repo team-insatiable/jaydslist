@@ -335,7 +335,7 @@ export const actions: Actions = {
 		const db = getDb(env.DB);
 
 		const listing = await db
-			.select({ userId: listings.userId })
+			.select({ userId: listings.userId, subject: listings.subject, body: listings.body })
 			.from(listings)
 			.where(eq(listings.id, params.id))
 			.get();
@@ -369,6 +369,12 @@ export const actions: Actions = {
 			targetId: params.id,
 			category,
 			detail,
+			evidenceSnapshot: JSON.stringify({
+				userId: listing.userId,
+				subject: listing.subject,
+				body: listing.body
+			}),
+			evidenceCapturedAt: new Date(),
 			reporterTrustScoreSnapshot: reporter?.reporterTrustScore ?? 0.5
 		});
 

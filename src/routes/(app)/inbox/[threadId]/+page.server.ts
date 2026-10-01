@@ -884,6 +884,7 @@ export const actions: Actions = {
 		const category = data.get('category') as string;
 		const detail = (data.get('detail') as string)?.trim() || null;
 		const targetUserId = data.get('targetUserId') as string;
+		const messageId = String(data.get('messageId') ?? '').trim();
 
 		const VALID_CATEGORIES = [
 			'harassment',
@@ -895,6 +896,32 @@ export const actions: Actions = {
 		];
 		if (!VALID_CATEGORIES.includes(category)) return fail(400, { error: 'Invalid category' });
 		if (targetUserId === userId) return fail(400, { error: 'Cannot report yourself' });
+		const otherUserId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
+		if (targetUserId !== otherUserId) return fail(400, { error: 'Invalid report target' });
+		let evidenceSnapshot: string | null = null;
+		if (messageId) {
+			const message = await db
+				.select({
+					id: messages.id,
+					threadId: messages.threadId,
+					senderId: messages.senderId,
+					body: messages.body,
+					cfImageId: messages.cfImageId,
+					sentAt: messages.sentAt
+				})
+				.from(messages)
+				.where(eq(messages.id, messageId))
+				.get();
+			if (!message || message.threadId !== params.threadId || message.senderId !== otherUserId)
+				return fail(400, { error: 'Invalid message to report' });
+			evidenceSnapshot = JSON.stringify({
+				threadId: message.threadId,
+				senderId: message.senderId,
+				body: message.body,
+				cfImageId: message.cfImageId,
+				sentAt: message.sentAt.toISOString()
+			});
+		}
 
 		const reporter = await db
 			.select({ reporterTrustScore: userProfiles.reporterTrustScore })
@@ -905,10 +932,12 @@ export const actions: Actions = {
 		await db.insert(reports).values({
 			id: crypto.randomUUID(),
 			reporterId: userId,
-			targetType: 'user',
-			targetId: targetUserId,
+			targetType: messageId ? 'message' : 'user',
+			targetId: messageId || targetUserId,
 			category,
 			detail,
+			evidenceSnapshot,
+			evidenceCapturedAt: evidenceSnapshot ? new Date() : null,
 			reporterTrustScoreSnapshot: reporter?.reporterTrustScore ?? 0.5
 		});
 
