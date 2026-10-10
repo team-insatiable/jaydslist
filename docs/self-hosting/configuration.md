@@ -37,6 +37,8 @@ Set `INSTANCE_PRELAUNCH_MODE=true` to present a public landing page instead of t
 
 This feature adds a D1 migration. Apply that migration before enabling the setting, and ensure your transactional email provider is configured.
 
+Confirmation links expire after 24 hours. Pending addresses can request a new link after 15 minutes; repeat requests within that period and requests for already-confirmed addresses receive the same generic response without another email. If the email provider rejects a send, the page reports the failure and permits a retry. Before advertising the signup page, configure a Cloudflare rate limiting rule for `POST` requests to the `/` path (the SvelteKit action uses the query string), counting by client IP. Start with a conservative threshold based on expected traffic and review Security Events as traffic grows. The per-address cooldown limits repeated mail to one address; the edge rule limits bursts across many addresses. Test signup and the emailed confirmation link with an address you control, then confirm the record moves from pending to confirmed.
+
 ## Instance theme
 
 `INSTANCE_THEME` selects the instance-wide accent color. It changes buttons, links, focus states, and other primary UI accents; it does not replace the instance name or logo.
