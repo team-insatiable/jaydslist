@@ -21,6 +21,7 @@
 		lapsed: 'Lapsed',
 		removed: 'Removed',
 		flagged: 'Flagged',
+		pending_review: 'Awaiting review',
 		renewed: 'Renewed'
 	};
 
@@ -154,7 +155,9 @@
 						</div>
 					</a>
 
-					{#if listing.status === 'flagged'}
+					{#if listing.status === 'pending_review'}
+						<div class="flagged-bar">Awaiting safety review — not visible to others.</div>
+					{:else if listing.status === 'flagged'}
 						<div class="flagged-bar">
 							Suspended by moderator — <a href={resolve(`/listings/${listing.id}/edit`)}
 								>Edit to reactivate</a

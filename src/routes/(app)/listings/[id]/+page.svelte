@@ -386,6 +386,10 @@
 								>
 								Pause
 							</button>
+						{:else if listing.status === 'pending_review'}
+							<div class="status-notice notice-paused">
+								Awaiting safety review — not visible to others
+							</div>
 						{:else if listing.status === 'paused'}
 							<div class="status-notice notice-paused">Paused — not visible to others</div>
 							<form

@@ -3,6 +3,8 @@ import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import {
 	listings,
+	safetyCases,
+	safetyScanEvents,
 	listingRequirements,
 	relativeTermDefinitions,
 	listingEvents,
@@ -16,6 +18,7 @@ import { getActiveVocabulary } from '$lib/server/relative-terms.server';
 import { scanTerms } from '$lib/relative-terms';
 import { getVaultPhotos, getAlbumList } from '$lib/server/photo-vault';
 import { getMaxActiveListings, getActiveListingCount } from '$lib/server/listing-lifecycle';
+import { screenContent, screeningRecords } from '$lib/server/content-screening';
 
 const VALID_IDENTITIES = [
 	'man',
@@ -109,6 +112,7 @@ export const actions: Actions = {
 		if (subject.length > 120) return fail(400, { error: 'Subject must be 120 characters or less' });
 		if (!body || body.length < 50)
 			return fail(400, { error: 'Listing body must be at least 50 characters' });
+		if (body.length > 10_000) return fail(400, { error: 'Listing body is too long' });
 		if (!VALID_TRUST_TIERS.includes(trustTierMin))
 			return fail(400, { error: 'Invalid trust tier' });
 
@@ -188,24 +192,41 @@ export const actions: Actions = {
 		const now = new Date();
 		const expiresAt = new Date(now.getTime() + LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000);
 		const listingId = crypto.randomUUID();
-
-		await db.insert(listings).values({
-			id: listingId,
-			userId: locals.user.id,
-			subject,
-			body,
-			lookingForIdentity: JSON.stringify(lookingFor),
-			natureOfConnection: JSON.stringify(nature),
-			mood,
-			availability,
-			ageRangeMin: ageMin,
-			ageRangeMax: ageMax,
-			lat: profile.lat,
-			lng: profile.lng,
-			fuzzyLocation,
-			expiresAt,
-			lastBumpedAt: now
-		});
+		const screening = await screenContent(db, `${subject}\n${body}`, 'listing');
+		const records = screeningRecords(
+			screening,
+			'listing',
+			listingId,
+			locals.user.id,
+			{
+				subject,
+				body
+			},
+			'active'
+		);
+		await db.batch([
+			db.insert(listings).values({
+				id: listingId,
+				userId: locals.user.id,
+				subject,
+				body,
+				status: screening.outcome === 'cleared' ? 'active' : 'pending_review',
+				scanRevisionId: screening.revisionId,
+				lookingForIdentity: JSON.stringify(lookingFor),
+				natureOfConnection: JSON.stringify(nature),
+				mood,
+				availability,
+				ageRangeMin: ageMin,
+				ageRangeMax: ageMax,
+				lat: profile.lat,
+				lng: profile.lng,
+				fuzzyLocation,
+				expiresAt,
+				lastBumpedAt: now
+			}),
+			db.insert(safetyScanEvents).values(records.scan),
+			...(records.case ? [db.insert(safetyCases).values(records.case)] : [])
+		]);
 
 		const reqs: {
 			id: string;

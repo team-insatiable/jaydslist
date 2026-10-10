@@ -5,6 +5,8 @@ import {
 	conversationThreads,
 	listings,
 	messages,
+	safetyCases,
+	safetyScanEvents,
 	userProfiles,
 	pushSubscriptions,
 	user,
@@ -17,6 +19,7 @@ import { decryptContact } from '$lib/server/crypto';
 import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
 import { getInstanceConfig } from '$lib/server/instance';
 import { sendPushNotification } from '$lib/server/push';
+import { screenContent, screeningRecords } from '$lib/server/content-screening';
 
 const CONTACT_INFO_PATTERN = /(\+?[\d\s\-().]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/i;
 
@@ -227,6 +230,7 @@ export const actions: Actions = {
 
 		if (body.length < minLength)
 			return fail(400, { error: `Your message must be at least ${minLength} characters` });
+		if (body.length > 10_000) return fail(400, { error: 'Message is too long' });
 
 		if (CONTACT_INFO_PATTERN.test(body))
 			return fail(400, {
@@ -235,22 +239,34 @@ export const actions: Actions = {
 			});
 
 		const threadId = crypto.randomUUID();
-
-		await db.insert(conversationThreads).values({
-			id: threadId,
-			listingId,
-			initiatorId: userId,
-			posterId: listing.userId,
-			status: 'open',
-			lastActivityAt: new Date()
-		});
-		await db.insert(messages).values({
-			id: crypto.randomUUID(),
+		const messageId = crypto.randomUUID();
+		const screening = await screenContent(db, body, 'message');
+		const records = screeningRecords(screening, 'message', messageId, userId, {
 			threadId,
 			senderId: userId,
-			body,
-			sentAt: new Date()
+			body
 		});
+		await db.batch([
+			db.insert(conversationThreads).values({
+				id: threadId,
+				listingId,
+				initiatorId: userId,
+				posterId: listing.userId,
+				status: 'open',
+				lastActivityAt: new Date()
+			}),
+			db.insert(messages).values({
+				id: messageId,
+				threadId,
+				senderId: userId,
+				body,
+				scanStatus: screening.outcome === 'cleared' ? 'cleared' : 'flagged',
+				scanRevisionId: screening.revisionId,
+				sentAt: new Date()
+			}),
+			db.insert(safetyScanEvents).values(records.scan),
+			...(records.case ? [db.insert(safetyCases).values(records.case)] : [])
+		]);
 
 		// Increment poster's total thread count and recalculate response rate
 		const posterProfile = await db
@@ -261,7 +277,7 @@ export const actions: Actions = {
 			.from(userProfiles)
 			.where(eq(userProfiles.id, listing.userId))
 			.get();
-		if (posterProfile) {
+		if (posterProfile && screening.outcome === 'cleared') {
 			const newTotal = posterProfile.totalThreads + 1;
 			const rate = newTotal > 0 ? posterProfile.respondedThreads / newTotal : 0;
 			await db
@@ -271,7 +287,7 @@ export const actions: Actions = {
 		}
 
 		// Notify poster — first message in a new thread, no cooldown needed
-		if (emailIsConfigured(env) || env.VAPID_PRIVATE_KEY) {
+		if (screening.outcome === 'cleared' && (emailIsConfigured(env) || env.VAPID_PRIVATE_KEY)) {
 			const origin = env.ORIGIN ?? getInstanceConfig(env).url;
 			const threadUrl = `${origin}/inbox/${threadId}`;
 			Promise.all([

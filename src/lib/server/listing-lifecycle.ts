@@ -1,6 +1,7 @@
 import { eq, and, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
-import { listings, listingEvents } from '$lib/server/db/schema';
+import { listings, listingEvents, safetyCases, safetyScanEvents } from '$lib/server/db/schema';
+import { screenContent, screeningRecords } from '$lib/server/content-screening';
 import { getConfig, getConfigInt } from '$lib/server/config';
 import { randomUUID } from 'node:crypto';
 
@@ -94,7 +95,13 @@ export async function relistListing(
 	const drizzle = getDb(db);
 
 	const listing = await drizzle
-		.select({ id: listings.id, status: listings.status, userId: listings.userId })
+		.select({
+			id: listings.id,
+			status: listings.status,
+			userId: listings.userId,
+			subject: listings.subject,
+			body: listings.body
+		})
 		.from(listings)
 		.where(and(eq(listings.id, listingId), eq(listings.userId, userId)))
 		.get();
@@ -126,22 +133,38 @@ export async function relistListing(
 	const now = new Date();
 	const expiresAt = new Date(now.getTime() + durationDays * 86400_000);
 
-	await drizzle
-		.update(listings)
-		.set({
-			status: 'active',
-			expiresAt,
-			lastBumpedAt: now,
-			renewedAt: now
-		})
-		.where(eq(listings.id, listingId));
-
-	await drizzle.insert(listingEvents).values({
-		id: randomUUID(),
+	const screening = await screenContent(drizzle, `${listing.subject}\n${listing.body}`, 'listing');
+	const records = screeningRecords(
+		screening,
+		'listing',
 		listingId,
-		eventType: 'renewed',
-		actorId: userId
-	});
+		userId,
+		{
+			subject: listing.subject,
+			body: listing.body
+		},
+		'active'
+	);
+	await drizzle.batch([
+		drizzle
+			.update(listings)
+			.set({
+				status: screening.outcome === 'cleared' ? 'active' : 'pending_review',
+				scanRevisionId: screening.revisionId,
+				expiresAt,
+				lastBumpedAt: now,
+				renewedAt: now
+			})
+			.where(eq(listings.id, listingId)),
+		drizzle.insert(safetyScanEvents).values(records.scan),
+		...(records.case ? [drizzle.insert(safetyCases).values(records.case)] : []),
+		drizzle.insert(listingEvents).values({
+			id: randomUUID(),
+			listingId,
+			eventType: 'renewed',
+			actorId: userId
+		})
+	]);
 
 	return { success: true };
 }

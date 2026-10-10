@@ -42,6 +42,7 @@ export const GET: RequestHandler = async ({ locals, platform, params, url }) => 
 				FROM messages m JOIN conversation_threads t ON t.id = m.thread_id
 				WHERE t.id = ? AND m.sender_id = ? AND (t.initiator_id = ? OR t.poster_id = ?)
 				AND (m.cf_image_id = ? OR (m.album_id = ? AND ? IS NULL))
+				AND m.scan_status IN ('cleared', 'passed')
 				AND (m.expires_at IS NULL OR m.expires_at > unixepoch())
 				AND (? = 0 OR m.is_expiring = 0) LIMIT 1`
 			)

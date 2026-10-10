@@ -6,6 +6,8 @@ import {
 	conversationThreads,
 	listings,
 	messages,
+	safetyCases,
+	safetyScanEvents,
 	userProfiles,
 	keyExchanges,
 	reports,
@@ -15,12 +17,13 @@ import {
 	photoAlbums,
 	userBlocks
 } from '$lib/server/db/schema';
-import { eq, and, asc, ne, isNull, desc, gte, or } from 'drizzle-orm';
+import { eq, and, asc, ne, isNull, desc, gte, or, inArray } from 'drizzle-orm';
 import { DECLINE_PHRASES } from '$lib/server/decline-phrases';
 import { decryptContact } from '$lib/server/crypto';
 import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
 import { getInstanceConfig } from '$lib/server/instance';
 import { sendPushNotification } from '$lib/server/push';
+import { screenContent, screeningRecords } from '$lib/server/content-screening';
 import { isKeyExchangeEligible } from '$lib/server/key-exchange';
 import { allowsNsfwInThread, threadPhotoUrl } from '$lib/server/thread-photo-preference';
 
@@ -81,10 +84,16 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 				expiresAt: messages.expiresAt,
 				albumId: messages.albumId,
 				sentAt: messages.sentAt,
-				readAt: messages.readAt
+				readAt: messages.readAt,
+				scanStatus: messages.scanStatus
 			})
 			.from(messages)
-			.where(eq(messages.threadId, params.threadId))
+			.where(
+				and(
+					eq(messages.threadId, params.threadId),
+					or(eq(messages.senderId, userId), inArray(messages.scanStatus, ['cleared', 'passed']))
+				)
+			)
 			.orderBy(asc(messages.sentAt))
 			.all(),
 		db
@@ -133,14 +142,18 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 				and(
 					eq(messages.threadId, params.threadId),
 					ne(messages.senderId, userId),
+					inArray(messages.scanStatus, ['cleared', 'passed']),
 					isNull(messages.readAt)
 				)
 			);
 	}
 
 	// Eligibility: poster after first message received; responder after sending AND receiving a reply
-	const myMessages = threadMessages.filter((m) => m.senderId === userId);
-	const theirMessages = threadMessages.filter((m) => m.senderId !== userId);
+	const deliveredMessages = threadMessages.filter((m) =>
+		['cleared', 'passed'].includes(m.scanStatus)
+	);
+	const myMessages = deliveredMessages.filter((m) => m.senderId === userId);
+	const theirMessages = deliveredMessages.filter((m) => m.senderId !== userId);
 	const eligible = isKeyExchangeEligible(role, myMessages.length, theirMessages.length);
 
 	// Only show active exchanges (offered or accepted)
@@ -283,6 +296,7 @@ export const load: PageServerLoad = async ({ params, locals, platform, depends }
 			if (albumExpired && !m.cfImageId) expiringState = 'expired';
 
 			return {
+				scanStatus: m.scanStatus,
 				id: m.id,
 				isMine,
 				body: m.body,
@@ -508,33 +522,53 @@ export const actions: Actions = {
 
 		if (!cfImageId && !albumId && body.length < 1)
 			return fail(400, { error: 'Message cannot be empty' });
+		if (body.length > 10_000) return fail(400, { error: 'Message is too long' });
 		if (body && CONTACT_INFO_PATTERN.test(body))
 			return fail(400, {
 				error:
 					'Contact information cannot be shared in messages. Use the contact exchange feature instead.'
 			});
 
-		await db.insert(messages).values({
-			id: crypto.randomUUID(),
+		const messageId = crypto.randomUUID();
+		const screening = await screenContent(db, body, 'message');
+		const records = screeningRecords(screening, 'message', messageId, userId, {
 			threadId: params.threadId,
 			senderId: userId,
 			body,
 			cfImageId,
-			albumId,
-			isExpiring,
-			expiresAt,
-			sentAt: new Date()
+			albumId
 		});
-		await db
-			.update(conversationThreads)
-			.set({ lastActivityAt: new Date() })
-			.where(eq(conversationThreads.id, params.threadId));
+		await db.batch([
+			db.insert(messages).values({
+				id: messageId,
+				threadId: params.threadId,
+				senderId: userId,
+				body,
+				cfImageId,
+				albumId,
+				isExpiring,
+				expiresAt,
+				scanStatus: screening.outcome === 'cleared' ? 'cleared' : 'flagged',
+				scanRevisionId: screening.revisionId,
+				sentAt: new Date()
+			}),
+			db.insert(safetyScanEvents).values(records.scan),
+			...(records.case ? [db.insert(safetyCases).values(records.case)] : []),
+			...(screening.outcome === 'cleared'
+				? [
+						db
+							.update(conversationThreads)
+							.set({ lastActivityAt: new Date() })
+							.where(eq(conversationThreads.id, params.threadId))
+					]
+				: [])
+		]);
 
 		// Clear typing indicator now that the message is sent
 		env.PHONE_VERIFICATION_KV.delete(`typing:${params.threadId}:${userId}`).catch(() => {});
 
 		// If the poster is sending their first reply, increment respondedThreads
-		if (userId === thread.posterId) {
+		if (screening.outcome === 'cleared' && userId === thread.posterId) {
 			const priorPosterMessages = await db
 				.select({ id: messages.id })
 				.from(messages)
@@ -564,7 +598,11 @@ export const actions: Actions = {
 		const COOLDOWN_MS = 15 * 60 * 1000;
 		const shouldNotify =
 			!thread.lastNotifiedAt || Date.now() - thread.lastNotifiedAt.getTime() > COOLDOWN_MS;
-		if (shouldNotify && (emailIsConfigured(env) || env.VAPID_PRIVATE_KEY)) {
+		if (
+			screening.outcome === 'cleared' &&
+			shouldNotify &&
+			(emailIsConfigured(env) || env.VAPID_PRIVATE_KEY)
+		) {
 			const recipientId = thread.initiatorId === userId ? thread.posterId : thread.initiatorId;
 			const origin = env.ORIGIN ?? getInstanceConfig(env).url;
 			const threadUrl = `${origin}/inbox/${params.threadId}`;
@@ -618,7 +656,7 @@ export const actions: Actions = {
 				.catch((err: unknown) => console.error('Notification failed:', err));
 		}
 
-		return { success: true };
+		return screening.outcome === 'held' ? { success: true, held: true } : { success: true };
 	},
 
 	offerExchange: async ({ params, locals, platform }) => {
@@ -651,7 +689,12 @@ export const actions: Actions = {
 		const threadMessages = await db
 			.select({ senderId: messages.senderId })
 			.from(messages)
-			.where(eq(messages.threadId, params.threadId))
+			.where(
+				and(
+					eq(messages.threadId, params.threadId),
+					inArray(messages.scanStatus, ['cleared', 'passed'])
+				)
+			)
 			.all();
 
 		const myMsgs = threadMessages.filter((m) => m.senderId === userId).length;
@@ -802,19 +845,32 @@ export const actions: Actions = {
 		const phrase = DECLINE_PHRASES.find((p) => p.id === phraseId);
 		if (!phrase) return fail(400, { error: 'Invalid phrase' });
 
-		await db.insert(messages).values({
-			id: crypto.randomUUID(),
+		const messageId = crypto.randomUUID();
+		const screening = await screenContent(db, phrase.text, 'message');
+		const records = screeningRecords(screening, 'message', messageId, userId, {
 			threadId: params.threadId,
 			senderId: userId,
-			body: phrase.text,
-			sentAt: new Date(),
-			scanStatus: 'passed'
+			body: phrase.text
 		});
+		await db.batch([
+			db.insert(messages).values({
+				id: messageId,
+				threadId: params.threadId,
+				senderId: userId,
+				body: phrase.text,
+				sentAt: new Date(),
+				scanStatus: screening.outcome === 'cleared' ? 'cleared' : 'flagged',
+				scanRevisionId: screening.revisionId
+			}),
+			db.insert(safetyScanEvents).values(records.scan),
+			...(records.case ? [db.insert(safetyCases).values(records.case)] : [])
+		]);
 
-		await db
-			.update(conversationThreads)
-			.set({ status: 'closed', lastActivityAt: new Date() })
-			.where(eq(conversationThreads.id, params.threadId));
+		if (screening.outcome === 'cleared')
+			await db
+				.update(conversationThreads)
+				.set({ status: 'closed', lastActivityAt: new Date() })
+				.where(eq(conversationThreads.id, params.threadId));
 
 		const listing = await db
 			.select({ status: listings.status })

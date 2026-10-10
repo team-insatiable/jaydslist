@@ -32,7 +32,7 @@ describe('expiring photo view', () => {
 		});
 		const messageId = crypto.randomUUID();
 		await env.DB.prepare(
-			'INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id, is_expiring) VALUES (?, ?, ?, ?, ?, 1)'
+			"INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id, is_expiring, scan_status) VALUES (?, ?, ?, ?, ?, 1, 'cleared')"
 		)
 			.bind(messageId, threadId, posterId, '', 'expiring-chat-nsfw')
 			.run();

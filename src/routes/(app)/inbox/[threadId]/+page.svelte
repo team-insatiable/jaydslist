@@ -1027,6 +1027,10 @@
 					</div>
 					<div class="bubble-meta">
 						<span>{formatTime(msg.sentAt)}</span>
+						{#if msg.isMine && msg.scanStatus === 'flagged'}<span
+								>Awaiting safety review · not delivered</span
+							>{/if}
+						{#if msg.isMine && msg.scanStatus === 'blocked'}<span>Not delivered</span>{/if}
 						{#if !msg.isMine}
 							<button
 								type="button"
@@ -1390,6 +1394,7 @@
 			<div class="compose-pill">
 				<textarea
 					name="body"
+					maxlength="10000"
 					bind:value={body}
 					bind:this={textareaEl}
 					placeholder="Write your message…"

@@ -83,6 +83,7 @@
 		>
 			<textarea
 				name="body"
+				maxlength="10000"
 				bind:value={body}
 				placeholder="Write a genuine introduction…"
 				rows="8"

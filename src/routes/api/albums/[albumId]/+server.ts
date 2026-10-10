@@ -9,7 +9,7 @@ import {
 	photoVault,
 	userProfiles
 } from '$lib/server/db/schema';
-import { eq, or, and, isNull, sql } from 'drizzle-orm';
+import { eq, or, and, isNull, sql, inArray } from 'drizzle-orm';
 import { getAlbumPhotos } from '$lib/server/photo-vault';
 import { allowsNsfwInThread, threadPhotoUrl } from '$lib/server/thread-photo-preference';
 
@@ -51,6 +51,7 @@ export const GET: RequestHandler = async ({ params, locals, platform, url }) => 
 					eq(messages.threadId, threadId),
 					eq(messages.albumId, albumId),
 					eq(messages.senderId, album.userId),
+					inArray(messages.scanStatus, ['cleared', 'passed']),
 					or(
 						eq(conversationThreads.initiatorId, locals.user.id),
 						eq(conversationThreads.posterId, locals.user.id)

@@ -3,6 +3,8 @@ import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import {
 	listings,
+	safetyCases,
+	safetyScanEvents,
 	listingRequirements,
 	relativeTermDefinitions,
 	listingEvents,
@@ -18,6 +20,7 @@ import { eq, and, isNull, count, or } from 'drizzle-orm';
 import { isBumpCooldownActive, getNextBumpAt } from '$lib/server/listing-bump';
 import { canReceivePhoto } from '$lib/server/photo-moderation';
 import { imageUrl } from '$lib/server/cloudflare-images';
+import { screenContent, screeningRecords } from '$lib/server/content-screening';
 
 export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	const env = platform?.env;
@@ -57,6 +60,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	if (!listing) throw error(404, 'Listing not found');
 
 	const isOwner = locals.user?.id === listing.userId;
+	if (listing.status === 'pending_review' && !isOwner) throw error(404, 'Listing not found');
 
 	// Block check — non-owners see a 404 when either party has blocked the other
 	if (locals.user && !isOwner) {
@@ -236,6 +240,18 @@ export const actions: Actions = {
 		if (!env) throw error(500, 'Server configuration error');
 
 		const db = getDb(env.DB);
+		const listing = await db
+			.select({
+				id: listings.id,
+				status: listings.status,
+				subject: listings.subject,
+				body: listings.body
+			})
+			.from(listings)
+			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)))
+			.get();
+		if (!listing) return fail(404, { error: 'Listing not found' });
+		if (listing.status !== 'paused') return fail(409, { error: 'Listing cannot be resumed' });
 
 		const activeCount = await db
 			.select({ id: listings.id })
@@ -249,10 +265,35 @@ export const actions: Actions = {
 			});
 		}
 
-		await db
-			.update(listings)
-			.set({ status: 'active' })
-			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)));
+		const screening = await screenContent(db, `${listing.subject}\n${listing.body}`, 'listing');
+		const records = screeningRecords(
+			screening,
+			'listing',
+			params.id,
+			locals.user.id,
+			{
+				subject: listing.subject,
+				body: listing.body
+			},
+			'active'
+		);
+		await db.batch([
+			db
+				.update(listings)
+				.set({
+					status: screening.outcome === 'cleared' ? 'active' : 'pending_review',
+					scanRevisionId: screening.revisionId
+				})
+				.where(
+					and(
+						eq(listings.id, params.id),
+						eq(listings.userId, locals.user.id),
+						eq(listings.status, 'paused')
+					)
+				),
+			db.insert(safetyScanEvents).values(records.scan),
+			...(records.case ? [db.insert(safetyCases).values(records.case)] : [])
+		]);
 
 		const [totalRow] = await db
 			.select({ n: count() })
@@ -263,14 +304,25 @@ export const actions: Actions = {
 			.from(listingPhotos)
 			.where(and(eq(listingPhotos.listingId, params.id), isNull(listingPhotos.purgedAt)));
 
-		return { success: true, purgedPhotoCount: totalRow.n - activeRow.n };
+		return screening.outcome === 'held'
+			? { success: true, held: true, purgedPhotoCount: totalRow.n - activeRow.n }
+			: { success: true, purgedPhotoCount: totalRow.n - activeRow.n };
 	},
 
 	restore: async ({ params, locals, platform }) => {
 		if (!locals.user) throw redirect(302, '/login');
 		const env = platform?.env;
 		if (!env) throw error(500, 'Server configuration error');
-		await getDb(env.DB)
+		const db = getDb(env.DB);
+		const listing = await db
+			.select({ status: listings.status })
+			.from(listings)
+			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)))
+			.get();
+		if (!listing) return fail(404, { error: 'Listing not found' });
+		if (listing.status !== 'removed')
+			return fail(409, { error: 'Only removed listings can be restored' });
+		await db
 			.update(listings)
 			.set({ status: 'paused' })
 			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)));
