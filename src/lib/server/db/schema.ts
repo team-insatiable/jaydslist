@@ -506,6 +506,28 @@ export const moderationActions = sqliteTable(
 	})
 );
 
+export const preservationHolds = sqliteTable(
+	'preservation_holds',
+	{
+		id: text('id').primaryKey(),
+		targetType: text('target_type').notNull(),
+		targetId: text('target_id').notNull(),
+		reason: text('reason').notNull(),
+		placedBy: text('placed_by')
+			.notNull()
+			.references(() => userProfiles.id),
+		placedAt: integer('placed_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
+		releasedBy: text('released_by').references(() => userProfiles.id),
+		releasedAt: integer('released_at', { mode: 'timestamp' }),
+		releaseReason: text('release_reason')
+	},
+	(table) => ({
+		targetIdx: index('preservation_holds_target_idx').on(table.targetType, table.targetId)
+	})
+);
+
 export const safetyRuleRevisions = sqliteTable('safety_rule_revisions', {
 	id: text('id').primaryKey(),
 	version: integer('version').notNull().unique(),

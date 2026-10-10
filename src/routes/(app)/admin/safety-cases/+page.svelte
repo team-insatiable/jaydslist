@@ -28,6 +28,11 @@
 				) || 'none'}
 			</p>
 			<p>Submitter: {safetyCase.submitterId} · Target: {safetyCase.targetId}</p>
+			<p>
+				<a href={resolve(`/admin/preservation?type=safety_case&id=${safetyCase.id}`)}
+					>Manage preservation hold</a
+				>
+			</p>
 			{#if safetyCase.evidence.subject}<strong>{safetyCase.evidence.subject}</strong>{/if}
 			<pre>{safetyCase.evidence.body ?? '(media only)'}</pre>
 			{#if safetyCase.evidence.cfImageId}<p>

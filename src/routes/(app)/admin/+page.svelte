@@ -99,6 +99,11 @@
 
 					{#if expandedReport === report.id}
 						<div class="report-detail">
+							<p>
+								<a href={resolve(`/admin/preservation?type=report&id=${report.id}`)}
+									>Manage preservation hold</a
+								>
+							</p>
 							<div class="detail-row">
 								<span class="detail-label">Reporter</span>
 								<span
