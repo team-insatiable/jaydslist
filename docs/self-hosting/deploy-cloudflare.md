@@ -20,6 +20,7 @@ content/privacy.md
 content/terms.md
 static/logo.png
 content/email-templates.ts  # optional
+content/safety-rules.json    # optional, review and activate in Admin
 ```
 
 Copy `wrangler.jsonc` from upstream into your instance repository and replace the placeholder bindings and public settings with resources and values from your own Cloudflare account. Choose a Worker name. Keep credentials in Cloudflare Worker secrets, not in this file or Git.
@@ -45,9 +46,14 @@ cp instance/static/logo.png app/static/logo.png
 if [ -f instance/content/email-templates.ts ]; then
   cp instance/content/email-templates.ts app/src/lib/instance-content/email-templates.ts
 fi
+if [ -f instance/content/safety-rules.json ]; then
+  cp instance/content/safety-rules.json app/src/lib/instance-content/safety-rules.json
+fi
 ```
 
 Here `instance/` is your operator repository and `app/` is a checkout of this upstream repository. Your deployment workflow can perform these same steps. To upgrade, choose a newer upstream revision, review its configuration and migrations, test it, and deploy with the same instance files. Do not automatically move production to a changing upstream branch; see [Operations and upgrades](operations.md#before-each-release).
+
+The optional safety rule file is validated during build. An admin must stage and activate it in the Safety screening rules page before it changes screening; see [Safety screening rules](safety-rules.md).
 
 Run `pnpm install --frozen-lockfile` in `app/` before using Wrangler in the steps below.
 

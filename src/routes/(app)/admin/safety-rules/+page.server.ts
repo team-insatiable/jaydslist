@@ -5,6 +5,7 @@ import { getDb } from '$lib/server/db';
 import { moderationActions, safetyRuleRevisions, safetyRuleState } from '$lib/server/db/schema';
 import { parseSafetyRules } from '$lib/server/safety-rules';
 import { isAdminUser } from '$lib/server/admin-auth';
+import instanceRuleFile from '$lib/instance-content/safety-rules.json';
 
 export const load: PageServerLoad = async ({ platform }) => {
 	const env = platform?.env;
@@ -20,7 +21,12 @@ export const load: PageServerLoad = async ({ platform }) => {
 			.orderBy(desc(moderationActions.createdAt))
 			.all()
 	]);
-	return { revisions, activeRevisionId: state?.revisionId ?? null, history };
+	return {
+		revisions,
+		activeRevisionId: state?.revisionId ?? null,
+		history,
+		instanceRuleFile: JSON.stringify(instanceRuleFile, null, 2)
+	};
 };
 
 export const actions: Actions = {

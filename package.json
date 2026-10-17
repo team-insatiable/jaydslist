@@ -5,10 +5,11 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "wrangler types --check && vite build",
+		"build": "pnpm validate:config && wrangler types --check && vite build",
 		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "wrangler types --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "pnpm validate:config && wrangler types --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"validate:config": "node --import tsx scripts/validate-safety-config.ts",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
 		"test": "vitest run",
