@@ -130,16 +130,20 @@ export function emailIsConfigured(env: Env) {
 	return getEmailProvider(env) !== null;
 }
 
-export async function sendEmail(env: Env, options: SendEmailOptions): Promise<void> {
+export async function sendEmailOrThrow(env: Env, options: SendEmailOptions): Promise<void> {
 	const provider = getEmailProvider(env);
-	if (!provider) return;
+	if (!provider) throw new Error('Email provider is not configured');
+	const name = getInstanceConfig(env).name.replace(/[\r\n<>"\\]/g, '');
+	await provider.send({
+		...options,
+		from: options.from ?? env.EMAIL_FROM ?? `${name} <onboarding@resend.dev>`
+	});
+}
 
+export async function sendEmail(env: Env, options: SendEmailOptions): Promise<void> {
+	if (!getEmailProvider(env)) return;
 	try {
-		const name = getInstanceConfig(env).name.replace(/[\r\n<>"\\]/g, '');
-		await provider.send({
-			...options,
-			from: options.from ?? env.EMAIL_FROM ?? `${name} <onboarding@resend.dev>`
-		});
+		await sendEmailOrThrow(env, options);
 	} catch (error) {
 		console.error('Email delivery failed:', error);
 	}
