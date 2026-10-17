@@ -92,6 +92,15 @@ INSERT INTO user_profiles (id, identity, physical_type, age, date_of_birth, lat,
 SELECT id, 'woman', 'female', 35, ${now - 35 * 365 * 86400}, 38.5816, -121.4944, 1, 'new', 'Photo test', 'active', ${now}, ${now} FROM user WHERE email = 'edit-photo@example.test'
 ON CONFLICT (id) DO UPDATE SET status = 'active', phone_verified = 1;
 
+-- This isolated browser fixture activates an empty reviewed rule set so ordinary
+-- listing and message flows can be exercised. Production has no seeded revision.
+INSERT INTO safety_rule_revisions (id, version, rules_json, reason, created_by, created_at)
+SELECT 'e2e-safety-rules', 1, '[]', 'Browser fixture', id, ${now} FROM user WHERE email = 'keirockjd@gmail.com'
+ON CONFLICT (id) DO UPDATE SET rules_json = '[]';
+INSERT INTO safety_rule_state (id, revision_id, updated_by, updated_at)
+SELECT 'active', 'e2e-safety-rules', id, ${now} FROM user WHERE email = 'keirockjd@gmail.com'
+ON CONFLICT (id) DO UPDATE SET revision_id = excluded.revision_id, updated_by = excluded.updated_by, updated_at = excluded.updated_at;
+
 INSERT INTO listings (id, user_id, category, subject, body, status, expires_at, last_bumped_at, created_at)
 SELECT ${sq(KIERA_LISTING_ID)}, id, 'casual_encounters', 'E2E test listing — do not respond', 'Seeded automatically for the Playwright e2e suite.', 'active', ${expiresAt}, ${now}, ${now} FROM user WHERE email = 'keirajd@gmail.com'
 ON CONFLICT (id) DO UPDATE SET status = 'active', expires_at = excluded.expires_at;
