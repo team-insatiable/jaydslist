@@ -3,7 +3,7 @@ import { requirePhoneVerifiedRedirect } from '$lib/server/guards/requirePhoneVer
 import { getDb } from '$lib/server/db';
 import { messages, conversationThreads, userProfiles, DEFAULT_CONFIG } from '$lib/server/db/schema';
 import { user as authUser } from '$lib/server/db/auth.schema';
-import { eq, and, isNull, ne } from 'drizzle-orm';
+import { eq, and, isNull, ne, inArray } from 'drizzle-orm';
 import { nextTrustTier, type TrustTier } from '$lib/server/trust-tier';
 
 export const load: LayoutServerLoad = async ({ locals, platform, depends }) => {
@@ -21,6 +21,7 @@ export const load: LayoutServerLoad = async ({ locals, platform, depends }) => {
 				and(
 					isNull(messages.readAt),
 					ne(messages.senderId, locals.user.id),
+					inArray(messages.scanStatus, ['cleared', 'passed']),
 					eq(conversationThreads.status, 'open'),
 					// only threads where current user is a participant
 					eq(conversationThreads.posterId, locals.user.id)
@@ -37,6 +38,7 @@ export const load: LayoutServerLoad = async ({ locals, platform, depends }) => {
 				and(
 					isNull(messages.readAt),
 					ne(messages.senderId, locals.user.id),
+					inArray(messages.scanStatus, ['cleared', 'passed']),
 					eq(conversationThreads.status, 'open'),
 					eq(conversationThreads.initiatorId, locals.user.id)
 				)

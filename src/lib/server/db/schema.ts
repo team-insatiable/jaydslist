@@ -139,6 +139,7 @@ export const listings = sqliteTable(
 		subject: text('subject').notNull(),
 		body: text('body').notNull(),
 		status: text('status').notNull().default('active'),
+		scanRevisionId: text('scan_revision_id').references(() => safetyRuleRevisions.id),
 		lookingForIdentity: text('looking_for_identity').notNull().default('[]'),
 		lookingForPhysical: text('looking_for_physical').notNull().default('[]'),
 		ageRangeMin: integer('age_range_min'),
@@ -382,6 +383,7 @@ export const messages = sqliteTable(
 		body: text('body').notNull().default(''),
 		cfImageId: text('cf_image_id'),
 		scanStatus: text('scan_status').notNull().default('pending'),
+		scanRevisionId: text('scan_revision_id').references(() => safetyRuleRevisions.id),
 		qualityScore: real('quality_score'),
 		qualityFlags: text('quality_flags').notNull().default('[]'),
 		similarityScore: real('similarity_score'),
@@ -529,6 +531,50 @@ export const safetyRuleState = sqliteTable('safety_rule_state', {
 		.notNull()
 		.default(sql`(unixepoch())`)
 });
+
+export const safetyScanEvents = sqliteTable(
+	'safety_scan_events',
+	{
+		id: text('id').primaryKey(),
+		targetType: text('target_type').notNull(),
+		targetId: text('target_id').notNull(),
+		ruleRevisionId: text('rule_revision_id').references(() => safetyRuleRevisions.id),
+		outcome: text('outcome').notNull(),
+		matchedRuleIds: text('matched_rule_ids').notNull().default('[]'),
+		reason: text('reason').notNull(),
+		checkedAt: integer('checked_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
+	},
+	(table) => ({
+		targetIdx: index('safety_scan_events_target_idx').on(table.targetType, table.targetId)
+	})
+);
+
+export const safetyCases = sqliteTable(
+	'safety_cases',
+	{
+		id: text('id').primaryKey(),
+		targetType: text('target_type').notNull(),
+		targetId: text('target_id').notNull(),
+		submitterId: text('submitter_id')
+			.notNull()
+			.references(() => userProfiles.id),
+		ruleRevisionId: text('rule_revision_id').references(() => safetyRuleRevisions.id),
+		matchedRuleIds: text('matched_rule_ids').notNull().default('[]'),
+		reason: text('reason').notNull(),
+		evidenceSnapshot: text('evidence_snapshot').notNull(),
+		releaseStatus: text('release_status'),
+		status: text('status').notNull().default('pending'),
+		reviewerId: text('reviewer_id').references(() => userProfiles.id),
+		reviewerNotes: text('reviewer_notes'),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
+		resolvedAt: integer('resolved_at', { mode: 'timestamp' })
+	},
+	(table) => ({ statusIdx: index('safety_cases_status_idx').on(table.status, table.createdAt) })
+);
 
 export const platformConfig = sqliteTable('platform_config', {
 	key: text('key').primaryKey(),

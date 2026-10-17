@@ -3,6 +3,8 @@ import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import {
 	listings,
+	safetyCases,
+	safetyScanEvents,
 	listingRequirements,
 	relativeTermDefinitions,
 	listingEvents,
@@ -15,6 +17,7 @@ import { eq, and, desc, inArray, isNull, ne } from 'drizzle-orm';
 import { getActiveVocabulary } from '$lib/server/relative-terms.server';
 import { scanTerms } from '$lib/relative-terms';
 import { getVaultPhotos, getAlbumList } from '$lib/server/photo-vault';
+import { screenContent, screeningRecords } from '$lib/server/content-screening';
 
 const VALID_IDENTITIES = [
 	'man',
@@ -148,6 +151,8 @@ export const actions: Actions = {
 		if (!listing) return fail(404, { error: 'Listing not found' });
 		if (listing.userId !== locals.user.id) return fail(403, { error: 'Forbidden' });
 		if (listing.status === 'removed') return fail(410, { error: 'Listing has been removed' });
+		if (listing.status === 'pending_review')
+			return fail(409, { error: 'This listing is awaiting safety review' });
 
 		const data = await request.formData();
 
@@ -180,6 +185,7 @@ export const actions: Actions = {
 		if (subject.length > 120) return fail(400, { error: 'Subject must be 120 characters or less' });
 		if (!body || body.length < 50)
 			return fail(400, { error: 'Body must be at least 50 characters' });
+		if (body.length > 10_000) return fail(400, { error: 'Body is too long' });
 		if (!VALID_TRUST_TIERS.includes(trustTierMin))
 			return fail(400, { error: 'Invalid trust tier' });
 		if (
@@ -224,22 +230,38 @@ export const actions: Actions = {
 			});
 		}
 
-		const statusUpdate = listing.status === 'flagged' ? { status: 'active' as const } : {};
-
-		await db
-			.update(listings)
-			.set({
+		const screening = await screenContent(db, `${subject}\n${body}`, 'listing');
+		const releaseStatus = listing.status === 'flagged' ? 'active' : listing.status;
+		const records = screeningRecords(
+			screening,
+			'listing',
+			params.id,
+			locals.user.id,
+			{
 				subject,
-				body,
-				lookingForIdentity: JSON.stringify(lookingFor),
-				natureOfConnection: JSON.stringify(nature),
-				mood,
-				availability,
-				ageRangeMin: ageMin,
-				ageRangeMax: ageMax,
-				...statusUpdate
-			})
-			.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id)));
+				body
+			},
+			releaseStatus
+		);
+		await db.batch([
+			db
+				.update(listings)
+				.set({
+					subject,
+					body,
+					status: screening.outcome === 'cleared' ? releaseStatus : 'pending_review',
+					scanRevisionId: screening.revisionId,
+					lookingForIdentity: JSON.stringify(lookingFor),
+					natureOfConnection: JSON.stringify(nature),
+					mood,
+					availability,
+					ageRangeMin: ageMin,
+					ageRangeMax: ageMax
+				})
+				.where(and(eq(listings.id, params.id), eq(listings.userId, locals.user.id))),
+			db.insert(safetyScanEvents).values(records.scan),
+			...(records.case ? [db.insert(safetyCases).values(records.case)] : [])
+		]);
 
 		// Replace requirements
 		await db.delete(listingRequirements).where(eq(listingRequirements.listingId, params.id));

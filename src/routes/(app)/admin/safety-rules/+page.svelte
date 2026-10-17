@@ -9,8 +9,8 @@
 	<h1>Safety screening rules</h1>
 	<p>
 		Stage a revision, review it, then activate it. Older revisions remain available for rollback.
-		These rules are separate from listing vocabulary. Screening and delivery holds are not enabled
-		yet.
+		These rules are separate from listing vocabulary. New submissions use the active revision;
+		matches and scanner failures enter the Safety cases queue.
 	</p>
 	{#if form?.error}<p role="alert">{form.error}</p>{/if}
 	{#if form?.success}<p role="status">Rule revision saved.</p>{/if}

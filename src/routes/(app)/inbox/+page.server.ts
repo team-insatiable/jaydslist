@@ -48,7 +48,12 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		db
 			.select({ threadId: messages.threadId, body: messages.body, sentAt: messages.sentAt })
 			.from(messages)
-			.where(inArray(messages.threadId, threadIds))
+			.where(
+				and(
+					inArray(messages.threadId, threadIds),
+					or(eq(messages.senderId, userId), inArray(messages.scanStatus, ['cleared', 'passed']))
+				)
+			)
 			.orderBy(desc(messages.sentAt))
 			.all(),
 
@@ -59,6 +64,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 				and(
 					inArray(messages.threadId, threadIds),
 					ne(messages.senderId, userId),
+					inArray(messages.scanStatus, ['cleared', 'passed']),
 					isNull(messages.readAt)
 				)
 			)
@@ -77,21 +83,23 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		}
 	}
 
-	const threads = rawThreads.map((t) => {
-		const otherUserId = t.initiatorId === userId ? t.posterId : t.initiatorId;
-		const lastMsg = lastMsgMap.get(t.id);
-		return {
-			id: t.id,
-			listingId: t.listingId,
-			listingSubject: t.listingSubject,
-			otherAlias: aliasMap.get(otherUserId) ?? 'Anonymous',
-			lastMessagePreview: lastMsg ? lastMsg.body.slice(0, 80) : '',
-			lastMessageAt: lastMsg?.sentAt ?? t.lastActivityAt,
-			unreadCount: unreadMap.get(t.id) ?? 0,
-			role: t.posterId === userId ? 'poster' : 'responder',
-			status: t.status
-		};
-	});
+	const threads = rawThreads
+		.filter((t) => lastMsgMap.has(t.id))
+		.map((t) => {
+			const otherUserId = t.initiatorId === userId ? t.posterId : t.initiatorId;
+			const lastMsg = lastMsgMap.get(t.id);
+			return {
+				id: t.id,
+				listingId: t.listingId,
+				listingSubject: t.listingSubject,
+				otherAlias: aliasMap.get(otherUserId) ?? 'Anonymous',
+				lastMessagePreview: lastMsg ? lastMsg.body.slice(0, 80) : '',
+				lastMessageAt: lastMsg?.sentAt ?? t.lastActivityAt,
+				unreadCount: unreadMap.get(t.id) ?? 0,
+				role: t.posterId === userId ? 'poster' : 'responder',
+				status: t.status
+			};
+		});
 
 	return { threads };
 };

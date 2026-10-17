@@ -7,6 +7,7 @@
 	<nav class="admin-nav">
 		<span class="admin-label">Admin</span>
 		<a href={resolve('/admin')}>Reports</a>
+		<a href={resolve('/admin/safety-cases')}>Safety cases</a>
 		<a href={resolve('/admin/users')}>Users</a>
 		<a href={resolve('/admin/vocabulary')}>Vocabulary</a>
 		<a href={resolve('/admin/safety-rules')}>Safety rules</a>

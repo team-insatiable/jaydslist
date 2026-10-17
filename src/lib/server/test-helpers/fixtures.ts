@@ -140,7 +140,7 @@ export async function createTestThread(
 
 export async function createTestMessage(
 	db: D1Database,
-	opts: { threadId: string; senderId: string; body?: string; sentAt?: Date }
+	opts: { threadId: string; senderId: string; body?: string; sentAt?: Date; scanStatus?: string }
 ) {
 	const id = crypto.randomUUID();
 	await getDb(db)
@@ -150,6 +150,7 @@ export async function createTestMessage(
 			threadId: opts.threadId,
 			senderId: opts.senderId,
 			body: opts.body ?? 'test message body',
+			scanStatus: opts.scanStatus ?? 'cleared',
 			sentAt: opts.sentAt ?? new Date()
 		});
 	return id;

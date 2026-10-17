@@ -38,6 +38,31 @@ function event(userId: string | undefined, imageId: string, blurred = false, thr
 	} as unknown as Parameters<typeof GET>[0];
 }
 describe('private photo delivery', () => {
+	it('withholds a chat photo until its message is released', async () => {
+		const owner = await createTestUser(env.DB);
+		const viewer = await createTestUser(env.DB);
+		const imageId = crypto.randomUUID();
+		await createTestVaultPhoto(env.DB, owner, { cfImageId: imageId, contentRating: 'safe' });
+		const listingId = await createTestListing(env.DB, owner);
+		const threadId = await createTestThread(env.DB, {
+			listingId,
+			initiatorId: viewer,
+			posterId: owner
+		});
+		const messageId = crypto.randomUUID();
+		await env.DB.prepare(
+			'INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id, scan_status) VALUES (?, ?, ?, ?, ?, ?)'
+		)
+			.bind(messageId, threadId, owner, 'held text', imageId, 'flagged')
+			.run();
+		await expect(GET(event(viewer, imageId, false, threadId))).rejects.toMatchObject({
+			status: 403
+		});
+		await env.DB.prepare('UPDATE messages SET scan_status = ? WHERE id = ?')
+			.bind('cleared', messageId)
+			.run();
+		expect((await GET(event(viewer, imageId, false, threadId))).status).toBe(200);
+	});
 	it('requires authentication and prevents unrelated users accessing private vault photos', async () => {
 		const owner = await createTestUser(env.DB);
 		const stranger = await createTestUser(env.DB);
@@ -102,7 +127,7 @@ describe('private photo delivery', () => {
 			posterId: owner
 		});
 		await env.DB.prepare(
-			'INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id) VALUES (?, ?, ?, ?, ?)'
+			"INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id, scan_status) VALUES (?, ?, ?, ?, ?, 'cleared')"
 		)
 			.bind(crypto.randomUUID(), thread, owner, '', 'private-explicit')
 			.run();
@@ -135,7 +160,7 @@ describe('private photo delivery', () => {
 			posterId: owner
 		});
 		await env.DB.prepare(
-			'INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id) VALUES (?, ?, ?, ?, ?)'
+			"INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id, scan_status) VALUES (?, ?, ?, ?, ?, 'cleared')"
 		)
 			.bind(crypto.randomUUID(), thread, owner, '', 'chat-explicit')
 			.run();
@@ -193,7 +218,7 @@ describe('private photo delivery', () => {
 			posterId: sender
 		});
 		await env.DB.prepare(
-			'INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id, is_expiring) VALUES (?, ?, ?, ?, ?, 1)'
+			"INSERT INTO messages (id, thread_id, sender_id, body, cf_image_id, is_expiring, scan_status) VALUES (?, ?, ?, ?, ?, 1, 'cleared')"
 		)
 			.bind(crypto.randomUUID(), thread, sender, '', 'chat-view-once-explicit')
 			.run();
@@ -245,13 +270,13 @@ describe('private photo delivery', () => {
 			url: new URL(`http://localhost/api/albums/${album}?threadId=${thread}`)
 		} as unknown as Parameters<typeof albumGET>[0];
 		await env.DB.prepare(
-			'INSERT INTO messages (id, thread_id, sender_id, body) VALUES (?, ?, ?, ?)'
+			"INSERT INTO messages (id, thread_id, sender_id, body, scan_status) VALUES (?, ?, ?, ?, 'cleared')"
 		)
 			.bind(crypto.randomUUID(), thread, owner, 'hello')
 			.run();
 		await expect(albumGET(albumEvent)).rejects.toMatchObject({ status: 403 });
 		await env.DB.prepare(
-			'INSERT INTO messages (id, thread_id, sender_id, body, album_id) VALUES (?, ?, ?, ?, ?)'
+			"INSERT INTO messages (id, thread_id, sender_id, body, album_id, scan_status) VALUES (?, ?, ?, ?, ?, 'cleared')"
 		)
 			.bind(crypto.randomUUID(), thread, owner, '', album)
 			.run();

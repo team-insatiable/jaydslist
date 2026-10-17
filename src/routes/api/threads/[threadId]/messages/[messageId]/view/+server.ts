@@ -36,7 +36,8 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
 			cfImageId: messages.cfImageId,
 			isExpiring: messages.isExpiring,
 			expiresAt: messages.expiresAt,
-			photoViewedAt: messages.photoViewedAt
+			photoViewedAt: messages.photoViewedAt,
+			scanStatus: messages.scanStatus
 		})
 		.from(messages)
 		.where(and(eq(messages.id, params.messageId), eq(messages.threadId, params.threadId)))
@@ -47,6 +48,7 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
 	if (!msg.isExpiring) throw error(400, 'Photo is not expiring');
 	// Sender can't "view" their own expiring photo via this endpoint
 	if (msg.senderId === locals.user.id) throw error(403, 'Forbidden');
+	if (!['cleared', 'passed'].includes(msg.scanStatus)) throw error(403, 'Message awaiting review');
 	const profile = await db
 		.select({ allowNsfw: userProfiles.allowNsfw })
 		.from(userProfiles)
