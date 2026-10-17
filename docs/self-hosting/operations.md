@@ -22,3 +22,5 @@ Use least-privilege Cloudflare and provider credentials. Keep local secrets in `
 ## Community operations
 
 Publish accurate rules, privacy information, a contact address, and a moderation process for your instance. Review reports, account actions, and abuse escalation paths regularly. Do not copy claims about billing, automatic screening, deletion, or third-party integrations unless they reflect your deployed code and enabled services. See the advanced opt-in integration section in [Configuration](configuration.md) if you intentionally use cross-instance reputation checks.
+
+The [safety rule revision guide](safety-rules.md) describes the operator rule editor and its current limits. An active rule revision alone does not enable screening or delivery holds.

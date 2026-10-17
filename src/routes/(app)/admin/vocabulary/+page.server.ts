@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
+import { isAdminUser } from '$lib/server/admin-auth';
 import { relativeTermsVocabulary } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { VALID_CATEGORIES } from '$lib/relative-terms';
@@ -24,6 +25,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { error: 'Unauthorized' });
 		const env = platform?.env;
 		if (!env) return fail(500, { error: 'Server configuration error' });
+		if (!(await isAdminUser(env, locals.user.id))) return fail(403, { error: 'Forbidden' });
 
 		const data = await request.formData();
 		const term = (data.get('term') as string)?.trim().toLowerCase();
@@ -52,6 +54,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { error: 'Unauthorized' });
 		const env = platform?.env;
 		if (!env) return fail(500, { error: 'Server configuration error' });
+		if (!(await isAdminUser(env, locals.user.id))) return fail(403, { error: 'Forbidden' });
 
 		const data = await request.formData();
 		const id = data.get('id') as string;
@@ -76,6 +79,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { error: 'Unauthorized' });
 		const env = platform?.env;
 		if (!env) return fail(500, { error: 'Server configuration error' });
+		if (!(await isAdminUser(env, locals.user.id))) return fail(403, { error: 'Forbidden' });
 
 		const data = await request.formData();
 		const id = data.get('id') as string;

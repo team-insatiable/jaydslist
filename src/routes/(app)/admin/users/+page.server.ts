@@ -4,6 +4,7 @@ import { getDb } from '$lib/server/db';
 import { userProfiles, listings, moderationActions } from '$lib/server/db/schema';
 import { user } from '$lib/server/db/auth.schema';
 import { eq, desc, like, or, count } from 'drizzle-orm';
+import { isAdminUser } from '$lib/server/admin-auth';
 
 export const load: PageServerLoad = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -74,25 +75,25 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { error: 'Unauthorized' });
 		const env = platform?.env;
 		if (!env) return fail(500, { error: 'Server configuration error' });
+		if (!(await isAdminUser(env, locals.user.id))) return fail(403, { error: 'Forbidden' });
 
 		const data = await request.formData();
 		const targetUserId = data.get('targetUserId') as string;
 		const reason = (data.get('reason') as string)?.trim() || 'Admin ban';
 
 		const db = getDb(env.DB);
-		await db
-			.update(userProfiles)
-			.set({ status: 'banned' })
-			.where(eq(userProfiles.id, targetUserId));
-		await db.update(listings).set({ status: 'removed' }).where(eq(listings.userId, targetUserId));
-		await db.insert(moderationActions).values({
-			id: crypto.randomUUID(),
-			actorId: locals.user.id,
-			targetType: 'user',
-			targetId: targetUserId,
-			actionType: 'ban',
-			reason
-		});
+		await db.batch([
+			db.update(userProfiles).set({ status: 'banned' }).where(eq(userProfiles.id, targetUserId)),
+			db.update(listings).set({ status: 'removed' }).where(eq(listings.userId, targetUserId)),
+			db.insert(moderationActions).values({
+				id: crypto.randomUUID(),
+				actorId: locals.user.id,
+				targetType: 'user',
+				targetId: targetUserId,
+				actionType: 'ban',
+				reason
+			})
+		]);
 
 		return { success: true };
 	},
@@ -101,23 +102,23 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { error: 'Unauthorized' });
 		const env = platform?.env;
 		if (!env) return fail(500, { error: 'Server configuration error' });
+		if (!(await isAdminUser(env, locals.user.id))) return fail(403, { error: 'Forbidden' });
 
 		const data = await request.formData();
 		const targetUserId = data.get('targetUserId') as string;
 
 		const db = getDb(env.DB);
-		await db
-			.update(userProfiles)
-			.set({ status: 'active' })
-			.where(eq(userProfiles.id, targetUserId));
-		await db.insert(moderationActions).values({
-			id: crypto.randomUUID(),
-			actorId: locals.user.id,
-			targetType: 'user',
-			targetId: targetUserId,
-			actionType: 'unban',
-			reason: 'Admin unban'
-		});
+		await db.batch([
+			db.update(userProfiles).set({ status: 'active' }).where(eq(userProfiles.id, targetUserId)),
+			db.insert(moderationActions).values({
+				id: crypto.randomUUID(),
+				actorId: locals.user.id,
+				targetType: 'user',
+				targetId: targetUserId,
+				actionType: 'unban',
+				reason: 'Admin unban'
+			})
+		]);
 
 		return { success: true };
 	}

@@ -1,20 +1,25 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
+import { createTestUser } from '$lib/server/test-helpers/fixtures';
 import { actions } from './+page.server';
 
 type ActionEvent = Parameters<typeof actions.create>[0];
+let adminId: string;
 
 function fakeEvent(fields: Record<string, string>): ActionEvent {
 	const form = new FormData();
 	for (const [key, value] of Object.entries(fields)) form.set(key, value);
 	return {
 		request: new Request('http://localhost/admin/vocabulary', { method: 'POST', body: form }),
-		locals: { user: { id: 'admin-user', email: 'admin@example.com' } },
-		platform: { env }
+		locals: { user: { id: adminId } },
+		platform: { env: { ...env, ADMIN_EMAILS: `${adminId}@test.example` } }
 	} as unknown as ActionEvent;
 }
 
 describe('admin vocabulary actions', () => {
+	beforeEach(async () => {
+		adminId = await createTestUser(env.DB);
+	});
 	it('creates a new term', async () => {
 		const result = await actions.create(fakeEvent({ term: 'Zippy', category: 'personality' }));
 		expect(result).toEqual({ success: true });

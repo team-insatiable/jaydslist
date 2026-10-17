@@ -9,6 +9,7 @@
 		<a href={resolve('/admin')}>Reports</a>
 		<a href={resolve('/admin/users')}>Users</a>
 		<a href={resolve('/admin/vocabulary')}>Vocabulary</a>
+		<a href={resolve('/admin/safety-rules')}>Safety rules</a>
 	</nav>
 	<div class="admin-content">
 		{@render children()}

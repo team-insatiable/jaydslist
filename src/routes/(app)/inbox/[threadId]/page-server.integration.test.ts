@@ -89,11 +89,13 @@ function fakeReportEvent(overrides: {
 	userId: string;
 	targetUserId: string;
 	category: string;
+	messageId?: string;
 }): ReportEvent {
 	const form = new FormData();
 	form.set('targetUserId', overrides.targetUserId);
 	form.set('category', overrides.category);
 	form.set('detail', '');
+	if (overrides.messageId) form.set('messageId', overrides.messageId);
 	return {
 		params: { threadId: overrides.threadId },
 		request: new Request('http://localhost/inbox/x', { method: 'POST', body: form }),
@@ -531,6 +533,56 @@ describe('inbox/[threadId] report action', () => {
 			.bind(initiatorId)
 			.first();
 		expect(report?.category).toBe('spam');
+	});
+
+	it('captures reported message evidence and rejects a message from another thread', async () => {
+		const messageId = await createTestMessage(env.DB, {
+			threadId,
+			senderId: posterId,
+			body: 'Reported message text'
+		});
+		const result = await actions.report(
+			fakeReportEvent({
+				threadId,
+				userId: initiatorId,
+				targetUserId: posterId,
+				category: 'harassment',
+				messageId
+			})
+		);
+		expect(result).toMatchObject({ reported: true });
+		const report = await env.DB.prepare('SELECT * FROM reports WHERE target_id = ?')
+			.bind(messageId)
+			.first<{ target_type: string; evidence_snapshot: string; evidence_captured_at: number }>();
+		expect(report?.target_type).toBe('message');
+		expect(JSON.parse(report!.evidence_snapshot)).toMatchObject({
+			body: 'Reported message text',
+			senderId: posterId,
+			threadId
+		});
+		expect(report?.evidence_captured_at).toBeTypeOf('number');
+
+		const otherListingId = await createTestListing(env.DB, posterId);
+		const otherThreadId = await createTestThread(env.DB, {
+			listingId: otherListingId,
+			initiatorId,
+			posterId
+		});
+		const otherMessageId = await createTestMessage(env.DB, {
+			threadId: otherThreadId,
+			senderId: posterId,
+			body: 'Other thread'
+		});
+		const rejected = await actions.report(
+			fakeReportEvent({
+				threadId,
+				userId: initiatorId,
+				targetUserId: posterId,
+				category: 'harassment',
+				messageId: otherMessageId
+			})
+		);
+		expect(rejected?.status).toBe(400);
 	});
 
 	it('rejects an invalid category', async () => {

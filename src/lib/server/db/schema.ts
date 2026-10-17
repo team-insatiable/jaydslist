@@ -467,6 +467,8 @@ export const reports = sqliteTable(
 		detail: text('detail'),
 		status: text('status').notNull().default('pending'),
 		reviewerNotes: text('reviewer_notes'),
+		evidenceSnapshot: text('evidence_snapshot'),
+		evidenceCapturedAt: integer('evidence_captured_at', { mode: 'timestamp' }),
 		reporterTrustScoreSnapshot: real('reporter_trust_score_snapshot').notNull(),
 		createdAt: integer('created_at', { mode: 'timestamp' })
 			.notNull()
@@ -501,6 +503,32 @@ export const moderationActions = sqliteTable(
 		actionTypeIdx: index('mod_actions_type_idx').on(table.actionType)
 	})
 );
+
+export const safetyRuleRevisions = sqliteTable('safety_rule_revisions', {
+	id: text('id').primaryKey(),
+	version: integer('version').notNull().unique(),
+	rulesJson: text('rules_json').notNull(),
+	reason: text('reason').notNull(),
+	createdBy: text('created_by')
+		.notNull()
+		.references(() => userProfiles.id),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const safetyRuleState = sqliteTable('safety_rule_state', {
+	id: text('id').primaryKey(),
+	revisionId: text('revision_id')
+		.notNull()
+		.references(() => safetyRuleRevisions.id),
+	updatedBy: text('updated_by')
+		.notNull()
+		.references(() => userProfiles.id),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
 
 export const platformConfig = sqliteTable('platform_config', {
 	key: text('key').primaryKey(),

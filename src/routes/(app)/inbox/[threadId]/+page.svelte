@@ -70,6 +70,7 @@
 	let blockConfirm = $state(false);
 	let blockWorking = $state(false);
 	let showReportSheet = $state(false);
+	let reportMessageId = $state<string | null>(null);
 	let showReceivedPhotos = $state(false);
 	let showPhotoSettings = $state(false);
 	let photoChoice = $state<'inherit' | 'allow' | 'block'>('inherit');
@@ -584,6 +585,8 @@
 					class="flyout-tile"
 					onclick={() => {
 						menuOpen = false;
+						reportMessageId = null;
+						reportDone = false;
 						showReportSheet = true;
 					}}
 				>
@@ -794,7 +797,10 @@
 
 	<!-- Report modal -->
 	{#if showReportSheet}
-		<ReportModal title={`Report ${data.otherAlias}`} onclose={() => (showReportSheet = false)}>
+		<ReportModal
+			title={reportMessageId ? 'Report message' : `Report ${data.otherAlias}`}
+			onclose={() => (showReportSheet = false)}
+		>
 			{#if reportDone}
 				<p class="sheet-done">Report submitted. Our moderation team will review it.</p>
 			{:else}
@@ -812,6 +818,9 @@
 					}}
 				>
 					<input type="hidden" name="targetUserId" value={data.otherUserId} />
+					{#if reportMessageId}
+						<input type="hidden" name="messageId" value={reportMessageId} />
+					{/if}
 					<select aria-label="Report reason" name="category" bind:value={reportCategory} required>
 						<option value="" disabled>Select a reason…</option>
 						<option value="harassment">Harassment</option>
@@ -1018,6 +1027,16 @@
 					</div>
 					<div class="bubble-meta">
 						<span>{formatTime(msg.sentAt)}</span>
+						{#if !msg.isMine}
+							<button
+								type="button"
+								onclick={() => {
+									reportMessageId = msg.id;
+									reportDone = false;
+									showReportSheet = true;
+								}}>Report message</button
+							>
+						{/if}
 						{#if msg.isMine && data.isSupporter && msg.readAt}
 							<span class="seen">Seen</span>
 						{/if}

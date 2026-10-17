@@ -115,7 +115,7 @@
 										— <a href={resolve(`/listings/${report.targetId}`)} target="_blank"
 											>{report.listingSubject ?? report.targetId}</a
 										>
-									{:else if report.targetType === 'user'}
+									{:else if report.targetType === 'user' || report.targetType === 'message'}
 										— {report.targetAlias ?? report.targetId}
 									{:else}
 										— {report.targetId}
@@ -126,6 +126,33 @@
 								<div class="detail-row">
 									<span class="detail-label">Detail</span>
 									<span class="detail-body">{report.detail}</span>
+								</div>
+							{/if}
+							{#if report.evidence}
+								<div class="detail-row">
+									<span class="detail-label">Captured evidence</span>
+									<span class="detail-body">
+										{#if report.evidence.subject}<strong>{report.evidence.subject}</strong><br
+											/>{/if}
+										{report.evidence.body ?? 'Media message (no text)'}
+										{#if report.evidenceCapturedAt}
+											<br /><small
+												>Captured {new Date(report.evidenceCapturedAt).toLocaleString()}</small
+											>
+										{/if}
+									</span>
+								</div>
+							{/if}
+							{#if report.actions.length}
+								<div class="detail-row">
+									<span class="detail-label">Decision history</span>
+									<span class="detail-body">
+										{#each report.actions as action (action.id)}
+											{action.actionType} by {action.actorId ?? 'system'} at {new Date(
+												action.createdAt
+											).toLocaleString()} — {action.reason}<br />
+										{/each}
+									</span>
 								</div>
 							{/if}
 							{#if report.reviewerNotes}
@@ -243,7 +270,7 @@
 										</form>
 									{/if}
 
-									{#if report.targetType === 'user'}
+									{#if report.reportedUserId}
 										<!-- Warn user -->
 										<form
 											method="POST"
@@ -258,7 +285,7 @@
 											}}
 										>
 											<input type="hidden" name="reportId" value={report.id} />
-											<input type="hidden" name="targetUserId" value={report.targetId} />
+											<input type="hidden" name="targetUserId" value={report.reportedUserId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
 											<button
 												type="submit"
@@ -282,7 +309,7 @@
 											}}
 										>
 											<input type="hidden" name="reportId" value={report.id} />
-											<input type="hidden" name="targetUserId" value={report.targetId} />
+											<input type="hidden" name="targetUserId" value={report.reportedUserId} />
 											<input type="hidden" name="notes" value={notes[report.id] ?? ''} />
 											<button
 												type="submit"
