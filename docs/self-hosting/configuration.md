@@ -37,6 +37,8 @@ Set `INSTANCE_PRELAUNCH_MODE=true` to present a public landing page instead of t
 
 This feature adds a D1 migration. Apply that migration before enabling the setting, and ensure your transactional email provider is configured.
 
+Confirmation links expire after 24 hours. Pending addresses can request a new link after 15 minutes; repeat requests within that period and requests for already-confirmed addresses receive the same generic response without another email. If the email provider rejects a send, the page reports the failure and permits a retry. Configure the `BETA_SIGNUP_RATE_LIMITER` Worker binding in the instance's `wrangler.jsonc` before deploying: choose a namespace ID unused by other rate limit bindings in your Cloudflare account and set `simple` to 10 requests per 60 seconds. The signup action counts attempts by client IP across different addresses, responds with 429 when limited, and refuses to send mail if the binding is unavailable. Cloudflare's Worker rate limits are local to each Cloudflare location and eventually consistent; use a zone WAF rule as additional protection if you need a stricter edge limit. Shared IPs can include legitimate users, so review the threshold against actual signup traffic. Test signup and the emailed confirmation link with an address you control, then confirm the record moves from pending to confirmed.
+
 ## Instance theme
 
 `INSTANCE_THEME` selects the instance-wide accent color. It changes buttons, links, focus states, and other primary UI accents; it does not replace the instance name or logo.
