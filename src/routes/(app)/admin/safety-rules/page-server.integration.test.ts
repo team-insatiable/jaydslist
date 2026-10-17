@@ -5,16 +5,19 @@ import { getDb } from '$lib/server/db';
 import { getActiveSafetyRules } from '$lib/server/safety-rules';
 import { actions } from './+page.server';
 
-const sampleRules = JSON.stringify([
-	{
-		id: 'coercion_terms',
-		label: 'Coercion combination',
-		intent: 'Flag coercion language with payment',
-		falsePositiveRisk: 'May match discussion of a third party',
-		scope: 'both',
-		all: ['forced', 'payment']
-	}
-]);
+const sampleRules = JSON.stringify({
+	schemaVersion: 1,
+	rules: [
+		{
+			id: 'coercion_terms',
+			label: 'Coercion combination',
+			intent: 'Flag coercion language with payment',
+			falsePositiveRisk: 'May match discussion of a third party',
+			scope: 'both',
+			all: ['forced', 'payment']
+		}
+	]
+});
 
 function event(
 	action: 'stage' | 'activate',

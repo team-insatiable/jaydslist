@@ -24,6 +24,24 @@ const rules = parseSafetyRules(
 );
 
 describe('versioned safety rule syntax', () => {
+	it('accepts an operator file and rejects unknown file or rule fields', () => {
+		const rule = {
+			id: 'review_1',
+			label: 'Review combination',
+			intent: 'Surface a concern for review',
+			falsePositiveRisk: 'Could match harmless discussion',
+			scope: 'both',
+			all: ['first', 'second']
+		};
+		expect(parseSafetyRules(JSON.stringify({ schemaVersion: 1, rules: [rule] }))).toEqual([rule]);
+		expect(() => parseSafetyRules(JSON.stringify({ schemaVersion: 2, rules: [rule] }))).toThrow(
+			'Unsupported safety rule file format'
+		);
+		expect(() =>
+			parseSafetyRules(JSON.stringify({ schemaVersion: 1, rules: [{ ...rule, typo: true }] }))
+		).toThrow('Unsupported safety rule field');
+	});
+
 	it('matches combinations in scope without partial-word matches', () => {
 		expect(matchSafetyRules('Forced payment', 'listing', rules).map((r) => r.id)).toEqual([
 			'coercive_offer'

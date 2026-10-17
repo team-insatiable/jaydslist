@@ -3,6 +3,22 @@
 	let rules = $state('[]');
 	let reason = $state('');
 	let activationReason = $state('');
+	let importError = $state('');
+
+	async function importRulesFile(event: Event) {
+		const file = (event.currentTarget as HTMLInputElement).files?.[0];
+		if (!file) return;
+		if (file.size > 50_000) {
+			importError = 'Rule file must be 50 KB or smaller.';
+			return;
+		}
+		try {
+			rules = await file.text();
+			importError = '';
+		} catch {
+			importError = 'Could not read the selected file.';
+		}
+	}
 </script>
 
 <section>
@@ -14,6 +30,16 @@
 	</p>
 	{#if form?.error}<p role="alert">{form.error}</p>{/if}
 	{#if form?.success}<p role="status">Rule revision saved.</p>{/if}
+	<p>
+		Load your deployed <code>content/safety-rules.json</code> file or choose one from your device. Review
+		it, then stage and activate it with reasons. Loading a file does not activate rules.
+	</p>
+	<button type="button" onclick={() => (rules = data.instanceRuleFile)}>
+		Load deployed rules file
+	</button>
+	<label for="rules-file">Choose a rules JSON file</label>
+	<input id="rules-file" type="file" accept=".json,application/json" onchange={importRulesFile} />
+	{#if importError}<p role="alert">{importError}</p>{/if}
 	<form method="POST" action="?/stage">
 		<label for="rules-json">Rule JSON</label>
 		<textarea id="rules-json" name="rules" bind:value={rules} rows="12" required></textarea>

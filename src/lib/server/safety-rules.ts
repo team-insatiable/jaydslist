@@ -30,10 +30,25 @@ export function parseSafetyRules(input: string): SafetyRule[] {
 	} catch {
 		throw new Error('Rules must be valid JSON');
 	}
+	if (isRecord(parsed)) {
+		if (
+			parsed.schemaVersion !== 1 ||
+			Object.keys(parsed).some((key) => !['schemaVersion', 'rules'].includes(key))
+		)
+			throw new Error('Unsupported safety rule file format');
+		parsed = parsed.rules;
+	}
 	if (!Array.isArray(parsed) || parsed.length > 100) throw new Error('Expected up to 100 rules');
 	const ids = new Set<string>();
 	return parsed.map((item) => {
 		if (!isRecord(item)) throw new Error('Each rule must be an object');
+		if (
+			Object.keys(item).some(
+				(key) =>
+					!['id', 'label', 'intent', 'falsePositiveRisk', 'scope', 'all', 'none'].includes(key)
+			)
+		)
+			throw new Error('Unsupported safety rule field');
 		const { id, label, intent, falsePositiveRisk, scope } = item;
 		const all = terms(item.all, 2);
 		const none = item.none === undefined ? undefined : terms(item.none, 1);
