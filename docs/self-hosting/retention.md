@@ -1,0 +1,26 @@
+# Retention and preservation planning
+
+**Beta blocker:** The application does not yet run an automatic retention purge. Operators must not claim that records are deleted on a schedule until that process has been implemented, tested, and deployed. A case-specific preservation hold can now be recorded in the admin Preservation page, but it does not itself purge data or remove content from view.
+
+Set a written schedule with a qualified lawyer before beta. The operator should choose a purpose, start event, period, deletion action, and exception for each category below. Avoid keeping all records forever merely because a report might someday be requested. Record the chosen periods in the instance privacy notice and operations runbook before enabling a purge.
+
+| Category                              | What exists today                                                                                                   | Schedule decision needed                                                                                                                      |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ordinary private messages             | Message body, media reference, sender, thread, and timestamps remain in D1; there is no user message deletion flow. | When a thread becomes eligible for deletion, what participants can retain, and how account removal affects both participants.                 |
+| Listings and media                    | Live and archived listing records, Cloudflare Images assets, and vault references have separate lifecycles.         | When each copy and image asset is removed, including moderated content.                                                                       |
+| User reports                          | Reporter, target, category, details, reviewer notes, and status remain in D1.                                       | Period measured from report resolution; treatment of open reports and dismissed reports.                                                      |
+| Evidence snapshots and safety cases   | Reports and automated cases can contain copies of message or listing text and media references.                     | Period after case resolution and whether content is erased while minimal case metadata remains.                                               |
+| Moderation decisions and scan history | Actor, time, decision, reason, rule version, and scan outcome remain in D1.                                         | How long the accountability trail remains, and whether free-text reasons need redaction before long storage.                                  |
+| Safety rule revisions                 | Every published rule revision is kept with author, reason, and date.                                                | How long superseded versions remain available to explain prior decisions.                                                                     |
+| Accounts and removal requests         | No self-service account deletion exists.                                                                            | Who handles requests, response deadline, what is deleted or de-identified, and exceptions for active cases.                                   |
+| Backups and exports                   | D1 recovery history and any operator-created exports are outside the app's row deletion.                            | Storage location, access, expiry, restore handling, and removal of old exports. Check the current D1 recovery window for the operator's plan. |
+
+## Preservation holds
+
+An admin can place a hold on an existing report or safety case at **Admin → Preservation**. Enter a specific reason and an external reference if one exists. The app stores who placed it and when; release requires a reason and records who released it and when. Placement and release are also written to the moderation action trail in the same database batch. A unique active-hold constraint prevents duplicate active holds on one case.
+
+Only admins can use this page. Operators should designate who may exercise that admin permission, review active holds on a documented cadence, and restrict any evidence export to a legitimate, authorized request. Do not copy sensitive evidence into a GitHub issue, general chat, or an unprotected file. No evidence export tool or automatic purge has been implemented yet.
+
+The eventual purge must check active holds before deleting a case or its evidence. It must account for related message/listing/media records, not only the snapshot row. Rehearse both an ordinary purge and a held-case release on non-production data before beta. A restored backup must reapply deletions that happened after the restore point and must not silently discard active holds.
+
+This document is an implementation inventory and decision record, not legal advice or a claim of compliance. The operator's published Privacy Policy and Terms must describe the actual deployed behavior.
