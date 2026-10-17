@@ -5,6 +5,7 @@ import { load as confirmSignup } from './beta/confirm/+page.server';
 
 const signupEnv = {
 	...env,
+	BETA_SIGNUP_RATE_LIMITER: { limit: vi.fn().mockResolvedValue({ success: true }) },
 	INSTANCE_PRELAUNCH_MODE: 'true',
 	INSTANCE_URL: 'https://example.test',
 	EMAIL_PROVIDER: 'resend',
@@ -12,11 +13,15 @@ const signupEnv = {
 	EMAIL_FROM: 'Test <noreply@example.test>'
 } as Env;
 
-function signup(email: string) {
+function signup(email: string, ip = '192.0.2.1') {
 	const form = new FormData();
 	form.set('email', email);
 	return {
-		request: new Request('https://example.test/', { method: 'POST', body: form }),
+		request: new Request('https://example.test/', {
+			method: 'POST',
+			headers: { 'CF-Connecting-IP': ip },
+			body: form
+		}),
 		platform: { env: signupEnv }
 	} as Parameters<typeof actions.joinBeta>[0];
 }
@@ -25,7 +30,12 @@ function uniqueEmail() {
 	return `${crypto.randomUUID()}@example.test`;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+	vi.unstubAllGlobals();
+	vi.mocked(signupEnv.BETA_SIGNUP_RATE_LIMITER.limit)
+		.mockReset()
+		.mockResolvedValue({ success: true });
+});
 
 describe('beta signup', () => {
 	it('confirms the emailed link before counting an address on the list', async () => {
@@ -104,5 +114,23 @@ describe('beta signup', () => {
 		expect(row).toEqual({ confirmation_token_hash: null, confirmation_expires_at: null });
 		expect(await actions.joinBeta(signup(email))).toEqual({ submitted: true });
 		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('stops a burst across different addresses from the same client before sending mail', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+		const limiter = vi.mocked(signupEnv.BETA_SIGNUP_RATE_LIMITER.limit);
+		limiter.mockResolvedValueOnce({ success: true }).mockResolvedValueOnce({ success: false });
+		const firstEmail = uniqueEmail();
+		const blockedEmail = uniqueEmail();
+		expect(await actions.joinBeta(signup(firstEmail))).toEqual({ submitted: true });
+		expect(await actions.joinBeta(signup(blockedEmail))).toMatchObject({ status: 429 });
+		expect(limiter).toHaveBeenCalledTimes(2);
+		expect(limiter.mock.calls[0][0].key).toBe(limiter.mock.calls[1][0].key);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const blockedRow = await env.DB.prepare('SELECT id FROM beta_waitlist WHERE email = ?')
+			.bind(blockedEmail)
+			.first();
+		expect(blockedRow).toBeNull();
 	});
 });

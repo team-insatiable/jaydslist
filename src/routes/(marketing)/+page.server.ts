@@ -38,6 +38,18 @@ export const actions: Actions = {
 			return fail(400, { error: 'Enter a valid email address.' });
 		if (!emailIsConfigured(env))
 			return fail(503, { error: 'Email confirmation is not configured yet.' });
+		// The address cooldown protects one inbox; this limits bursts across addresses.
+		// Cloudflare supplies this header. A shared fallback key fails safely in local dev.
+		const clientIp = request.headers.get('cf-connecting-ip') ?? 'unknown';
+		try {
+			const rate = await env.BETA_SIGNUP_RATE_LIMITER.limit({
+				key: `beta-signup:${await hash(clientIp)}`
+			});
+			if (!rate.success)
+				return fail(429, { error: 'Too many signup attempts. Please try again shortly.' });
+		} catch {
+			return fail(503, { error: 'Beta signup is temporarily unavailable.' });
+		}
 		const rawToken =
 			crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
 		const expiresAt = new Date(Date.now() + CONFIRMATION_LIFETIME_MS);
