@@ -40,7 +40,7 @@
 					<button type="submit">Get beta updates <span aria-hidden="true">↗</span></button>
 				</div>
 				{#if submitted}<p class="feedback" role="status">
-						You’re almost in. Check your inbox to confirm your email.
+						If this address needs confirmation, check your inbox for the link.
 					</p>{/if}
 				{#if error}<p class="feedback error" role="alert">{error}</p>{/if}
 				<p class="fine-print">Beta &amp; launch updates only. Confirm by email. For adults 18+.</p>
