@@ -4,6 +4,24 @@
 	let reason = $state('');
 	let activationReason = $state('');
 	let importError = $state('');
+	let formatError = $state('');
+
+	function formatRules() {
+		try {
+			rules = JSON.stringify(JSON.parse(rules), null, 2);
+			formatError = '';
+		} catch {
+			formatError = 'This is not valid JSON yet. Fix the syntax before formatting or staging.';
+		}
+	}
+
+	function formatRevision(input: string): string {
+		try {
+			return JSON.stringify(JSON.parse(input), null, 2);
+		} catch {
+			return input;
+		}
+	}
 
 	async function importRulesFile(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0];
@@ -15,6 +33,7 @@
 		try {
 			rules = await file.text();
 			importError = '';
+			formatRules();
 		} catch {
 			importError = 'Could not read the selected file.';
 		}
@@ -36,15 +55,34 @@
 			Load the deployed <code>content/safety-rules.json</code> file or choose a JSON file from your device.
 			Loading a file does not activate it.
 		</p>
-		<button type="button" onclick={() => (rules = data.instanceRuleFile)}>
+		<button
+			type="button"
+			onclick={() => {
+				rules = data.instanceRuleFile;
+				formatError = '';
+			}}
+		>
 			Load deployed rules file
 		</button>
 		<label for="rules-file">Or choose a rules JSON file</label>
 		<input id="rules-file" type="file" accept=".json,application/json" onchange={importRulesFile} />
 		{#if importError}<p role="alert">{importError}</p>{/if}
 		<form method="POST" action="?/stage">
-			<label for="rules-json">Rule JSON</label>
-			<textarea id="rules-json" name="rules" bind:value={rules} rows="12" required></textarea>
+			<div class="editor-heading">
+				<label for="rules-json">Rule JSON</label>
+				<button class="secondary outline" type="button" onclick={formatRules}>Format JSON</button>
+			</div>
+			<textarea
+				id="rules-json"
+				name="rules"
+				bind:value={rules}
+				rows="18"
+				wrap="off"
+				spellcheck="false"
+				autocapitalize="off"
+				required
+			></textarea>
+			{#if formatError}<p class="format-error" role="alert">{formatError}</p>{/if}
 			<details>
 				<summary>Rule format guidance</summary>
 				<p>
@@ -71,7 +109,7 @@
 				<p>{revision.reason} · {new Date(revision.createdAt).toLocaleString()}</p>
 				<details>
 					<summary>View rule JSON</summary>
-					<pre>{revision.rulesJson}</pre>
+					<pre>{formatRevision(revision.rulesJson)}</pre>
 				</details>
 				{#if revision.id !== data.activeRevisionId}
 					<form method="POST" action="?/activate">
@@ -106,6 +144,51 @@
 	.help-text {
 		color: var(--pico-muted-color);
 		margin-bottom: 1rem;
+	}
+
+	.editor-heading {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.editor-heading label {
+		margin-bottom: 0.4rem;
+	}
+
+	.editor-heading button {
+		margin: 0 0 0.4rem;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.85rem;
+	}
+
+	#rules-json,
+	pre {
+		font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+		font-size: 0.875rem;
+		line-height: 1.55;
+		tab-size: 2;
+	}
+
+	#rules-json {
+		width: 100%;
+		min-height: 28rem;
+		padding: 1rem;
+		white-space: pre;
+		overflow: auto;
+		resize: vertical;
+	}
+
+	pre {
+		white-space: pre;
+		overflow: auto;
+		max-height: 28rem;
+	}
+
+	.format-error {
+		color: var(--pico-del-color);
 	}
 
 	details {
