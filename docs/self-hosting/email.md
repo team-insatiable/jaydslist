@@ -36,6 +36,8 @@ If you already host a public logo elsewhere, such as a public Cloudflare Images 
 
 The default subjects and message bodies live in [`src/lib/instance-content/email-templates.ts`](../../src/lib/instance-content/email-templates.ts). A private instance repository may keep a copy at `content/email-templates.ts` and overlay it at the same source path before building, as it does for policy Markdown. Edit the subject and HTML for each message type while preserving the exported object keys and any required action URL placeholder. Template values use `{{name}}` placeholders, which the renderer escapes for HTML and attributes. Optional sections use `{{#if name}}...{{/if}}` without nesting. Available shared values are `instanceName`, `instanceUrl`, `legalEmail`, and `rulesUrl`; each template shows its event-specific values. An unknown placeholder fails rendering so a typo cannot silently remove a link or detail. Do not put credentials, recipient data, or instance secrets into the template file.
 
+After deploying, an admin can open `/admin/email-previews` to see the subject and rendered HTML for each deployed template. Previews use sample details and do not send email. Sample action links are deliberately inactive. The page shows the currently deployed file, so redeploy after changing an instance template. Check a real test mailbox as well to see how your email provider and mail clients display it.
+
 Password reset and beta confirmation messages must retain `{{resetUrl}}` and `{{confirmUrl}}` respectively. Test customized templates using a real delivery to a test mailbox after each change, including image rendering with remote images blocked.
 
 ## Test delivery
