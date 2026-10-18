@@ -9,6 +9,7 @@
 		{ href: '/admin/users' as const, label: 'Users' },
 		{ href: '/admin/vocabulary' as const, label: 'Vocabulary' },
 		{ href: '/admin/safety-rules' as const, label: 'Content Safety rules' },
+		{ href: '/admin/email-previews' as const, label: 'Email previews' },
 		{ href: '/admin/preservation' as const, label: 'Preservation' }
 	];
 </script>
