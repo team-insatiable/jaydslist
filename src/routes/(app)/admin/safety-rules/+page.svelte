@@ -146,6 +146,18 @@
 		margin-bottom: 1rem;
 	}
 
+	.rules-page .admin-panel > button {
+		margin-bottom: 0.75rem;
+	}
+
+	#rules-file {
+		margin-bottom: 1rem;
+	}
+
+	.rules-page form > button[type='submit'] {
+		margin-top: 1rem;
+	}
+
 	.editor-heading {
 		display: flex;
 		align-items: end;
