@@ -22,7 +22,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 			.all()
 	]);
 	return {
-		revisions,
+		revisions: revisions.map((revision) => ({
+			...revision,
+			policy: parseSafetyPolicy(revision.rulesJson)
+		})),
 		activeRevisionId: state?.revisionId ?? null,
 		history,
 		instanceRuleFile: JSON.stringify(instanceRuleFile, null, 2)

@@ -3,7 +3,7 @@ import { env } from 'cloudflare:test';
 import { createTestUser } from '$lib/server/test-helpers/fixtures';
 import { getDb } from '$lib/server/db';
 import { getActiveSafetyRules } from '$lib/server/content-safety/rules';
-import { actions } from './+page.server';
+import { actions, load } from './+page.server';
 
 const sampleRules = JSON.stringify({
 	schemaVersion: 2,
@@ -60,6 +60,13 @@ describe('admin safety rules', () => {
 			'SELECT id, version FROM safety_rule_revisions ORDER BY version DESC LIMIT 1'
 		).first<{ id: string; version: number }>();
 		expect(revision?.version).toBeGreaterThan(0);
+		const review = await load({ platform: { env } } as Parameters<typeof load>[0]);
+		if (!review || !('revisions' in review)) throw new Error('Expected rule revisions');
+		expect(review.revisions.find((entry) => entry.id === revision?.id)?.policy).toMatchObject({
+			sections: [
+				{ label: 'Trafficking and exploitation', rules: [{ label: 'Coercion combination' }] }
+			]
+		});
 		expect(
 			await actions.activate(
 				event('activate', adminId, adminEmail, {
