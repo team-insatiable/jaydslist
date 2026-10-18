@@ -1,10 +1,22 @@
 <script lang="ts">
+	import SafetyRuleReview from '$lib/components/admin/SafetyRuleReview.svelte';
+	import { parseSafetyPolicy, type SafetyPolicy } from '$lib/content-safety/rules';
 	let { data, form } = $props();
 	let rules = $state(JSON.stringify({ schemaVersion: 2, sections: [] }, null, 2));
 	let reason = $state('');
 	let activationReason = $state('');
 	let importError = $state('');
 	let formatError = $state('');
+	let draftPreview = $derived.by((): { policy: SafetyPolicy | null; error: string } => {
+		try {
+			return { policy: parseSafetyPolicy(rules), error: '' };
+		} catch (cause) {
+			return {
+				policy: null,
+				error: cause instanceof Error ? cause.message : 'Cannot preview rules'
+			};
+		}
+	});
 
 	function formatRules() {
 		try {
@@ -68,33 +80,37 @@
 		<input id="rules-file" type="file" accept=".json,application/json" onchange={importRulesFile} />
 		{#if importError}<p role="alert">{importError}</p>{/if}
 		<form method="POST" action="?/stage">
-			<div class="editor-heading">
-				<label for="rules-json">Rule JSON</label>
-				<button class="secondary outline" type="button" onclick={formatRules}>Format JSON</button>
-			</div>
-			<textarea
-				id="rules-json"
-				name="rules"
-				bind:value={rules}
-				rows="18"
-				wrap="off"
-				spellcheck="false"
-				autocapitalize="off"
-				required
-			></textarea>
-			{#if formatError}<p class="format-error" role="alert">{formatError}</p>{/if}
-			<details>
-				<summary>Rule format guidance</summary>
+			<h3 class="preview-heading">Review rules before staging</h3>
+			{#if draftPreview.policy}
+				<SafetyRuleReview policy={draftPreview.policy} />
+			{:else}
+				<p class="format-error" role="alert">{draftPreview.error}</p>
+			{/if}
+			<details class="advanced-editor">
+				<summary>Edit raw JSON (advanced)</summary>
+				<div class="editor-heading">
+					<label for="rules-json">Rule JSON</label>
+					<button class="secondary outline" type="button" onclick={formatRules}>Format JSON</button>
+				</div>
+				<textarea
+					id="rules-json"
+					name="rules"
+					bind:value={rules}
+					rows="18"
+					wrap="off"
+					spellcheck="false"
+					autocapitalize="off"
+					required
+				></textarea>
+				{#if formatError}<p class="format-error" role="alert">{formatError}</p>{/if}
 				<p>
-					Group rules into named sections with a review queue: urgent, solicitation, or general.
-					Each rule needs an ID, label, intent, false positive risk, scope, and at least two terms
-					in <code>all</code>, or one term in <code>all</code> plus alternatives in
-					<code>any</code>. Optional <code>none</code> terms exclude a match.
+					The file uses named sections and a review queue for each section. Changes here update the
+					review above; staging validates the full rule format.
 				</p>
 			</details>
 			<label for="stage-reason">Change reason</label>
 			<input id="stage-reason" name="reason" bind:value={reason} required maxlength="500" />
-			<button type="submit">Stage revision</button>
+			<button type="submit" disabled={!draftPreview.policy}>Stage revision</button>
 		</form>
 	</div>
 	<h2>2. Review and activate a revision</h2>
@@ -107,8 +123,9 @@
 					Revision {revision.version}{revision.id === data.activeRevisionId ? ' · Active' : ''}
 				</h3>
 				<p>{revision.reason} · {new Date(revision.createdAt).toLocaleString()}</p>
+				<SafetyRuleReview policy={revision.policy} />
 				<details>
-					<summary>View rule JSON</summary>
+					<summary>View raw JSON</summary>
 					<pre>{formatRevision(revision.rulesJson)}</pre>
 				</details>
 				{#if revision.id !== data.activeRevisionId}
