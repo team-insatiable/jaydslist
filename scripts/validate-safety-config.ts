@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { parseSafetyRules } from '../src/lib/server/safety-rules';
+import { parseSafetyRules } from '../src/lib/server/content-safety/rules';
 
 const file = new URL('../src/lib/instance-content/safety-rules.json', import.meta.url);
 const rules = parseSafetyRules(readFileSync(file, 'utf8'));

@@ -2,19 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createTestUser } from '$lib/server/test-helpers/fixtures';
 import { getDb } from '$lib/server/db';
-import { getActiveSafetyRules } from '$lib/server/safety-rules';
+import { getActiveSafetyRules } from '$lib/server/content-safety/rules';
 import { actions } from './+page.server';
 
 const sampleRules = JSON.stringify({
-	schemaVersion: 1,
-	rules: [
+	schemaVersion: 2,
+	sections: [
 		{
-			id: 'coercion_terms',
-			label: 'Coercion combination',
-			intent: 'Flag coercion language with payment',
-			falsePositiveRisk: 'May match discussion of a third party',
-			scope: 'both',
-			all: ['forced', 'payment']
+			id: 'trafficking_exploitation',
+			label: 'Trafficking and exploitation',
+			queue: 'urgent',
+			rules: [
+				{
+					id: 'coercion_terms',
+					label: 'Coercion combination',
+					intent: 'Flag coercion language with payment',
+					falsePositiveRisk: 'May match discussion of a third party',
+					scope: 'both',
+					all: ['forced', 'payment']
+				}
+			]
 		}
 	]
 });
@@ -63,7 +70,7 @@ describe('admin safety rules', () => {
 		).toMatchObject({ success: true });
 		expect(await getActiveSafetyRules(getDb(env.DB))).toMatchObject({
 			revisionId: revision!.id,
-			rules: [{ id: 'coercion_terms' }]
+			rules: [{ id: 'coercion_terms', sectionId: 'trafficking_exploitation', queue: 'urgent' }]
 		});
 		const logs = await env.DB.prepare(
 			"SELECT action_type FROM moderation_actions WHERE target_type = 'safety_rules' AND target_id = ?"

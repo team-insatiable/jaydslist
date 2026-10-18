@@ -1,4 +1,23 @@
 {
-	"schemaVersion": 1,
-	"rules": []
+	"schemaVersion": 2,
+	"sections": [
+		{
+			"id": "child_exploitation",
+			"label": "Child sexual exploitation",
+			"queue": "urgent",
+			"rules": []
+		},
+		{
+			"id": "trafficking_exploitation",
+			"label": "Trafficking and exploitation",
+			"queue": "urgent",
+			"rules": []
+		},
+		{
+			"id": "commercial_sex_solicitation",
+			"label": "Commercial sex solicitation",
+			"queue": "solicitation",
+			"rules": []
+		}
+	]
 }

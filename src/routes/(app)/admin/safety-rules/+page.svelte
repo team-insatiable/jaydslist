@@ -1,6 +1,6 @@
 <script lang="ts">
 	let { data, form } = $props();
-	let rules = $state('[]');
+	let rules = $state(JSON.stringify({ schemaVersion: 2, sections: [] }, null, 2));
 	let reason = $state('');
 	let activationReason = $state('');
 	let importError = $state('');
@@ -22,7 +22,7 @@
 </script>
 
 <section>
-	<h1>Safety screening rules</h1>
+	<h1>Content Safety rules</h1>
 	<p>
 		Stage a revision, review it, then activate it. Older revisions remain available for rollback.
 		These rules are separate from listing vocabulary. New submissions use the active revision;
@@ -44,9 +44,11 @@
 		<label for="rules-json">Rule JSON</label>
 		<textarea id="rules-json" name="rules" bind:value={rules} rows="12" required></textarea>
 		<p>
-			Each rule needs an ID, label, intent, known false positive risk, scope (message, listing, or
-			both), and two or more terms in <code>all</code>. Use <code>falsePositiveRisk</code> for the
-			risk field. Optional <code>none</code> terms exclude a match.
+			Group rules into named sections with a review queue: urgent, solicitation, or general. Each
+			rule needs an ID, label, intent, false positive risk, scope, and at least two terms in <code
+				>all</code
+			>, or one term in <code>all</code> plus alternatives in <code>any</code>. Optional
+			<code>none</code> terms exclude a match.
 		</p>
 		<label for="stage-reason">Change reason</label>
 		<input id="stage-reason" name="reason" bind:value={reason} required maxlength="500" />

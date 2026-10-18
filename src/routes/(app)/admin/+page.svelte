@@ -69,7 +69,11 @@
 	{:else}
 		<ul class="report-list">
 			{#each data.reports as report (report.id)}
-				<li class="report-card" class:open={expandedReport === report.id}>
+				<li
+					id={`report-${report.id}`}
+					class="report-card"
+					class:open={expandedReport === report.id}
+				>
 					<button class="report-summary" onclick={() => toggle(report.id)} type="button">
 						<span class="category-tag cat-{report.category}"
 							>{CATEGORY_LABELS[report.category] ?? report.category}</span

@@ -1,7 +1,7 @@
 import { eq, and, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { listings, listingEvents, safetyCases, safetyScanEvents } from '$lib/server/db/schema';
-import { screenContent, screeningRecords } from '$lib/server/content-screening';
+import { screenContent, screeningRecords } from '$lib/server/content-safety/screen';
 import { getConfig, getConfigInt } from '$lib/server/config';
 import { randomUUID } from 'node:crypto';
 
