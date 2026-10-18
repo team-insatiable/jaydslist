@@ -21,50 +21,58 @@
 	}
 </script>
 
-<section>
+<section class="admin-page rules-page">
 	<h1>Content Safety rules</h1>
-	<p>
+	<p class="admin-page-intro">
 		Stage a revision, review it, then activate it. Older revisions remain available for rollback.
 		These rules are separate from listing vocabulary. New submissions use the active revision;
 		matches and scanner failures enter the Safety cases queue.
 	</p>
 	{#if form?.error}<p role="alert">{form.error}</p>{/if}
 	{#if form?.success}<p role="status">Rule revision saved.</p>{/if}
-	<p>
-		Load your deployed <code>content/safety-rules.json</code> file or choose one from your device. Review
-		it, then stage and activate it with reasons. Loading a file does not activate rules.
-	</p>
-	<button type="button" onclick={() => (rules = data.instanceRuleFile)}>
-		Load deployed rules file
-	</button>
-	<label for="rules-file">Choose a rules JSON file</label>
-	<input id="rules-file" type="file" accept=".json,application/json" onchange={importRulesFile} />
-	{#if importError}<p role="alert">{importError}</p>{/if}
-	<form method="POST" action="?/stage">
-		<label for="rules-json">Rule JSON</label>
-		<textarea id="rules-json" name="rules" bind:value={rules} rows="12" required></textarea>
-		<p>
-			Group rules into named sections with a review queue: urgent, solicitation, or general. Each
-			rule needs an ID, label, intent, false positive risk, scope, and at least two terms in <code
-				>all</code
-			>, or one term in <code>all</code> plus alternatives in <code>any</code>. Optional
-			<code>none</code> terms exclude a match.
+	<div class="admin-panel">
+		<h2>1. Load and review rules</h2>
+		<p class="help-text">
+			Load the deployed <code>content/safety-rules.json</code> file or choose a JSON file from your device.
+			Loading a file does not activate it.
 		</p>
-		<label for="stage-reason">Change reason</label>
-		<input id="stage-reason" name="reason" bind:value={reason} required maxlength="500" />
-		<button type="submit">Stage revision</button>
-	</form>
-	<h2>Revisions</h2>
+		<button type="button" onclick={() => (rules = data.instanceRuleFile)}>
+			Load deployed rules file
+		</button>
+		<label for="rules-file">Or choose a rules JSON file</label>
+		<input id="rules-file" type="file" accept=".json,application/json" onchange={importRulesFile} />
+		{#if importError}<p role="alert">{importError}</p>{/if}
+		<form method="POST" action="?/stage">
+			<label for="rules-json">Rule JSON</label>
+			<textarea id="rules-json" name="rules" bind:value={rules} rows="12" required></textarea>
+			<details>
+				<summary>Rule format guidance</summary>
+				<p>
+					Group rules into named sections with a review queue: urgent, solicitation, or general.
+					Each rule needs an ID, label, intent, false positive risk, scope, and at least two terms
+					in <code>all</code>, or one term in <code>all</code> plus alternatives in
+					<code>any</code>. Optional <code>none</code> terms exclude a match.
+				</p>
+			</details>
+			<label for="stage-reason">Change reason</label>
+			<input id="stage-reason" name="reason" bind:value={reason} required maxlength="500" />
+			<button type="submit">Stage revision</button>
+		</form>
+	</div>
+	<h2>2. Review and activate a revision</h2>
 	{#if data.revisions.length === 0}
-		<p>No revisions staged yet. No safety rule set is active.</p>
+		<p class="admin-panel">No revisions staged yet. No safety rule set is active.</p>
 	{:else}
 		{#each data.revisions as revision (revision.id)}
-			<article>
+			<article class="admin-panel">
 				<h3>
 					Revision {revision.version}{revision.id === data.activeRevisionId ? ' · Active' : ''}
 				</h3>
 				<p>{revision.reason} · {new Date(revision.createdAt).toLocaleString()}</p>
-				<pre>{revision.rulesJson}</pre>
+				<details>
+					<summary>View rule JSON</summary>
+					<pre>{revision.rulesJson}</pre>
+				</details>
 				{#if revision.id !== data.activeRevisionId}
 					<form method="POST" action="?/activate">
 						<input type="hidden" name="revisionId" value={revision.id} />
@@ -84,8 +92,33 @@
 	{/if}
 	<h2>Change history</h2>
 	{#each data.history as entry (entry.id)}
-		<p>
+		<p class="history-entry">
 			{entry.actionType} · {entry.actorId} · {new Date(entry.createdAt).toLocaleString()} · {entry.reason}
 		</p>
 	{/each}
 </section>
+
+<style>
+	.rules-page > h2 {
+		margin: 2rem 0 1rem;
+	}
+
+	.help-text {
+		color: var(--pico-muted-color);
+		margin-bottom: 1rem;
+	}
+
+	details {
+		margin: 0.75rem 0 1rem;
+	}
+
+	details p {
+		margin: 0.75rem 0 0;
+	}
+
+	.history-entry {
+		padding: 0.75rem 0;
+		border-bottom: 1px solid var(--pico-muted-border-color);
+		overflow-wrap: anywhere;
+	}
+</style>

@@ -3,23 +3,29 @@
 	let { data, form } = $props();
 </script>
 
-<section>
+<section class="admin-page cases-page">
 	<h1>Content Safety cases</h1>
-	<p>
+	<p class="admin-page-intro">
 		Held content stays hidden from other users until released. Review the captured submission and
 		rule version before deciding.
 	</p>
-	<p>
-		<a href={resolve('/admin/safety-cases')}>Pending</a> ·
-		<a href={resolve('/admin/safety-cases?status=resolved')}>Resolved</a>
-	</p>
+	<nav class="case-views" aria-label="Case status">
+		<a
+			href={resolve('/admin/safety-cases')}
+			aria-current={data.status === 'pending' ? 'page' : undefined}>Pending</a
+		>
+		<a
+			href={resolve('/admin/safety-cases?status=resolved')}
+			aria-current={data.status === 'resolved' ? 'page' : undefined}>Resolved</a
+		>
+	</nav>
 	{#if form?.error}<p role="alert">{form.error}</p>{/if}
 	{#if form?.success}<p role="status">
 			Case {form.decision === 'release' ? 'released' : 'rejected'}.
 		</p>{/if}
-	{#if data.cases.length === 0}<p>No {data.status} cases.</p>{/if}
+	{#if data.cases.length === 0}<p class="admin-panel">No {data.status} cases.</p>{/if}
 	{#each data.cases as safetyCase (safetyCase.id)}
-		<article>
+		<article class="admin-panel">
 			<h2>{safetyCase.queue} · {safetyCase.targetType} · {safetyCase.status}</h2>
 			<p>Submitted {new Date(safetyCase.createdAt).toLocaleString()} · {safetyCase.reason}</p>
 			<p>
@@ -65,3 +71,24 @@
 		</article>
 	{/each}
 </section>
+
+<style>
+	.case-views {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.case-views a {
+		padding: 0.5rem 0.9rem;
+		border: 1px solid var(--pico-muted-border-color);
+		border-radius: 999px;
+		text-decoration: none;
+	}
+
+	.case-views a[aria-current='page'] {
+		border-color: var(--pico-primary);
+		background: var(--pico-card-background-color);
+	}
+</style>

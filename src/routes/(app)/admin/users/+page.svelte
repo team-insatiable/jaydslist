@@ -311,4 +311,16 @@
 		color: var(--pico-muted-color);
 		border: 1px solid var(--pico-muted-border-color);
 	}
+
+	@media (max-width: 600px) {
+		.search-form,
+		.user-actions {
+			flex-wrap: wrap;
+		}
+
+		.search-form input,
+		.ban-reason {
+			flex-basis: 100%;
+		}
+	}
 </style>
