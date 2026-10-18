@@ -55,7 +55,7 @@ describe('admin safety rules', () => {
 					reason: 'Initial screening rules'
 				})
 			)
-		).toMatchObject({ success: true });
+		).toMatchObject({ success: true, action: 'staged' });
 		const revision = await env.DB.prepare(
 			'SELECT id, version FROM safety_rule_revisions ORDER BY version DESC LIMIT 1'
 		).first<{ id: string; version: number }>();
@@ -74,7 +74,7 @@ describe('admin safety rules', () => {
 					reason: 'Reviewed for beta'
 				})
 			)
-		).toMatchObject({ success: true });
+		).toMatchObject({ success: true, action: 'activated' });
 		expect(await getActiveSafetyRules(getDb(env.DB))).toMatchObject({
 			revisionId: revision!.id,
 			rules: [{ id: 'coercion_terms', sectionId: 'trafficking_exploitation', queue: 'urgent' }]
