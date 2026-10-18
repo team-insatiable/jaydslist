@@ -211,4 +211,15 @@
 		background: var(--pico-del-color);
 		border-color: var(--pico-del-color);
 	}
+
+	@media (max-width: 600px) {
+		.add-form,
+		.term-row {
+			flex-wrap: wrap;
+		}
+
+		.add-form input[type='text'] {
+			flex-basis: 100%;
+		}
+	}
 </style>

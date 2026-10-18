@@ -2,16 +2,16 @@
 	let { data, form } = $props();
 </script>
 
-<section>
+<section class="admin-page preservation-page">
 	<h1>Preservation holds</h1>
-	<p>
+	<p class="admin-page-intro">
 		An active hold protects a report or safety case from the future retention purge. It does not
 		change who can see the underlying message or listing. Record the specific reason and review
 		active holds regularly.
 	</p>
 	{#if form?.error}<p role="alert">{form.error}</p>{/if}
 	{#if form?.success}<p role="status">Hold {form.success}.</p>{/if}
-	<form method="POST" action="?/place">
+	<form class="admin-panel" method="POST" action="?/place">
 		<h2>Place a hold</h2>
 		<label for="targetType">Case type</label>
 		<select id="targetType" name="targetType" required>
@@ -25,9 +25,9 @@
 		<button type="submit">Place hold</button>
 	</form>
 	<h2>Recent holds</h2>
-	{#if data.holds.length === 0}<p>No holds recorded.</p>{/if}
+	{#if data.holds.length === 0}<p class="admin-panel">No holds recorded.</p>{/if}
 	{#each data.holds as hold (hold.id)}
-		<article>
+		<article class="admin-panel">
 			<h3>{hold.targetType} {hold.targetId}</h3>
 			<p>Placed by {hold.placedBy} on {new Date(hold.placedAt).toLocaleString()}</p>
 			<p>{hold.reason}</p>
@@ -47,3 +47,9 @@
 		</article>
 	{/each}
 </section>
+
+<style>
+	.preservation-page > h2 {
+		margin: 2rem 0 1rem;
+	}
+</style>

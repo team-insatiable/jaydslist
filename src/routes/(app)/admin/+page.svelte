@@ -356,6 +356,7 @@
 
 	.filter-tabs {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 0.25rem;
 	}
 
@@ -607,5 +608,16 @@
 	.btn-dismiss:hover {
 		color: var(--pico-color);
 		border-color: var(--pico-color);
+	}
+
+	@media (max-width: 600px) {
+		.detail-row {
+			flex-direction: column;
+			gap: 0.2rem;
+		}
+
+		.detail-label {
+			min-width: 0;
+		}
 	}
 </style>
