@@ -25,11 +25,17 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	if (!env || !(await isAdminUser(env, locals.user.id))) throw error(403, 'Forbidden');
 	const db = getDb(env.DB);
 	const status = url.searchParams.get('status') === 'resolved' ? 'resolved' : 'pending';
+	const requestedCaseId = url.searchParams.get('case');
 	const cases = await db
 		.select()
 		.from(safetyCases)
 		.where(
-			status === 'pending' ? eq(safetyCases.status, 'pending') : ne(safetyCases.status, 'pending')
+			and(
+				status === 'pending'
+					? eq(safetyCases.status, 'pending')
+					: ne(safetyCases.status, 'pending'),
+				...(requestedCaseId ? [eq(safetyCases.id, requestedCaseId)] : [])
+			)
 		)
 		.orderBy(desc(safetyCases.createdAt))
 		.limit(100)
@@ -73,6 +79,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 				threadId?: string;
 			},
 			matchedRuleIds: JSON.parse(entry.matchedRuleIds) as string[],
+			matchedSections: JSON.parse(entry.matchedSections) as string[],
 			actions: actions.filter((action) => action.targetId === entry.id),
 			scan:
 				scans.find(

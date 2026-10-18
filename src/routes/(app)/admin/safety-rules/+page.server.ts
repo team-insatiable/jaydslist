@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { desc, eq } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { moderationActions, safetyRuleRevisions, safetyRuleState } from '$lib/server/db/schema';
-import { parseSafetyRules } from '$lib/server/safety-rules';
+import { parseSafetyPolicy } from '$lib/server/content-safety/rules';
 import { isAdminUser } from '$lib/server/admin-auth';
 import instanceRuleFile from '$lib/instance-content/safety-rules.json';
 
@@ -38,9 +38,9 @@ export const actions: Actions = {
 		const reason = String(data.get('reason') ?? '').trim();
 		const input = String(data.get('rules') ?? '');
 		if (!reason || reason.length > 500) return fail(400, { error: 'A reason is required' });
-		let rules;
+		let policy;
 		try {
-			rules = parseSafetyRules(input);
+			policy = parseSafetyPolicy(input);
 		} catch (cause) {
 			return fail(400, { error: cause instanceof Error ? cause.message : 'Invalid rules' });
 		}
@@ -56,7 +56,7 @@ export const actions: Actions = {
 				db.insert(safetyRuleRevisions).values({
 					id: revisionId,
 					version: (latest?.version ?? 0) + 1,
-					rulesJson: JSON.stringify(rules),
+					rulesJson: JSON.stringify(policy),
 					reason,
 					createdBy: locals.user.id
 				}),

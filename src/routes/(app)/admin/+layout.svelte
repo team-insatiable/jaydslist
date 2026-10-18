@@ -6,11 +6,12 @@
 <div class="admin-wrap">
 	<nav class="admin-nav">
 		<span class="admin-label">Admin</span>
+		<a href={resolve('/admin/review')}>Review inbox</a>
 		<a href={resolve('/admin')}>Reports</a>
 		<a href={resolve('/admin/safety-cases')}>Safety cases</a>
 		<a href={resolve('/admin/users')}>Users</a>
 		<a href={resolve('/admin/vocabulary')}>Vocabulary</a>
-		<a href={resolve('/admin/safety-rules')}>Safety rules</a>
+		<a href={resolve('/admin/safety-rules')}>Content Safety rules</a>
 		<a href={resolve('/admin/preservation')}>Preservation</a>
 	</nav>
 	<div class="admin-content">

@@ -23,7 +23,7 @@ import { decryptContact } from '$lib/server/crypto';
 import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
 import { getInstanceConfig } from '$lib/server/instance';
 import { sendPushNotification } from '$lib/server/push';
-import { screenContent, screeningRecords } from '$lib/server/content-screening';
+import { screenContent, screeningRecords } from '$lib/server/content-safety/screen';
 import { isKeyExchangeEligible } from '$lib/server/key-exchange';
 import { allowsNsfwInThread, threadPhotoUrl } from '$lib/server/thread-photo-preference';
 

@@ -20,7 +20,7 @@ import { eq, and, isNull, count, or } from 'drizzle-orm';
 import { isBumpCooldownActive, getNextBumpAt } from '$lib/server/listing-bump';
 import { canReceivePhoto } from '$lib/server/photo-moderation';
 import { imageUrl } from '$lib/server/cloudflare-images';
-import { screenContent, screeningRecords } from '$lib/server/content-screening';
+import { screenContent, screeningRecords } from '$lib/server/content-safety/screen';
 
 export const load: PageServerLoad = async ({ params, locals, platform }) => {
 	const env = platform?.env;

@@ -1,10 +1,14 @@
-import { getDb } from './db';
-import { getActiveSafetyRules, matchSafetyRules } from './safety-rules';
+import { getDb } from '../db';
+import { getActiveSafetyRules, matchSafetyRules } from './rules';
+import type { ReviewQueue } from './rules';
+import { routeMatches } from './routing';
 
 export type ScreeningResult = {
 	outcome: 'cleared' | 'held';
 	revisionId: string | null;
 	matchedRuleIds: string[];
+	matchedSections: string[];
+	queue: ReviewQueue | null;
 	reason: 'no_match' | 'rule_match' | 'scanner_unavailable';
 };
 
@@ -21,14 +25,20 @@ export async function screenContent(
 				outcome: 'held',
 				revisionId: null,
 				matchedRuleIds: [],
+				matchedSections: [],
+				queue: 'system',
 				reason: 'scanner_unavailable'
 			};
 		}
-		const matchedRuleIds = matchSafetyRules(text, scope, active.rules).map((rule) => rule.id);
+		const matches = matchSafetyRules(text, scope, active.rules);
+		const matchedRuleIds = matches.map((rule) => rule.id);
+		const route = routeMatches(matches);
 		return {
 			outcome: matchedRuleIds.length ? 'held' : 'cleared',
 			revisionId: active.revisionId,
 			matchedRuleIds,
+			matchedSections: route.sections,
+			queue: route.queue,
 			reason: matchedRuleIds.length ? 'rule_match' : 'no_match'
 		};
 	} catch (cause) {
@@ -36,7 +46,14 @@ export async function screenContent(
 			'Safety screening unavailable:',
 			cause instanceof Error ? cause.message : 'unknown'
 		);
-		return { outcome: 'held', revisionId: null, matchedRuleIds: [], reason: 'scanner_unavailable' };
+		return {
+			outcome: 'held',
+			revisionId: null,
+			matchedRuleIds: [],
+			matchedSections: [],
+			queue: 'system',
+			reason: 'scanner_unavailable'
+		};
 	}
 }
 
@@ -56,6 +73,8 @@ export function screeningRecords(
 			ruleRevisionId: result.revisionId,
 			outcome: result.outcome,
 			matchedRuleIds: JSON.stringify(result.matchedRuleIds),
+			matchedSections: JSON.stringify(result.matchedSections),
+			queue: result.queue,
 			reason: result.reason
 		},
 		case:
@@ -67,6 +86,8 @@ export function screeningRecords(
 						submitterId,
 						ruleRevisionId: result.revisionId,
 						matchedRuleIds: JSON.stringify(result.matchedRuleIds),
+						matchedSections: JSON.stringify(result.matchedSections),
+						queue: result.queue ?? 'general',
 						reason: result.reason,
 						evidenceSnapshot: JSON.stringify(evidence),
 						releaseStatus: releaseStatus ?? null

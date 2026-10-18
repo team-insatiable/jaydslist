@@ -4,7 +4,7 @@
 </script>
 
 <section>
-	<h1>Safety review cases</h1>
+	<h1>Content Safety cases</h1>
 	<p>
 		Held content stays hidden from other users until released. Review the captured submission and
 		rule version before deciding.
@@ -20,12 +20,11 @@
 	{#if data.cases.length === 0}<p>No {data.status} cases.</p>{/if}
 	{#each data.cases as safetyCase (safetyCase.id)}
 		<article>
-			<h2>{safetyCase.targetType} · {safetyCase.status}</h2>
+			<h2>{safetyCase.queue} · {safetyCase.targetType} · {safetyCase.status}</h2>
 			<p>Submitted {new Date(safetyCase.createdAt).toLocaleString()} · {safetyCase.reason}</p>
 			<p>
-				Rule revision: {safetyCase.ruleRevisionId ?? 'unavailable'} · Matched rules: {safetyCase.matchedRuleIds.join(
-					', '
-				) || 'none'}
+				Sections: {safetyCase.matchedSections.join(', ') || 'none'} · Rule revision: {safetyCase.ruleRevisionId ??
+					'unavailable'} · Matched rules: {safetyCase.matchedRuleIds.join(', ') || 'none'}
 			</p>
 			<p>Submitter: {safetyCase.submitterId} · Target: {safetyCase.targetId}</p>
 			<p>

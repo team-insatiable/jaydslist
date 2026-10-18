@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { matchSafetyRules, parseSafetyRules } from './safety-rules';
+import { matchSafetyRules, parseSafetyPolicy, parseSafetyRules } from './rules';
+import { routeMatches } from './routing';
 
 const rules = parseSafetyRules(
 	JSON.stringify([
@@ -33,13 +34,72 @@ describe('versioned safety rule syntax', () => {
 			scope: 'both',
 			all: ['first', 'second']
 		};
-		expect(parseSafetyRules(JSON.stringify({ schemaVersion: 1, rules: [rule] }))).toEqual([rule]);
+		expect(parseSafetyRules(JSON.stringify({ schemaVersion: 1, rules: [rule] }))).toEqual([
+			{ ...rule, sectionId: 'general_safety', sectionLabel: 'General safety', queue: 'general' }
+		]);
 		expect(() => parseSafetyRules(JSON.stringify({ schemaVersion: 2, rules: [rule] }))).toThrow(
 			'Unsupported safety rule file format'
 		);
 		expect(() =>
 			parseSafetyRules(JSON.stringify({ schemaVersion: 1, rules: [{ ...rule, typo: true }] }))
 		).toThrow('Unsupported safety rule field');
+	});
+
+	it('routes versioned sections to one highest-priority case', () => {
+		const policy = {
+			schemaVersion: 2,
+			sections: [
+				{
+					id: 'solicitation',
+					label: 'Commercial sex solicitation',
+					queue: 'solicitation',
+					rules: [
+						{
+							id: 'coded_exchange',
+							label: 'Coded exchange',
+							intent: 'Review a possible offer',
+							falsePositiveRisk: 'Flowers may be meant literally',
+							scope: 'both',
+							all: ['roses'],
+							any: ['rate', 'tokens'],
+							withinWords: 8
+						}
+					]
+				},
+				{
+					id: 'exploitation',
+					label: 'Trafficking and exploitation',
+					queue: 'urgent',
+					rules: [
+						{
+							id: 'coercion',
+							label: 'Coercion',
+							intent: 'Review coercion',
+							falsePositiveRisk: 'Could be a disclosure',
+							scope: 'both',
+							all: ['forced', 'payment']
+						}
+					]
+				}
+			]
+		};
+		const rules = parseSafetyRules(JSON.stringify(policy));
+		expect(parseSafetyPolicy(JSON.stringify(policy)).sections).toHaveLength(2);
+		expect(matchSafetyRules('I brought roses to our picnic', 'listing', rules)).toEqual([]);
+		expect(
+			matchSafetyRules('Offering roses at this rate', 'listing', rules).map((rule) => rule.id)
+		).toEqual(['coded_exchange']);
+		expect(
+			matchSafetyRules(
+				"Roses arrived. We talked for a long time about hiking trails and tomorrow's weather. The insurance rate changed.",
+				'listing',
+				rules
+			)
+		).toEqual([]);
+		expect(routeMatches(matchSafetyRules('Forced payment; roses rate', 'message', rules))).toEqual({
+			queue: 'urgent',
+			sections: ['solicitation', 'exploitation']
+		});
 	});
 
 	it('matches combinations in scope without partial-word matches', () => {

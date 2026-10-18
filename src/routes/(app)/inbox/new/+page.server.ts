@@ -19,7 +19,7 @@ import { decryptContact } from '$lib/server/crypto';
 import { emailIsConfigured, sendNewMessageEmail, sendAbuseAlertEmail } from '$lib/server/email';
 import { getInstanceConfig } from '$lib/server/instance';
 import { sendPushNotification } from '$lib/server/push';
-import { screenContent, screeningRecords } from '$lib/server/content-screening';
+import { screenContent, screeningRecords } from '$lib/server/content-safety/screen';
 
 const CONTACT_INFO_PATTERN = /(\+?[\d\s\-().]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/i;
 

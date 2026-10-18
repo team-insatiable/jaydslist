@@ -563,6 +563,8 @@ export const safetyScanEvents = sqliteTable(
 		ruleRevisionId: text('rule_revision_id').references(() => safetyRuleRevisions.id),
 		outcome: text('outcome').notNull(),
 		matchedRuleIds: text('matched_rule_ids').notNull().default('[]'),
+		matchedSections: text('matched_sections').notNull().default('[]'),
+		queue: text('queue'),
 		reason: text('reason').notNull(),
 		checkedAt: integer('checked_at', { mode: 'timestamp' })
 			.notNull()
@@ -584,6 +586,8 @@ export const safetyCases = sqliteTable(
 			.references(() => userProfiles.id),
 		ruleRevisionId: text('rule_revision_id').references(() => safetyRuleRevisions.id),
 		matchedRuleIds: text('matched_rule_ids').notNull().default('[]'),
+		matchedSections: text('matched_sections').notNull().default('[]'),
+		queue: text('queue').notNull().default('general'),
 		reason: text('reason').notNull(),
 		evidenceSnapshot: text('evidence_snapshot').notNull(),
 		releaseStatus: text('release_status'),
@@ -595,7 +599,10 @@ export const safetyCases = sqliteTable(
 			.default(sql`(unixepoch())`),
 		resolvedAt: integer('resolved_at', { mode: 'timestamp' })
 	},
-	(table) => ({ statusIdx: index('safety_cases_status_idx').on(table.status, table.createdAt) })
+	(table) => ({
+		statusIdx: index('safety_cases_status_idx').on(table.status, table.createdAt),
+		queueIdx: index('safety_cases_queue_idx').on(table.status, table.queue, table.createdAt)
+	})
 );
 
 export const platformConfig = sqliteTable('platform_config', {

@@ -17,7 +17,7 @@ import { eq, and, desc, inArray, isNull, ne } from 'drizzle-orm';
 import { getActiveVocabulary } from '$lib/server/relative-terms.server';
 import { scanTerms } from '$lib/relative-terms';
 import { getVaultPhotos, getAlbumList } from '$lib/server/photo-vault';
-import { screenContent, screeningRecords } from '$lib/server/content-screening';
+import { screenContent, screeningRecords } from '$lib/server/content-safety/screen';
 
 const VALID_IDENTITIES = [
 	'man',

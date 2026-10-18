@@ -50,16 +50,26 @@ async function activateRule(adminId: string, scope: 'message' | 'listing') {
 	await db.insert(safetyRuleRevisions).values({
 		id,
 		version: Math.max(...latest.map((row) => row.version)) + 1,
-		rulesJson: JSON.stringify([
-			{
-				id: 'risk_combo',
-				label: 'Test combination',
-				intent: 'Test hold',
-				falsePositiveRisk: 'Harmless context could match',
-				scope,
-				all: ['forced', 'payment']
-			}
-		]),
+		rulesJson: JSON.stringify({
+			schemaVersion: 2,
+			sections: [
+				{
+					id: 'trafficking_exploitation',
+					label: 'Trafficking and exploitation',
+					queue: 'urgent',
+					rules: [
+						{
+							id: 'risk_combo',
+							label: 'Test combination',
+							intent: 'Test hold',
+							falsePositiveRisk: 'Harmless context could match',
+							scope,
+							all: ['forced', 'payment']
+						}
+					]
+				}
+			]
+		}),
 		reason: 'Integration test',
 		createdBy: adminId
 	});
@@ -103,10 +113,12 @@ describe('safety screening and review', () => {
 			.first<{ id: string; scan_status: string; scan_revision_id: string }>();
 		expect(message).toMatchObject({ scan_status: 'flagged', scan_revision_id: revisionId });
 		const safetyCase = await env.DB.prepare(
-			'SELECT id, evidence_snapshot FROM safety_cases WHERE target_id = ?'
+			'SELECT id, evidence_snapshot, queue, matched_sections FROM safety_cases WHERE target_id = ?'
 		)
 			.bind(message!.id)
-			.first<{ id: string; evidence_snapshot: string }>();
+			.first<{ id: string; evidence_snapshot: string; queue: string; matched_sections: string }>();
+		expect(safetyCase?.queue).toBe('urgent');
+		expect(JSON.parse(safetyCase!.matched_sections)).toEqual(['trafficking_exploitation']);
 		expect(JSON.parse(safetyCase!.evidence_snapshot)).toMatchObject({ body: 'forced payment' });
 
 		const recipientView = await loadThread({
