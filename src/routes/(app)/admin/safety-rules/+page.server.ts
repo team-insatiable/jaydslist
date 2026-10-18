@@ -77,7 +77,7 @@ export const actions: Actions = {
 				return fail(409, { error: 'The rule set changed; retry with the latest revision' });
 			return fail(500, { error: 'Unable to save revision and audit entry' });
 		}
-		return { success: true };
+		return { success: true, action: 'staged' as const };
 	},
 	activate: async ({ request, locals, platform }) => {
 		const env = platform?.env;
@@ -111,6 +111,6 @@ export const actions: Actions = {
 				reason
 			})
 		]);
-		return { success: true };
+		return { success: true, action: 'activated' as const };
 	}
 };

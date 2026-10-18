@@ -7,6 +7,11 @@
 	let activationReason = $state('');
 	let importError = $state('');
 	let formatError = $state('');
+	let activeRevision = $derived(
+		data.revisions.find((revision) => revision.id === data.activeRevisionId)
+	);
+	const ruleCount = (policy: SafetyPolicy) =>
+		policy.sections.reduce((count, section) => count + section.rules.length, 0);
 	let draftPreview = $derived.by((): { policy: SafetyPolicy | null; error: string } => {
 		try {
 			return { policy: parseSafetyPolicy(rules), error: '' };
@@ -55,14 +60,81 @@
 <section class="admin-page rules-page">
 	<h1>Content Safety rules</h1>
 	<p class="admin-page-intro">
-		Stage a revision, review it, then activate it. Older revisions remain available for rollback.
-		These rules are separate from listing vocabulary. New submissions use the active revision;
-		matches and scanner failures enter the Safety cases queue.
+		Review the checks used for listings and messages. Save a draft when you change them, then turn
+		on the revision you want to use.
 	</p>
 	{#if form?.error}<p role="alert">{form.error}</p>{/if}
-	{#if form?.success}<p role="status">Rule revision saved.</p>{/if}
-	<div class="admin-panel">
-		<h2>1. Load and review rules</h2>
+	{#if form?.success}
+		<p role="status">
+			{form.action === 'activated'
+				? 'Rules are now active.'
+				: 'Draft saved. The rules are not active until you turn on a revision.'}
+		</p>
+	{/if}
+	<div class="status-panel" class:active={!!activeRevision} role="status">
+		{#if activeRevision}
+			<strong>Revision {activeRevision.version} is active</strong>
+			<p>New submissions are checked against its {ruleCount(activeRevision.policy)} rules.</p>
+		{:else}
+			<strong>No rules are active</strong>
+			<p>New submissions are held for system review until you turn on a saved revision.</p>
+		{/if}
+	</div>
+	<h2>Saved revisions</h2>
+	{#if data.revisions.length === 0}
+		<p class="admin-panel">No drafts saved yet. Load a rules file below to get started.</p>
+	{:else}
+		{#each data.revisions as revision (revision.id)}
+			<article class="admin-panel revision-card">
+				<div class="revision-heading">
+					<h3>Revision {revision.version}</h3>
+					<span class:active={revision.id === data.activeRevisionId} class="revision-status">
+						{revision.id === data.activeRevisionId ? 'Active' : 'Not active'}
+					</span>
+				</div>
+				<p class="revision-summary">
+					{revision.policy.sections.length} sections · {ruleCount(revision.policy)} rules · Saved
+					{new Date(revision.createdAt).toLocaleString()}
+				</p>
+				<p class="revision-reason"><strong>Saved because:</strong> {revision.reason}</p>
+				<details class="review-details">
+					<summary>Review all {ruleCount(revision.policy)} rules</summary>
+					<SafetyRuleReview policy={revision.policy} />
+					<details>
+						<summary>View raw JSON</summary>
+						<pre>{formatRevision(revision.rulesJson)}</pre>
+					</details>
+				</details>
+				{#if revision.id !== data.activeRevisionId}
+					<form method="POST" action="?/activate" class="activation-form">
+						<input type="hidden" name="revisionId" value={revision.id} />
+						<label for="activate-{revision.id}"
+							>Why are you turning on revision {revision.version}?</label
+						>
+						<p class="help-text">
+							This audit note records your decision. New submissions will use these rules
+							immediately.
+						</p>
+						<input
+							id="activate-{revision.id}"
+							name="reason"
+							bind:value={activationReason}
+							placeholder="Reviewed for beta use"
+							required
+							maxlength="500"
+						/>
+						<button type="submit">
+							{data.activeRevisionId
+								? `Switch to revision ${revision.version}`
+								: `Turn on revision ${revision.version}`}
+						</button>
+					</form>
+				{/if}
+			</article>
+		{/each}
+	{/if}
+	<details class="admin-panel" open={data.revisions.length === 0}>
+		<summary>Load or change rules</summary>
 		<p class="help-text">
 			Load the deployed <code>content/safety-rules.json</code> file or choose a JSON file from your device.
 			Loading a file does not activate it.
@@ -108,54 +180,116 @@
 					review above; staging validates the full rule format.
 				</p>
 			</details>
-			<label for="stage-reason">Change reason</label>
+			<label for="stage-reason">Why are you saving this draft?</label>
 			<input id="stage-reason" name="reason" bind:value={reason} required maxlength="500" />
-			<button type="submit" disabled={!draftPreview.policy}>Stage revision</button>
+			<button type="submit" disabled={!draftPreview.policy}>Save as draft</button>
 		</form>
-	</div>
-	<h2>2. Review and activate a revision</h2>
-	{#if data.revisions.length === 0}
-		<p class="admin-panel">No revisions staged yet. No safety rule set is active.</p>
-	{:else}
-		{#each data.revisions as revision (revision.id)}
-			<article class="admin-panel">
-				<h3>
-					Revision {revision.version}{revision.id === data.activeRevisionId ? ' · Active' : ''}
-				</h3>
-				<p>{revision.reason} · {new Date(revision.createdAt).toLocaleString()}</p>
-				<SafetyRuleReview policy={revision.policy} />
-				<details>
-					<summary>View raw JSON</summary>
-					<pre>{formatRevision(revision.rulesJson)}</pre>
-				</details>
-				{#if revision.id !== data.activeRevisionId}
-					<form method="POST" action="?/activate">
-						<input type="hidden" name="revisionId" value={revision.id} />
-						<label for="activate-{revision.id}">Activation reason</label>
-						<input
-							id="activate-{revision.id}"
-							name="reason"
-							bind:value={activationReason}
-							required
-							maxlength="500"
-						/>
-						<button type="submit">Activate revision {revision.version}</button>
-					</form>
-				{/if}
-			</article>
+	</details>
+	<details class="history-panel">
+		<summary>Change history</summary>
+		{#if data.history.length === 0}<p>No changes recorded yet.</p>{/if}
+		{#each data.history as entry (entry.id)}
+			<div class="history-entry">
+				<p>
+					<strong
+						>{entry.actionType === 'stage_revision'
+							? 'Draft saved'
+							: entry.actionType === 'activate_revision'
+								? 'Rules turned on'
+								: entry.actionType}</strong
+					>
+					· {new Date(entry.createdAt).toLocaleString()}
+				</p>
+				<p>{entry.reason}</p>
+				<details><summary>Audit details</summary><code>Admin ID: {entry.actorId}</code></details>
+			</div>
 		{/each}
-	{/if}
-	<h2>Change history</h2>
-	{#each data.history as entry (entry.id)}
-		<p class="history-entry">
-			{entry.actionType} · {entry.actorId} · {new Date(entry.createdAt).toLocaleString()} · {entry.reason}
-		</p>
-	{/each}
+	</details>
 </section>
 
 <style>
 	.rules-page > h2 {
 		margin: 2rem 0 1rem;
+	}
+
+	.status-panel {
+		padding: 1rem 1.25rem;
+		border: 1px solid var(--pico-muted-border-color);
+		border-left: 4px solid var(--pico-del-color);
+		border-radius: 0.6rem;
+		background: var(--pico-card-background-color);
+	}
+
+	.status-panel.active {
+		border-left-color: var(--pico-ins-color);
+	}
+
+	.status-panel p {
+		margin: 0.35rem 0 0;
+		color: var(--pico-muted-color);
+	}
+
+	.revision-heading {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.revision-heading h3 {
+		margin: 0;
+	}
+
+	.revision-status {
+		padding: 0.2rem 0.65rem;
+		border-radius: 999px;
+		background: var(--pico-muted-background-color);
+		color: var(--pico-muted-color);
+		font-size: 0.8rem;
+		font-weight: 700;
+	}
+
+	.revision-status.active {
+		background: color-mix(in srgb, var(--pico-ins-color) 15%, transparent);
+		color: var(--pico-ins-color);
+	}
+
+	.revision-summary {
+		margin: 0.75rem 0;
+		color: var(--pico-muted-color);
+	}
+
+	.revision-reason {
+		margin-bottom: 1rem;
+	}
+
+	.activation-form {
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--pico-muted-border-color);
+	}
+
+	.activation-form .help-text {
+		margin: 0 0 0.75rem;
+		font-size: 0.9rem;
+	}
+
+	.review-details {
+		margin-bottom: 0.75rem;
+	}
+
+	.rules-page > details.admin-panel > summary,
+	.history-panel > summary {
+		font-size: 1.1rem;
+		font-weight: 700;
+	}
+
+	.history-panel {
+		margin: 2rem 0;
+	}
+
+	.history-panel .history-entry p {
+		margin: 0 0 0.4rem;
 	}
 
 	.help-text {
