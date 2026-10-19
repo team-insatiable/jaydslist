@@ -33,6 +33,59 @@ export const load: PageServerLoad = async ({ platform }) => {
 };
 
 export const actions: Actions = {
+	publish: async ({ request, locals, platform }) => {
+		const env = platform?.env;
+		if (!env || !locals.user || !(await isAdminUser(env, locals.user.id)))
+			return fail(403, { error: 'Forbidden' });
+		const data = await request.formData();
+		const reason = String(data.get('reason') ?? '').trim();
+		if (!reason || reason.length > 500) return fail(400, { error: 'A reason is required' });
+		let policy;
+		try {
+			policy = parseSafetyPolicy(String(data.get('rules') ?? ''));
+		} catch (cause) {
+			return fail(400, { error: cause instanceof Error ? cause.message : 'Invalid rules' });
+		}
+		const db = getDb(env.DB);
+		const latest = await db
+			.select({ version: safetyRuleRevisions.version })
+			.from(safetyRuleRevisions)
+			.orderBy(desc(safetyRuleRevisions.version))
+			.get();
+		const revisionId = crypto.randomUUID();
+		const now = new Date();
+		try {
+			await db.batch([
+				db.insert(safetyRuleRevisions).values({
+					id: revisionId,
+					version: (latest?.version ?? 0) + 1,
+					rulesJson: JSON.stringify(policy),
+					reason,
+					createdBy: locals.user.id
+				}),
+				db
+					.insert(safetyRuleState)
+					.values({ id: 'active', revisionId, updatedBy: locals.user.id, updatedAt: now })
+					.onConflictDoUpdate({
+						target: safetyRuleState.id,
+						set: { revisionId, updatedBy: locals.user.id, updatedAt: now }
+					}),
+				db.insert(moderationActions).values({
+					id: crypto.randomUUID(),
+					actorId: locals.user.id,
+					targetType: 'safety_rules',
+					targetId: revisionId,
+					actionType: 'publish_revision',
+					reason
+				})
+			]);
+		} catch (cause) {
+			if (String(cause).includes('UNIQUE'))
+				return fail(409, { error: 'The rule set changed; reload and try again' });
+			return fail(500, { error: 'Unable to turn on rules and save audit entry' });
+		}
+		return { success: true, action: 'published' as const };
+	},
 	stage: async ({ request, locals, platform }) => {
 		const env = platform?.env;
 		if (!env || !locals.user || !(await isAdminUser(env, locals.user.id)))
@@ -86,14 +139,22 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const revisionId = String(data.get('revisionId') ?? '');
 		const reason = String(data.get('reason') ?? '').trim();
-		if (!reason || reason.length > 500) return fail(400, { error: 'A reason is required' });
+		if (reason.length > 500) return fail(400, { error: 'Reason is too long' });
 		const db = getDb(env.DB);
 		const revision = await db
-			.select({ id: safetyRuleRevisions.id })
+			.select({ id: safetyRuleRevisions.id, reason: safetyRuleRevisions.reason })
 			.from(safetyRuleRevisions)
 			.where(eq(safetyRuleRevisions.id, revisionId))
 			.get();
-		if (!revision) return fail(404, { error: 'Revision not found' });
+		if (!revision) return fail(404, { error: 'Rule set not found' });
+		const active = await db
+			.select({ revisionId: safetyRuleState.revisionId })
+			.from(safetyRuleState)
+			.where(eq(safetyRuleState.id, 'active'))
+			.get();
+		if (active && !reason) return fail(400, { error: 'A reason is required to switch rule sets' });
+		if (active?.revisionId === revisionId)
+			return fail(400, { error: 'This rule set is already active' });
 		await db.batch([
 			db
 				.insert(safetyRuleState)
@@ -108,7 +169,7 @@ export const actions: Actions = {
 				targetType: 'safety_rules',
 				targetId: revisionId,
 				actionType: 'activate_revision',
-				reason
+				reason: reason || revision.reason
 			})
 		]);
 		return { success: true, action: 'activated' as const };

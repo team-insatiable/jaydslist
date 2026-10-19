@@ -27,7 +27,7 @@ const sampleRules = JSON.stringify({
 });
 
 function event(
-	action: 'stage' | 'activate',
+	action: 'stage' | 'activate' | 'publish',
 	userId: string,
 	adminEmail: string,
 	fields: Record<string, string>
@@ -45,6 +45,72 @@ function event(
 }
 
 describe('admin safety rules', () => {
+	it('saves and activates a first rule set with one reason and one audit entry', async () => {
+		const adminId = await createTestUser(env.DB);
+		const reason = 'Reviewed initial beta rules';
+		expect(
+			await actions.publish(
+				event('publish', adminId, `${adminId}@test.example`, { rules: sampleRules, reason })
+			)
+		).toMatchObject({ success: true, action: 'published' });
+		const revision = await env.DB.prepare(
+			'SELECT id, reason FROM safety_rule_revisions ORDER BY version DESC LIMIT 1'
+		).first<{ id: string; reason: string }>();
+		expect(revision?.reason).toBe(reason);
+		expect((await getActiveSafetyRules(getDb(env.DB)))?.revisionId).toBe(revision?.id);
+		const logs = await env.DB.prepare(
+			"SELECT action_type, reason FROM moderation_actions WHERE target_type = 'safety_rules' AND target_id = ?"
+		)
+			.bind(revision!.id)
+			.all<{ action_type: string; reason: string }>();
+		expect(logs.results).toMatchObject([{ action_type: 'publish_revision', reason }]);
+	});
+
+	it('turns on a saved first rule set using its existing reason', async () => {
+		const adminId = await createTestUser(env.DB);
+		const email = `${adminId}@test.example`;
+		await env.DB.prepare("DELETE FROM safety_rule_state WHERE id = 'active'").run();
+		await actions.stage(
+			event('stage', adminId, email, { rules: sampleRules, reason: 'Initial deploy' })
+		);
+		const revision = await env.DB.prepare(
+			'SELECT id FROM safety_rule_revisions ORDER BY version DESC LIMIT 1'
+		).first<{ id: string }>();
+		expect(
+			await actions.activate(event('activate', adminId, email, { revisionId: revision!.id }))
+		).toMatchObject({ success: true, action: 'activated' });
+		const activation = await env.DB.prepare(
+			"SELECT reason FROM moderation_actions WHERE action_type = 'activate_revision' AND target_id = ?"
+		)
+			.bind(revision!.id)
+			.first<{ reason: string }>();
+		expect(activation?.reason).toBe('Initial deploy');
+	});
+
+	it('requires a fresh reason when switching away from an active rule set', async () => {
+		const adminId = await createTestUser(env.DB);
+		const email = `${adminId}@test.example`;
+		await actions.publish(
+			event('publish', adminId, email, { rules: sampleRules, reason: 'First' })
+		);
+		const active = await env.DB.prepare('SELECT revision_id FROM safety_rule_state WHERE id = ?')
+			.bind('active')
+			.first<{ revision_id: string }>();
+		await actions.stage(event('stage', adminId, email, { rules: sampleRules, reason: 'Second' }));
+		const staged = await env.DB.prepare(
+			'SELECT id FROM safety_rule_revisions ORDER BY version DESC LIMIT 1'
+		).first<{ id: string }>();
+		const result = await actions.activate(
+			event('activate', adminId, email, { revisionId: staged!.id })
+		);
+		expect(result?.status).toBe(400);
+		expect(
+			await env.DB.prepare('SELECT revision_id FROM safety_rule_state WHERE id = ?')
+				.bind('active')
+				.first<{ revision_id: string }>()
+		).toMatchObject({ revision_id: active?.revision_id });
+	});
+
 	it('stages and activates a version with an audit history', async () => {
 		const adminId = await createTestUser(env.DB);
 		const adminEmail = `${adminId}@test.example`;
@@ -125,6 +191,42 @@ describe('admin safety rules', () => {
 			expect(after?.count).toBe(before?.count);
 		} finally {
 			await env.DB.exec('DROP TRIGGER reject_safety_audit');
+		}
+	});
+
+	it('keeps the current rules active if publishing cannot write its audit entry', async () => {
+		const adminId = await createTestUser(env.DB);
+		const email = `${adminId}@test.example`;
+		await actions.publish(
+			event('publish', adminId, email, { rules: sampleRules, reason: 'Active' })
+		);
+		const before = await env.DB.prepare('SELECT revision_id FROM safety_rule_state WHERE id = ?')
+			.bind('active')
+			.first<{ revision_id: string }>();
+		const countBefore = await env.DB.prepare(
+			'SELECT COUNT(*) AS count FROM safety_rule_revisions'
+		).first<{ count: number }>();
+		await env.DB.prepare(
+			`CREATE TRIGGER reject_publish_audit BEFORE INSERT ON moderation_actions
+			WHEN NEW.action_type = 'publish_revision'
+			BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END;`
+		).run();
+		try {
+			const result = await actions.publish(
+				event('publish', adminId, email, { rules: sampleRules, reason: 'Must fail' })
+			);
+			expect(result?.status).toBe(500);
+			expect(
+				await env.DB.prepare('SELECT revision_id FROM safety_rule_state WHERE id = ?')
+					.bind('active')
+					.first<{ revision_id: string }>()
+			).toMatchObject({ revision_id: before?.revision_id });
+			const countAfter = await env.DB.prepare(
+				'SELECT COUNT(*) AS count FROM safety_rule_revisions'
+			).first<{ count: number }>();
+			expect(countAfter?.count).toBe(countBefore?.count);
+		} finally {
+			await env.DB.exec('DROP TRIGGER reject_publish_audit');
 		}
 	});
 });
