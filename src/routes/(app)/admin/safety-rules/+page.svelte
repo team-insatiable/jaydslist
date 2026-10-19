@@ -28,7 +28,7 @@
 			rules = JSON.stringify(JSON.parse(rules), null, 2);
 			formatError = '';
 		} catch {
-			formatError = 'This is not valid JSON yet. Fix the syntax before formatting or staging.';
+			formatError = 'This is not valid JSON yet. Fix the syntax before formatting or saving.';
 		}
 	}
 
@@ -60,34 +60,34 @@
 <section class="admin-page rules-page">
 	<h1>Content Safety rules</h1>
 	<p class="admin-page-intro">
-		Review the checks used for listings and messages. Save a draft when you change them, then turn
-		on the revision you want to use.
+		Review the checks used for listings and messages. You can turn on a reviewed rule set in one
+		step or save it as a draft for later.
 	</p>
 	{#if form?.error}<p role="alert">{form.error}</p>{/if}
 	{#if form?.success}
 		<p role="status">
-			{form.action === 'activated'
+			{form.action === 'activated' || form.action === 'published'
 				? 'Rules are now active.'
-				: 'Draft saved. The rules are not active until you turn on a revision.'}
+				: 'Draft saved. Turn it on when you are ready.'}
 		</p>
 	{/if}
 	<div class="status-panel" class:active={!!activeRevision} role="status">
 		{#if activeRevision}
-			<strong>Revision {activeRevision.version} is active</strong>
+			<strong>Rule set {activeRevision.version} is active</strong>
 			<p>New submissions are checked against its {ruleCount(activeRevision.policy)} rules.</p>
 		{:else}
 			<strong>No rules are active</strong>
-			<p>New submissions are held for system review until you turn on a saved revision.</p>
+			<p>New submissions are held for system review until you turn on a rule set.</p>
 		{/if}
 	</div>
-	<h2>Saved revisions</h2>
+	<h2>Saved rule sets</h2>
 	{#if data.revisions.length === 0}
 		<p class="admin-panel">No drafts saved yet. Load a rules file below to get started.</p>
 	{:else}
 		{#each data.revisions as revision (revision.id)}
 			<article class="admin-panel revision-card">
 				<div class="revision-heading">
-					<h3>Revision {revision.version}</h3>
+					<h3>Rule set {revision.version}</h3>
 					<span class:active={revision.id === data.activeRevisionId} class="revision-status">
 						{revision.id === data.activeRevisionId ? 'Active' : 'Not active'}
 					</span>
@@ -108,25 +108,25 @@
 				{#if revision.id !== data.activeRevisionId}
 					<form method="POST" action="?/activate" class="activation-form">
 						<input type="hidden" name="revisionId" value={revision.id} />
-						<label for="activate-{revision.id}"
-							>Why are you turning on revision {revision.version}?</label
-						>
-						<p class="help-text">
-							This audit note records your decision. New submissions will use these rules
-							immediately.
-						</p>
-						<input
-							id="activate-{revision.id}"
-							name="reason"
-							bind:value={activationReason}
-							placeholder="Reviewed for beta use"
-							required
-							maxlength="500"
-						/>
+						{#if data.activeRevisionId}
+							<label for="activate-{revision.id}"
+								>Why are you switching to rule set {revision.version}?</label
+							>
+							<input
+								id="activate-{revision.id}"
+								name="reason"
+								bind:value={activationReason}
+								required
+								maxlength="500"
+							/>
+						{:else}
+							<p class="help-text">Your saved note will be used for the activation record.</p>
+						{/if}
+						<p class="help-text">New submissions will use these rules immediately.</p>
 						<button type="submit">
 							{data.activeRevisionId
-								? `Switch to revision ${revision.version}`
-								: `Turn on revision ${revision.version}`}
+								? `Switch to rule set ${revision.version}`
+								: `Turn on rule set ${revision.version}`}
 						</button>
 					</form>
 				{/if}
@@ -137,7 +137,7 @@
 		<summary>Load or change rules</summary>
 		<p class="help-text">
 			Load the deployed <code>content/safety-rules.json</code> file or choose a JSON file from your device.
-			Loading a file does not activate it.
+			Review the file below before turning it on or saving a draft.
 		</p>
 		<button
 			type="button"
@@ -151,8 +151,8 @@
 		<label for="rules-file">Or choose a rules JSON file</label>
 		<input id="rules-file" type="file" accept=".json,application/json" onchange={importRulesFile} />
 		{#if importError}<p role="alert">{importError}</p>{/if}
-		<form method="POST" action="?/stage">
-			<h3 class="preview-heading">Review rules before staging</h3>
+		<form method="POST" action="?/publish">
+			<h3 class="preview-heading">Review rules before saving</h3>
 			{#if draftPreview.policy}
 				<SafetyRuleReview policy={draftPreview.policy} />
 			{:else}
@@ -177,12 +177,21 @@
 				{#if formatError}<p class="format-error" role="alert">{formatError}</p>{/if}
 				<p>
 					The file uses named sections and a review queue for each section. Changes here update the
-					review above; staging validates the full rule format.
+					review above; saving validates the full rule format.
 				</p>
 			</details>
-			<label for="stage-reason">Why are you saving this draft?</label>
+			<label for="stage-reason">Why are you saving these rules?</label>
 			<input id="stage-reason" name="reason" bind:value={reason} required maxlength="500" />
-			<button type="submit" disabled={!draftPreview.policy}>Save as draft</button>
+			<p class="help-text">Turning rules on applies them to new submissions immediately.</p>
+			<div class="rule-actions">
+				<button type="submit" disabled={!draftPreview.policy}>Save and turn on rules</button>
+				<button
+					type="submit"
+					formaction="?/stage"
+					class="secondary outline"
+					disabled={!draftPreview.policy}>Save draft instead</button
+				>
+			</div>
 		</form>
 	</details>
 	<details class="history-panel">
@@ -196,7 +205,9 @@
 							? 'Draft saved'
 							: entry.actionType === 'activate_revision'
 								? 'Rules turned on'
-								: entry.actionType}</strong
+								: entry.actionType === 'publish_revision'
+									? 'Rule set saved and turned on'
+									: entry.actionType}</strong
 					>
 					· {new Date(entry.createdAt).toLocaleString()}
 				</p>
@@ -307,6 +318,17 @@
 
 	.rules-page form > button[type='submit'] {
 		margin-top: 1rem;
+	}
+
+	.rule-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		margin-top: 1rem;
+	}
+
+	.rule-actions button {
+		margin: 0;
 	}
 
 	.editor-heading {
